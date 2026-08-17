@@ -1,0 +1,181 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Lora:ital,wght@0,400..700;1,400..700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Light Mode Tokens */
+  --sand-50: #FDFAF5;
+  --sand-100: #F4EFE6;
+  --sand-200: #EBE4D5;
+  --sand-300: #D8CEB8;
+  --sand-400: #C0B49A;
+
+  --stone-500: #857460;
+  --stone-600: #6E5E4E;
+  --stone-700: #4A3C2E;
+
+  --ink-900: #18130D;
+  --ink-800: #2C2318;
+
+  --navy-700: #1E3A4A;
+  --navy-600: #265063;
+  --navy-100: #D4E4ED;
+
+  --amber-500: #C8813A;
+  --amber-400: #D4974A;
+  --amber-100: #F5E4CC;
+
+  /* Status Colors */
+  --status-watching: #4A7C6E;
+  --status-completed: #5A6E4A;
+  --status-plan: #3E5A7A;
+  --status-hold: #7A6240;
+  --status-dropped: #7A3E3E;
+
+  /* Status Backgrounds */
+  --status-watching-bg: #EBF4F2;
+  --status-completed-bg: #EEF2E8;
+  --status-plan-bg: #E5EBF2;
+  --status-hold-bg: #F5EFE2;
+  --status-dropped-bg: #F5E9E9;
+}
+
+.dark {
+  --sand-50: #1C1917;
+  --sand-100: #12100E;
+  --sand-200: #292524;
+  --sand-300: #44403C;
+  --sand-400: #57534E;
+
+  --stone-500: #A8A29E;
+  --stone-600: #D6D3D1;
+  --stone-700: #E7E5E4;
+
+  --ink-900: #FAFAF9;
+  --ink-800: #F5F5F4;
+
+  --navy-700: #38BDF8;
+  --navy-600: #0284C7;
+  --navy-100: #0C4A6E;
+
+  --amber-500: #F59E0B;
+  --amber-400: #FBBF24;
+  --amber-100: #451A03;
+
+  --status-watching: #34D399;
+  --status-completed: #A3E635;
+  --status-plan: #60A5FA;
+  --status-hold: #FBBF24;
+  --status-dropped: #F87171;
+
+  --status-watching-bg: rgba(52, 211, 153, 0.15);
+  --status-completed-bg: rgba(163, 230, 53, 0.15);
+  --status-plan-bg: rgba(96, 165, 250, 0.15);
+  --status-hold-bg: rgba(251, 191, 36, 0.15);
+  --status-dropped-bg: rgba(248, 113, 113, 0.15);
+}
+
+body {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  background-color: var(--sand-100);
+  color: var(--ink-900);
+  letter-spacing: -0.005em;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, .font-display {
+  font-family: 'Lora', Georgia, serif;
+  letter-spacing: -0.01em;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Manga Tape & Sticker styling */
+.manga-tape {
+  border: 2px solid #18130d;
+  background-color: var(--sand-50);
+  box-shadow: 2px 2px 0px 0px rgba(24, 19, 13, 0.2);
+  transform: rotate(-0.5deg);
+  transition: all 0.15s ease;
+}
+
+.manga-tape-active {
+  background-color: #eab308 !important;
+  color: #18130d !important;
+  transform: rotate(0.5deg) scale(1.02);
+  box-shadow: 3px 3px 0px 0px #18130d;
+}
+
+.card-manga-panel {
+  background-color: var(--sand-50);
+  border: 2.5px solid #18130d;
+  box-shadow: 3.5px 3.5px 0px 0px #18130d;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-manga-panel:hover {
+  transform: translate(-1.5px, -1.5px);
+  box-shadow: 5px 5px 0px 0px #18130d;
+}
+
+.btn-manga {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #18130d;
+  box-shadow: 2.5px 2.5px 0px 0px #18130d;
+  font-weight: 800;
+  transition: all 0.15s ease;
+}
+
+.btn-manga:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0.5px 0.5px 0px 0px #18130d;
+}
+
+/* Shimmer Skeleton */
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.shimmer-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--sand-300) 25%,
+    var(--sand-200) 50%,
+    var(--sand-300) 75%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+
+/* Hide scrollbars */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Chatbot styling */
+.scout-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background-color: var(--stone-500);
+  border-radius: 50%;
+  animation: scout-bounce 1.2s ease-in-out infinite;
+}
+
+@keyframes scout-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-6px); opacity: 1; }
+}
