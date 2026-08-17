@@ -1,20 +1,37 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Flame, Sparkles, MessageCircle, Newspaper, ArrowRight, ExternalLink } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Search, Sparkles, MessageCircle, Newspaper, ExternalLink, LayoutGrid, List } from 'lucide-react';
 import { anilistQuery, SEARCH_ANIME_QUERY, EXPLORE_VIBE_QUERY, POPULAR_DISCUSSIONS_QUERY } from '../../services/anilist';
 import { fetchLiveNews } from '../../services/news';
 import { underratedAnime } from '../../data/underratedAnime';
+import AnimeCard from '../Common/AnimeCard';
 
 const GENRES = ['Action', 'Adventure', 'Comedy', 'Drama', 'Fantasy', 'Horror', 'Mecha', 'Mystery', 'Psychological', 'Romance', 'Sci-Fi', 'Slice of Life', 'Sports', 'Supernatural', 'Thriller'];
 
-export default function ExploreView({ onSelectAnime, titleLanguage = 'english' }) {
+export default function ExploreView({ 
+  watchlist = [], 
+  onUpdateWatchlist, 
+  onRemoveItem, 
+  onSelectAnime, 
+  titleLanguage = 'english' 
+}) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [viewMode, setViewMode] = useState('grid');
   const [news, setNews] = useState([]);
   const [loadingNews, setLoadingNews] = useState(true);
   const [discussions, setDiscussions] = useState([]);
   const [loadingDiscussions, setLoadingDiscussions] = useState(true);
+
+  // Fast hash map for watchlist lookups
+  const watchlistMap = useMemo(() => {
+    const map = {};
+    watchlist.forEach(item => {
+      map[item.anime_id || item.id] = item;
+    });
+    return map;
+  }, [watchlist]);
 
   useEffect(() => {
     loadNewsAndDiscussions();
@@ -23,7 +40,7 @@ export default function ExploreView({ onSelectAnime, titleLanguage = 'english' }
   useEffect(() => {
     const timer = setTimeout(() => {
       handleSearch();
-    }, 350);
+    }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery, selectedGenre]);
 
@@ -74,13 +91,6 @@ export default function ExploreView({ onSelectAnime, titleLanguage = 'english' }
     } finally {
       setLoading(false);
     }
-  };
-
-  const getTitle = (anime) => {
-    if (typeof anime.title === 'string') return anime.title;
-    if (titleLanguage === 'romaji') return anime.title?.romaji || anime.title?.english || anime.title?.native;
-    if (titleLanguage === 'native') return anime.title?.native || anime.title?.romaji || anime.title?.english;
-    return anime.title?.english || anime.title?.romaji || anime.title?.native || 'Unknown Title';
   };
 
   return (
@@ -249,18 +259,41 @@ export default function ExploreView({ onSelectAnime, titleLanguage = 'english' }
           <h2 className="font-display font-black text-lg md:text-xl text-ink-900 uppercase tracking-tight flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-amber-500" />
             <span>
-              {searchQuery ? `Search Results (${results.length})` : selectedGenre ? `${selectedGenre} Anime (${results.length})` : 'Hidden Gems Masterpieces'}
+              {searchQuery ? `Search Results (${results.length})` : selectedGenre ? `${selectedGenre} Anime (${results.length})` : 'Hidden Gems (49 Masterpieces)'}
             </span>
           </h2>
-          <span className="text-xs font-mono text-stone-500">
-            {results.length} titles
-          </span>
+
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-1.5 bg-sand-200 dark:bg-sand-300 p-1 rounded-md border-2 border-stone-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)]">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded transition-all ${
+                viewMode === 'grid' 
+                  ? 'bg-amber-400 text-ink-900 font-black shadow-sm' 
+                  : 'text-stone-600 hover:text-ink-900'
+              }`}
+              title="Grid View"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-1.5 rounded transition-all ${
+                viewMode === 'list' 
+                  ? 'bg-amber-400 text-ink-900 font-black shadow-sm' 
+                  : 'text-stone-600 hover:text-ink-900'
+              }`}
+              title="List View"
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-5">
             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
-              <div key={i} className="card-manga-panel h-64 shimmer-skeleton" />
+              <div key={i} className="card-manga-panel h-[385px] shimmer-skeleton rounded-md" />
             ))}
           </div>
         ) : results.length === 0 ? (
@@ -269,56 +302,23 @@ export default function ExploreView({ onSelectAnime, titleLanguage = 'english' }
             <p className="text-xs text-stone-500 font-sans mt-1">Try another search keyword or genre filter.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {results.map((anime) => {
-              const title = getTitle(anime);
-              const cover = anime.coverImage?.large || anime.coverImage?.medium || anime.coverImage;
-
-              return (
-                <div
-                  key={anime.id}
-                  onClick={() => onSelectAnime(anime.id)}
-                  className="card-manga-panel overflow-hidden flex flex-col group cursor-pointer hover:border-amber-500"
-                >
-                  <div className="h-44 w-full bg-sand-200 relative overflow-hidden border-b-2 border-stone-900">
-                    <img 
-                      src={cover} 
-                      alt={title} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                      loading="lazy"
-                    />
-                    {anime.averageScore && (
-                      <div className="absolute bottom-2 right-2">
-                        <span className="px-1.5 py-0.5 text-[10px] font-mono font-black bg-amber-400 text-ink-900 border border-stone-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)]">
-                          ★ {anime.averageScore}%
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="p-2.5 flex-grow flex flex-col justify-between">
-                    <div>
-                      <h3 className="font-display font-bold text-xs text-ink-900 line-clamp-2 leading-snug group-hover:text-navy-700">
-                        {title}
-                      </h3>
-                      {anime.whyWatch && (
-                        <p className="text-[10px] text-stone-600 line-clamp-2 mt-1 italic font-sans">
-                          "{anime.whyWatch}"
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {(anime.genres || []).slice(0, 2).map((g, idx) => (
-                        <span key={idx} className="px-1.5 py-0.5 bg-sand-200 dark:bg-sand-300 text-stone-700 text-[9px] font-bold rounded border border-stone-900/30">
-                          {g}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className={
+            viewMode === 'grid'
+              ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-5"
+              : "space-y-3"
+          }>
+            {results.map((anime) => (
+              <AnimeCard
+                key={anime.id}
+                anime={anime}
+                watchlistEntry={watchlistMap[anime.id]}
+                onUpdateStatus={onUpdateWatchlist}
+                onRemoveItem={onRemoveItem}
+                onSelectAnime={onSelectAnime}
+                titleLanguage={titleLanguage}
+                whyWatch={anime.whyWatch}
+              />
+            ))}
           </div>
         )}
       </section>

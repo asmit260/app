@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { Clock, Calendar as CalendarIcon, Download, Plus, Check, Play, ChevronRight, Globe } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Clock, Calendar as CalendarIcon, Globe, LayoutGrid, List } from 'lucide-react';
 import { anilistQuery, WEEKLY_AIRING_SCHEDULE_QUERY } from '../../services/anilist';
-
-const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+import AnimeCard from '../Common/AnimeCard';
 
 export default function ScheduleView({ 
   watchlist, 
   onUpdateWatchlist, 
+  onRemoveItem,
   onSelectAnime, 
   titleLanguage = 'english' 
 }) {
@@ -14,7 +14,17 @@ export default function ScheduleView({
   const [selectedDay, setSelectedDay] = useState(todayIndex === 0 ? 6 : todayIndex - 1); // 0=Mon ... 6=Sun
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [userTimezone, setUserTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
+  const [viewMode, setViewMode] = useState('grid');
+  const userTimezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', []);
+
+  // Fast hash map for watchlist lookups
+  const watchlistMap = useMemo(() => {
+    const map = {};
+    watchlist.forEach(item => {
+      map[item.anime_id || item.id] = item;
+    });
+    return map;
+  }, [watchlist]);
 
   useEffect(() => {
     fetchDaySchedule(selectedDay);
@@ -48,13 +58,6 @@ export default function ScheduleView({
     }
   };
 
-  const getTitle = (media) => {
-    if (!media?.title) return 'Unknown Title';
-    if (titleLanguage === 'romaji') return media.title.romaji || media.title.english || media.title.native;
-    if (titleLanguage === 'native') return media.title.native || media.title.romaji || media.title.english;
-    return media.title.english || media.title.romaji || media.title.native;
-  };
-
   const formatAiringTime = (unix) => {
     const d = new Date(unix * 1000);
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -67,10 +70,6 @@ export default function ScheduleView({
     const mins = Math.floor((diff % 3600) / 60);
     if (hours > 24) return `in ${Math.floor(hours / 24)}d ${hours % 24}h`;
     return `in ${hours}h ${mins}m`;
-  };
-
-  const isAnimeInWatchlist = (animeId) => {
-    return watchlist.some(item => item.anime_id === animeId || item.id === animeId);
   };
 
   const daysNav = [
@@ -99,14 +98,34 @@ export default function ScheduleView({
             </p>
           </div>
 
-          <div className="text-right">
-            <span className="inline-block px-2.5 py-1 text-xs font-black uppercase bg-amber-400 text-ink-900 border-2 border-stone-900 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)]">
-              {daysNav[selectedDay].full}
-            </span>
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-1.5 bg-sand-200 dark:bg-sand-300 p-1 rounded-md border-2 border-stone-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)]">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded transition-all ${
+                viewMode === 'grid' 
+                  ? 'bg-amber-400 text-ink-900 font-black shadow-sm' 
+                  : 'text-stone-600 hover:text-ink-900'
+              }`}
+              title="Grid View"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-1.5 rounded transition-all ${
+                viewMode === 'list' 
+                  ? 'bg-amber-400 text-ink-900 font-black shadow-sm' 
+                  : 'text-stone-600 hover:text-ink-900'
+              }`}
+              title="List View"
+            >
+              <List className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
-        {/* Days Pill Selector (Horizontal Scroll) */}
+        {/* Days Pill Selector */}
         <div className="flex gap-2 overflow-x-auto hide-scrollbar pt-3 mt-3 border-t-2 border-sand-300 dark:border-sand-400">
           {daysNav.map((day) => {
             const isToday = (todayIndex === 0 ? 6 : todayIndex - 1) === day.idx;
@@ -132,91 +151,46 @@ export default function ScheduleView({
         </div>
       </div>
 
-      {/* Schedulers List */}
+      {/* Schedulers View */}
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {[1, 2, 3, 4, 5, 6].map(i => (
-            <div key={i} className="card-manga-panel p-3 h-28 flex gap-3 shimmer-skeleton"></div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-5">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
+            <div key={i} className="card-manga-panel h-[385px] shimmer-skeleton rounded-md" />
           ))}
         </div>
       ) : schedules.length === 0 ? (
         <div className="card-manga-panel p-8 text-center bg-sand-50 dark:bg-sand-200">
           <CalendarIcon className="w-10 h-10 text-stone-400 mx-auto mb-2" />
           <p className="font-display font-bold text-base text-ink-900">No scheduled episodes found</p>
-          <p className="text-xs text-stone-500 font-sans mt-1">Check back later or browse other days.</p>
+          <p className="text-xs text-stone-500 font-sans mt-1">Check back later or browse other weekdays.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className={
+          viewMode === 'grid'
+            ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-5"
+            : "space-y-3"
+        }>
           {schedules.map((item) => {
             const media = item.media;
-            const title = getTitle(media);
-            const inList = isAnimeInWatchlist(media.id);
             const isAired = item.airingAt <= Math.floor(Date.now() / 1000);
+            const airingInfo = {
+              episode: item.episode,
+              time: formatAiringTime(item.airingAt),
+              countdown: formatCountdown(item.airingAt),
+              isAired
+            };
 
             return (
-              <div 
+              <AnimeCard
                 key={item.id}
-                className="card-manga-panel p-3 flex gap-3 group relative cursor-pointer hover:border-amber-500 transition-colors"
-                onClick={() => onSelectAnime(media.id)}
-              >
-                {/* Poster Cover */}
-                <div className="w-16 h-22 shrink-0 rounded-sm overflow-hidden border-2 border-stone-900 relative bg-sand-200">
-                  <img 
-                    src={media.coverImage?.large || media.coverImage?.medium} 
-                    alt={title} 
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                    loading="lazy"
-                  />
-                  <div className="absolute top-1 left-1">
-                    <span className="px-1 py-0.5 text-[9px] font-mono font-black bg-stone-900 text-sand-50 rounded-[2px]">
-                      EP {item.episode}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Details */}
-                <div className="flex-grow flex flex-col justify-between min-w-0 pr-8">
-                  <div>
-                    <h3 className="font-display font-bold text-sm text-ink-900 leading-snug line-clamp-2 group-hover:text-navy-700 transition-colors">
-                      {title}
-                    </h3>
-                    <p className="text-[11px] text-stone-500 font-sans mt-0.5 truncate">
-                      {media.studios?.nodes?.[0]?.name || media.format || 'TV'}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="flex items-center gap-1 font-mono text-[11px] font-bold text-ink-900 bg-sand-200 dark:bg-sand-300 px-2 py-0.5 rounded border border-stone-900/40">
-                      <Clock className="w-3 h-3 text-stone-600" />
-                      {formatAiringTime(item.airingAt)}
-                    </span>
-
-                    <span className={`text-[10px] font-mono font-bold ${
-                      isAired ? 'text-status-completed' : 'text-amber-500'
-                    }`}>
-                      {formatCountdown(item.airingAt)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Quick Add / In List Button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!inList) {
-                      onUpdateWatchlist(media, 'watching');
-                    }
-                  }}
-                  className={`absolute top-3 right-3 w-8 h-8 rounded-md border-2 border-stone-900 flex items-center justify-center transition-all ${
-                    inList 
-                      ? 'bg-status-watching text-sand-50 shadow-none' 
-                      : 'bg-sand-50 hover:bg-amber-400 text-ink-900 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5'
-                  }`}
-                  title={inList ? 'In Watchlist' : 'Add to Watching'}
-                >
-                  {inList ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                </button>
-              </div>
+                anime={media}
+                watchlistEntry={watchlistMap[media.id]}
+                onUpdateStatus={onUpdateWatchlist}
+                onRemoveItem={onRemoveItem}
+                onSelectAnime={onSelectAnime}
+                titleLanguage={titleLanguage}
+                airingInfo={airingInfo}
+              />
             );
           })}
         </div>

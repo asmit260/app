@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Plus, Check, Trash2, Search, ArrowUpDown, Download, Upload, BookmarkCheck, Film } from 'lucide-react';
+import { Plus, Trash2, Search, Download, Film, LayoutGrid, List } from 'lucide-react';
+import AnimeCard from '../Common/AnimeCard';
 
 const STATUS_CONFIG = [
   { id: 'all', label: 'All', color: 'bg-stone-900 text-sand-50' },
@@ -21,6 +22,7 @@ export default function MyListView({
   const [activeStatus, setActiveStatus] = useState('all');
   const [filterQuery, setFilterQuery] = useState('');
   const [sortBy, setSortBy] = useState('updated_at'); // 'updated_at' | 'title' | 'score'
+  const [viewMode, setViewMode] = useState('grid');
 
   const filteredList = watchlist.filter(item => {
     const matchesStatus = activeStatus === 'all' || item.status === activeStatus;
@@ -54,18 +56,46 @@ export default function MyListView({
               My Watchlist
             </h1>
             <p className="text-xs text-stone-500 font-mono mt-0.5">
-              {watchlist.length} total anime tracked
+              {watchlist.length} anime tracked
             </p>
           </div>
 
-          <button 
-            onClick={exportJson}
-            className="btn-manga bg-sand-100 dark:bg-sand-300 hover:bg-amber-400 text-ink-900 text-xs px-2.5 py-1.5 flex items-center gap-1.5"
-            title="Export JSON Backup"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span className="hidden xs:inline">Backup</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {/* View Mode Toggle */}
+            <div className="flex items-center gap-1 bg-sand-200 dark:bg-sand-300 p-1 rounded-md border-2 border-stone-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)]">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded transition-all ${
+                  viewMode === 'grid' 
+                    ? 'bg-amber-400 text-ink-900 font-black shadow-sm' 
+                    : 'text-stone-600 hover:text-ink-900'
+                }`}
+                title="Grid View"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded transition-all ${
+                  viewMode === 'list' 
+                    ? 'bg-amber-400 text-ink-900 font-black shadow-sm' 
+                    : 'text-stone-600 hover:text-ink-900'
+                }`}
+                title="List View"
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
+
+            <button 
+              onClick={exportJson}
+              className="btn-manga bg-sand-100 dark:bg-sand-300 hover:bg-amber-400 text-ink-900 text-xs px-2.5 py-1.5 flex items-center gap-1.5"
+              title="Export JSON Backup"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline">Backup</span>
+            </button>
+          </div>
         </div>
 
         {/* Search & Sort Filters */}
@@ -118,19 +148,39 @@ export default function MyListView({
         </div>
       </div>
 
-      {/* List Grid */}
+      {/* List / Grid Display */}
       {filteredList.length === 0 ? (
         <div className="card-manga-panel p-8 text-center bg-sand-50 dark:bg-sand-200">
           <Film className="w-10 h-10 text-stone-400 mx-auto mb-2" />
           <p className="font-display font-bold text-base text-ink-900">No anime in this list</p>
           <p className="text-xs text-stone-500 font-sans mt-1">Browse the Schedule or Explore tab to add anime.</p>
         </div>
+      ) : viewMode === 'grid' ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-5">
+          {filteredList.map((item) => (
+            <AnimeCard
+              key={item.anime_id || item.id}
+              anime={{
+                id: item.anime_id || item.id,
+                title: item.anime_title,
+                coverImage: item.anime_cover_image,
+                totalEpisodes: item.total_episodes,
+                genres: item.genres,
+                averageScore: item.score ? item.score * 10 : null
+              }}
+              watchlistEntry={item}
+              onUpdateStatus={(anime, newStatus) => onUpdateStatus(anime.id, newStatus)}
+              onRemoveItem={onRemoveItem}
+              onSelectAnime={onSelectAnime}
+              titleLanguage={titleLanguage}
+            />
+          ))}
+        </div>
       ) : (
         <div className="space-y-2.5">
           {filteredList.map((item) => {
             const total = item.total_episodes || null;
             const watched = item.episodes_watched || 0;
-            const isCompleted = item.status === 'completed';
 
             return (
               <div
@@ -158,7 +208,7 @@ export default function MyListView({
                         value={item.status}
                         onChange={(e) => {
                           e.stopPropagation();
-                          onUpdateStatus(item.anime_id, e.target.value);
+                          onUpdateStatus(item.anime_id || item.id, e.target.value);
                         }}
                         onClick={(e) => e.stopPropagation()}
                         className="text-[10px] font-black uppercase px-2 py-0.5 rounded border border-stone-900 bg-sand-100 dark:bg-sand-300 text-ink-900 focus:outline-none"
@@ -180,7 +230,7 @@ export default function MyListView({
                 {/* Episode Progress Button */}
                 <div className="flex items-center gap-2 shrink-0">
                   <button
-                    onClick={() => onIncrementEpisode(item.anime_id)}
+                    onClick={() => onIncrementEpisode(item.anime_id || item.id)}
                     className="btn-manga bg-amber-400 hover:bg-amber-300 text-ink-900 text-xs px-2.5 py-1.5 rounded flex items-center gap-1 font-mono"
                     title="Increment Episode (+1)"
                   >
@@ -189,7 +239,7 @@ export default function MyListView({
                   </button>
 
                   <button
-                    onClick={() => onRemoveItem(item.anime_id)}
+                    onClick={() => onRemoveItem(item.anime_id || item.id)}
                     className="p-1.5 rounded hover:bg-status-dropped-bg text-stone-400 hover:text-status-dropped transition-colors"
                     title="Remove from list"
                   >
