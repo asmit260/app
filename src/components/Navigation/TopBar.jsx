@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sun, Moon, Search, MessageSquare, Bell } from 'lucide-react';
+import { Sun, Moon, Search } from 'lucide-react';
 
 export default function TopBar({ 
   activeTab, 
@@ -19,7 +19,7 @@ export default function TopBar({
 
   return (
     <header className="sticky top-0 z-30 bg-sand-100/90 dark:bg-sand-100/90 backdrop-blur-md border-b-2 border-stone-900 px-4 py-3 transition-colors duration-200">
-      <div className="max-w-4xl mx-auto flex items-center justify-between">
+      <div className="max-w-5xl mx-auto flex items-center justify-between">
         
         {/* Brand Sticker */}
         <div className="flex items-center gap-3">

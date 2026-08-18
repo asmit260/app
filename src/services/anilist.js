@@ -29,22 +29,6 @@ export async function anilistQuery(query, variables = {}) {
   return data;
 }
 
-export async function prefetchInitialData() {
-  const now = new Date();
-  const targetStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-  const targetEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-
-  const schedulePromise = anilistQuery(WEEKLY_AIRING_SCHEDULE_QUERY, {
-    airingAt_greater: Math.floor(targetStart.getTime() / 1000),
-    airingAt_lesser: Math.floor(targetEnd.getTime() / 1000),
-    page: 1
-  }).catch(() => null);
-
-  const discussionsPromise = anilistQuery(POPULAR_DISCUSSIONS_QUERY).catch(() => null);
-
-  return Promise.allSettled([schedulePromise, discussionsPromise]);
-}
-
 export const WEEKLY_AIRING_SCHEDULE_QUERY = `
 query GetSchedule($airingAt_greater: Int, $airingAt_lesser: Int, $page: Int) {
   Page(page: $page, perPage: 50) {
@@ -248,3 +232,18 @@ query GetAnimeDetail($id: Int) {
     }
   }
 }`;
+
+export async function prefetchInitialData() {
+  const now = new Date();
+  const targetStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  const targetEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+  return Promise.allSettled([
+    anilistQuery(WEEKLY_AIRING_SCHEDULE_QUERY, {
+      airingAt_greater: Math.floor(targetStart.getTime() / 1000),
+      airingAt_lesser: Math.floor(targetEnd.getTime() / 1000),
+      page: 1
+    }).catch(() => null),
+    anilistQuery(POPULAR_DISCUSSIONS_QUERY).catch(() => null)
+  ]);
+}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Shield, Zap } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import { prefetchInitialData } from '../../services/anilist';
 import { fetchLiveNews } from '../../services/news';
 

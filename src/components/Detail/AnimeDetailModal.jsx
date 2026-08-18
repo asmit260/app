@@ -46,7 +46,10 @@ export default function AnimeDetailModal({
   if (!animeId) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm animate-fade-in">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm animate-fade-in"
+      onClick={onClose}
+    >
       
       {/* Modal Container */}
       <div 

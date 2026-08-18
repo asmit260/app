@@ -120,8 +120,17 @@ h1, h2, h3, .font-display {
 }
 
 .card-manga-panel:hover {
-  transform: translate(-1.5px, -1.5px);
+  transform: translateY(-2px) scale(1.005);
   box-shadow: 5px 5px 0px 0px #18130d;
+}
+
+@keyframes fade-in {
+  0% { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out both;
 }
 
 .btn-manga {

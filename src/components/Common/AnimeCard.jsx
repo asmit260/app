@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock, Star, ChevronDown, Check, Plus, Trash2, Eye } from 'lucide-react';
+import { Clock, ChevronDown, Check, Plus, Trash2, Eye } from 'lucide-react';
 
 const STATUS_LABELS = {
   watching: { label: 'Watching', bg: 'bg-status-watching-bg text-status-watching border-status-watching/40' },
@@ -113,9 +113,9 @@ export default function AnimeCard({
 
           {/* Genre Pills */}
           <div className="flex flex-wrap gap-1 mt-1.5 overflow-hidden max-h-[26px]">
-            {genres.slice(0, 3).map((g, idx) => (
+            {genres.slice(0, 3).map((g) => (
               <span 
-                key={idx} 
+                key={g} 
                 className="px-2 py-0.5 bg-sand-200 dark:bg-sand-300 text-stone-700 text-[9px] font-bold rounded border border-stone-900/30 shrink-0"
               >
                 {g}

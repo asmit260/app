@@ -1,15 +1,16 @@
-import React from 'react';
-import { Flame, Clock, Film, CheckCircle2, Trophy, BarChart2, PieChart } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { Flame, Clock, Film, CheckCircle2, BarChart2 } from 'lucide-react';
 import { getWatchHistory } from '../../services/storage';
 
 export default function StatsView({ watchlist }) {
-  const history = getWatchHistory();
+  const history = useMemo(() => getWatchHistory(), [watchlist]);
 
-  // Metrics calculation
-  const totalWatchedEpisodes = watchlist.reduce((sum, item) => sum + (item.episodes_watched || 0), 0);
-  const completedAnime = watchlist.filter(item => item.status === 'completed').length;
-  const watchingAnime = watchlist.filter(item => item.status === 'watching').length;
-  const planAnime = watchlist.filter(item => item.status === 'plan_to_watch').length;
+  // Metrics calculation (memoized for performance)
+  const totalWatchedEpisodes = useMemo(() =>
+    watchlist.reduce((sum, item) => sum + (item.episodes_watched || 0), 0)
+  , [watchlist]);
+
+  const completedAnime = useMemo(() => watchlist.filter(item => item.status === 'completed').length, [watchlist]);
 
   // Time calculation (assume 24 mins per episode)
   const totalMinutes = totalWatchedEpisodes * 24;
@@ -57,19 +58,20 @@ export default function StatsView({ watchlist }) {
     return { current, longest: Math.max(longest, current) };
   };
 
-  const streak = calculateStreak();
+  const streak = useMemo(() => calculateStreak(), [history]);
 
-  // Genre distribution
-  const genreCounts = {};
-  watchlist.forEach(item => {
-    (item.genres || []).forEach(g => {
-      genreCounts[g] = (genreCounts[g] || 0) + 1;
+  // Genre distribution (memoized)
+  const sortedGenres = useMemo(() => {
+    const genreCounts = {};
+    watchlist.forEach(item => {
+      (item.genres || []).forEach(g => {
+        genreCounts[g] = (genreCounts[g] || 0) + 1;
+      });
     });
-  });
-
-  const sortedGenres = Object.entries(genreCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 6);
+    return Object.entries(genreCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6);
+  }, [watchlist]);
 
   const maxGenreCount = sortedGenres[0]?.[1] || 1;
 

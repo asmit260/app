@@ -51,7 +51,13 @@ export default function ProfileView({
   };
 
   const handleResetData = () => {
-    localStorage.clear();
+    // Only clear AniTrack-specific keys, not ALL localStorage (Capacitor etc.)
+    const appKeys = [
+      'anitrack_app_watchlist', 'anitrack_app_progress',
+      'anitrack_app_history', 'anitrack_app_profile',
+      'anitrack_app_theme', 'anitrack_app_custom_lists'
+    ];
+    appKeys.forEach(k => localStorage.removeItem(k));
     onReloadWatchlist();
     setShowConfirmReset(false);
     setSavedMessage('All data reset to defaults.');

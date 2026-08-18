@@ -61,7 +61,11 @@ export const upsertWatchlistEntry = (anime, status, episodesWatched = null) => {
   }
 
   saveWatchlist(current);
-  logWatchHistory(entry.anime_id, entry.anime_title, entry.episodes_watched);
+  // Only log history when episode count actually increases (not mere status change)
+  const prevEpisodes = existingIdx >= 0 ? (current[existingIdx]?.episodes_watched || 0) : 0;
+  if (entry.episodes_watched > prevEpisodes) {
+    logWatchHistory(entry.anime_id, entry.anime_title, entry.episodes_watched);
+  }
   return entry;
 };
 
