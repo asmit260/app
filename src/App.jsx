@@ -8,6 +8,7 @@ import StatsView from './components/Stats/StatsView';
 import ProfileView from './components/Profile/ProfileView';
 import AnimeDetailModal from './components/Detail/AnimeDetailModal';
 import LeviChatDrawer from './components/Chatbot/LeviChatDrawer';
+import SplashScreen from './components/Common/SplashScreen';
 
 import { 
   getStoredWatchlist, 
@@ -17,6 +18,7 @@ import {
 } from './services/storage';
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState('schedule');
   const [watchlist, setWatchlist] = useState([]);
   const [profile, setProfile] = useState({ username: 'Scout Trainee', titleLanguage: 'english', theme: 'light' });
@@ -181,6 +183,11 @@ export default function App() {
             {toast}
           </div>
         </div>
+      )}
+
+      {/* Animated Splash & Fast Pre-loader Screen */}
+      {showSplash && (
+        <SplashScreen onFinish={() => setShowSplash(false)} />
       )}
 
     </div>
