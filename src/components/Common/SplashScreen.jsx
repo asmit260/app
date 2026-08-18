@@ -4,60 +4,66 @@ import { prefetchInitialData } from '../../services/anilist';
 import { fetchLiveNews } from '../../services/news';
 
 export default function SplashScreen({ onFinish }) {
-  const [progress, setProgress] = useState(15);
+  const [progress, setProgress] = useState(25);
   const [statusText, setStatusText] = useState('Initializing Scout Database...');
   const [isFadingOut, setIsFadingOut] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
-    const startTime = Date.now();
+    let finished = false;
 
-    // 1. Start animated progress timeline
-    const p1 = setTimeout(() => {
-      if (isMounted) {
-        setProgress(45);
-        setStatusText("Fetching Today's Airing Schedule...");
-      }
-    }, 250);
-
-    const p2 = setTimeout(() => {
-      if (isMounted) {
-        setProgress(80);
-        setStatusText("Loading Trending Anime News & Discussions...");
-      }
-    }, 550);
-
-    // 2. Execute parallel high-speed prefetching
-    const prefetchPromises = Promise.allSettled([
-      prefetchInitialData(),
-      fetchLiveNews()
-    ]);
-
-    // 3. Complete splash screen smoothly when both data is ready & minimum display time elapsed
-    Promise.all([
-      prefetchPromises,
-      new Promise(resolve => setTimeout(resolve, 850)) // Minimum 850ms for smooth 60fps animation
-    ]).then(() => {
-      if (!isMounted) return;
+    const completeSplash = () => {
+      if (finished || !isMounted) return;
+      finished = true;
       setProgress(100);
       setStatusText("Ready! Shinzo wo Sasageyo!");
 
       setTimeout(() => {
-        if (isMounted) {
-          setIsFadingOut(true);
-          setTimeout(() => {
-            if (isMounted) onFinish();
-          }, 350); // 350ms smooth exit transition
-        }
-      }, 250);
+        if (!isMounted) return;
+        setIsFadingOut(true);
+        setTimeout(() => {
+          if (isMounted) onFinish();
+        }, 250);
+      }, 150);
+    };
+
+    // Step progression timers
+    const t1 = setTimeout(() => {
+      if (isMounted && !finished) {
+        setProgress(60);
+        setStatusText("Fetching Today's Airing Schedule...");
+      }
+    }, 200);
+
+    const t2 = setTimeout(() => {
+      if (isMounted && !finished) {
+        setProgress(85);
+        setStatusText("Loading Trending Anime News...");
+      }
+    }, 450);
+
+    // Parallel prefetching with quick fallback
+    Promise.allSettled([
+      prefetchInitialData(),
+      fetchLiveNews()
+    ]).then(() => {
+      if (isMounted && !finished) {
+        setTimeout(completeSplash, 600); // Allow at least 600ms for smooth animation
+      }
     }).catch(() => {
-      if (isMounted) onFinish();
+      if (isMounted && !finished) completeSplash();
     });
+
+    // Hard ceiling timer (MAX 1100ms) - guarantees splash NEVER hangs
+    const safetyTimer = setTimeout(() => {
+      completeSplash();
+    }, 1100);
 
     return () => {
       isMounted = false;
-      clearTimeout(p1);
-      clearTimeout(p2);
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(safetyTimer);
     };
   }, [onFinish]);
 

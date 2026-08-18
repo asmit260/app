@@ -1,10 +1,19 @@
-// News Service with resilient live fallback
+// News Service with resilient live fallback and fast timeout
 
 import { anilistQuery, POPULAR_DISCUSSIONS_QUERY } from './anilist';
 
 export async function fetchLiveNews() {
+  // Fast 1200ms abort controller for local news proxy
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 1200);
+
   try {
-    const res = await fetch(`/api/news?t=${Date.now()}`, { cache: 'no-store' });
+    const res = await fetch(`/api/news?t=${Date.now()}`, { 
+      cache: 'no-store',
+      signal: controller.signal 
+    });
+    clearTimeout(timeoutId);
+
     if (res.ok) {
       const data = await res.json();
       if (data && data.success && data.items && data.items.length > 0) {
@@ -12,7 +21,7 @@ export async function fetchLiveNews() {
       }
     }
   } catch (err) {
-    console.warn("[News] Local API not reachable, falling back to AniList discussions...", err);
+    clearTimeout(timeoutId);
   }
 
   // Fallback to AniList discussions
@@ -28,7 +37,7 @@ export async function fetchLiveNews() {
       }));
     }
   } catch (e) {
-    console.error("[News] Fallback failed:", e);
+    // Return empty on failure
   }
 
   return [];

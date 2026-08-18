@@ -1,17 +1,56 @@
 <!DOCTYPE html>
-<html lang="en" class="light">
+<html lang="en" class="light" style="background-color: #F4EFE6;">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#F4EFE6">
   <title>AniTrack — Anime Companion App</title>
   <meta name="description" content="Your ultimate anime schedule, watchlist manager, and AI anime advisor.">
+  
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Lora:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Lora:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <style>
+    /* Critical First-Paint Instant Styles */
+    html, body {
+      background-color: #F4EFE6;
+      color: #18130D;
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    #root {
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    .initial-preload {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background-color: #F4EFE6;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+  </style>
 </head>
-<body class="bg-sand-100 text-ink-900 font-sans antialiased select-none overflow-x-hidden selection:bg-amber-400 selection:text-ink-900">
-  <div id="root"></div>
+<body class="bg-sand-100 text-ink-900 font-sans antialiased select-none overflow-x-hidden selection:bg-amber-400 selection:text-ink-900" style="background-color: #F4EFE6;">
+  <div id="root">
+    <div class="initial-preload">
+      <div style="font-weight: 900; font-size: 24px; text-transform: uppercase; background: #D4974A; color: #18130D; padding: 6px 18px; border: 2.5px solid #18130D; box-shadow: 4px 4px 0px #18130D; transform: rotate(-1deg); margin-bottom: 12px;">
+        AniTrack
+      </div>
+      <div style="font-size: 11px; font-weight: 700; color: #6E5E4E; letter-spacing: 0.5px;">
+        Loading Scout Database...
+      </div>
+    </div>
+  </div>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>

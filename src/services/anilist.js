@@ -11,22 +11,32 @@ export async function anilistQuery(query, variables = {}) {
     return cached.data;
   }
 
-  const response = await fetch(ANILIST_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json'
-    },
-    body: JSON.stringify({ query, variables })
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-  if (!response.ok) {
-    throw new Error(`AniList API returned ${response.status}`);
+  try {
+    const response = await fetch(ANILIST_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ query, variables }),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`AniList API returned ${response.status}`);
+    }
+
+    const { data } = await response.json();
+    queryCache.set(cacheKey, { data, timestamp: Date.now() });
+    return data;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
   }
-
-  const { data } = await response.json();
-  queryCache.set(cacheKey, { data, timestamp: Date.now() });
-  return data;
 }
 
 export const WEEKLY_AIRING_SCHEDULE_QUERY = `
