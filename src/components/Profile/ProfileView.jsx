@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { User, Sun, Moon, Globe, Download, Upload, Trash2, LogOut, AlertTriangle } from 'lucide-react';
+import { User, Sun, Moon, Globe, Download, Upload, Trash2, LogOut, AlertTriangle, Sparkles, RefreshCw, Loader2 } from 'lucide-react';
 import { saveProfileSettings, exportWatchlistJSON, importWatchlistJSON, resetAllData } from '../../services/storage';
 import { signOut } from '../../services/auth';
+import { CURRENT_APP_VERSION } from '../../services/updater';
 
 export default function ProfileView({ 
   profile, 
@@ -10,12 +11,15 @@ export default function ProfileView({
   onToggleTheme, 
   watchlist,
   onReloadWatchlist,
-  currentUser
+  currentUser,
+  onCheckForUpdate
 }) {
   const [username, setUsername] = useState(profile.username || 'Scout Trainee');
   const [titleLang, setTitleLang] = useState(profile.titleLanguage || 'english');
   const [savedMessage, setSavedMessage] = useState('');
   const [showConfirmReset, setShowConfirmReset] = useState(false);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateCheckMsg, setUpdateCheckMsg] = useState('');
 
   React.useEffect(() => {
     if (profile.username) setUsername(profile.username);
@@ -73,6 +77,26 @@ export default function ProfileView({
     onReloadWatchlist();
   };
 
+  const handleCheckUpdate = async () => {
+    if (checkingUpdate) return;
+    setCheckingUpdate(true);
+    setUpdateCheckMsg('');
+    try {
+      if (onCheckForUpdate) {
+        const res = await onCheckForUpdate();
+        if (!res?.hasUpdate) {
+          setUpdateCheckMsg('✓ You are using the latest version (v' + (res?.version || CURRENT_APP_VERSION) + ')');
+          setTimeout(() => setUpdateCheckMsg(''), 3000);
+        }
+      }
+    } catch (_) {
+      setUpdateCheckMsg('Could not reach update server.');
+      setTimeout(() => setUpdateCheckMsg(''), 3000);
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
+
   return (
     <div className="space-y-4 pb-20">
 
@@ -94,40 +118,32 @@ export default function ProfileView({
             <p className="text-xs text-stone-500 font-sans mt-0.5">
               {(watchlist || []).length} anime tracked · {(watchlist || []).filter(i => i.status === 'completed').length} completed
             </p>
-            <span className="inline-block px-2 py-0.5 mt-1 text-[10px] font-black uppercase bg-amber-400 text-ink-900 border border-stone-900 rounded">
-              {currentUser ? 'Signed In' : 'Local Mode'}
-            </span>
           </div>
         </div>
       </div>
 
-      {savedMessage && (
-        <div className="p-3 bg-status-watching-bg text-status-watching text-xs font-bold rounded border border-status-watching/30 animate-pulse">
-          {savedMessage}
-        </div>
-      )}
-
-      {/* Settings Options */}
+      {/* Preferences Card */}
       <div className="card-manga-panel p-4 bg-sand-50 dark:bg-sand-200 space-y-4">
         <h2 className="font-display font-bold text-base text-ink-900 uppercase tracking-tight">
           Preferences
         </h2>
 
-        {/* Username Input */}
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-stone-700">Display Name</label>
+        {/* Display Name */}
+        <div>
+          <label className="block text-xs font-bold text-stone-600 dark:text-stone-400 mb-1">
+            Display Name
+          </label>
           <input
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="w-full px-3 py-2 bg-sand-100 dark:bg-sand-300 border-2 border-stone-900 rounded font-sans text-sm text-ink-900 focus:outline-none"
+            className="w-full px-3 py-2 bg-sand-100 dark:bg-sand-300 border-2 border-stone-900 rounded font-sans text-sm text-ink-900 font-bold focus:outline-none focus:ring-1 focus:ring-amber-400"
           />
         </div>
 
-        {/* Title Language Preference */}
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
-            <Globe className="w-3.5 h-3.5" />
+        {/* Title Language */}
+        <div>
+          <label className="block text-xs font-bold text-stone-600 dark:text-stone-400 mb-1">
             Anime Title Language
           </label>
           <select
@@ -156,11 +172,50 @@ export default function ProfileView({
           </button>
         </div>
 
-        {/* Save button is now optional since we auto-save. Shown as a visual anchor. */}
+        {/* Auto-save confirmation */}
         {savedMessage && (
           <div className="text-xs font-bold text-status-watching text-center py-1 animate-fade-in">
             {savedMessage}
           </div>
+        )}
+      </div>
+
+      {/* App Version & Updates */}
+      <div className="card-manga-panel p-4 bg-sand-50 dark:bg-sand-200 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-display font-bold text-base text-ink-900 uppercase tracking-tight flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-amber-500" />
+              App Version
+            </h2>
+            <p className="text-xs text-stone-500 font-mono mt-0.5">
+              Installed: v{CURRENT_APP_VERSION}
+            </p>
+          </div>
+
+          <button
+            onClick={handleCheckUpdate}
+            disabled={checkingUpdate}
+            className="btn-manga bg-sand-100 dark:bg-sand-300 hover:bg-amber-400 text-ink-900 text-xs px-3 py-2 rounded flex items-center gap-1.5 font-bold disabled:opacity-50"
+          >
+            {checkingUpdate ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Checking...</span>
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Check for Updates</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {updateCheckMsg && (
+          <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono pt-1 animate-fade-in">
+            {updateCheckMsg}
+          </p>
         )}
       </div>
 

@@ -8,6 +8,8 @@ import ProfileView from './components/Profile/ProfileView';
 import AnimeDetailModal from './components/Detail/AnimeDetailModal';
 import SplashScreen from './components/Common/SplashScreen';
 import LoginModal from './components/Auth/LoginModal';
+import UpdateModal from './components/Common/UpdateModal';
+import { checkForAppUpdate } from './services/updater';
 
 import { 
   getStoredWatchlist, 
@@ -36,6 +38,7 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [showLogin, setShowLogin] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState(null);
 
   // Sync DOM with darkMode state on mount and change
   useEffect(() => {
@@ -199,6 +202,28 @@ export default function App() {
 
   const watchingCount = watchlist.filter(i => i.status === 'watching').length;
 
+  // Check for app updates in background after startup (2s delay so launch is blazing fast)
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      try {
+        const update = await checkForAppUpdate(false);
+        if (update?.hasUpdate) {
+          setUpdateInfo(update);
+        }
+      } catch (_) {}
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleManualUpdateCheck = async () => {
+    const update = await checkForAppUpdate(true);
+    if (update?.hasUpdate) {
+      setUpdateInfo(update);
+      return { hasUpdate: true, version: update.version };
+    }
+    return { hasUpdate: false, version: update?.currentVersion || '1.0.0' };
+  };
+
   return (
     <div className="min-h-screen bg-sand-100 dark:bg-sand-100 flex flex-col text-ink-900 transition-colors duration-200">
       
@@ -256,6 +281,7 @@ export default function App() {
             watchlist={watchlist}
             onReloadWatchlist={loadAllData}
             currentUser={currentUser}
+            onCheckForUpdate={handleManualUpdateCheck}
           />
         )}
         </div>
@@ -286,6 +312,14 @@ export default function App() {
         onClose={() => setShowLogin(false)}
         onAuthSuccess={handleAuthSuccess}
       />
+
+      {/* In-App Update Modal */}
+      {updateInfo && (
+        <UpdateModal
+          updateInfo={updateInfo}
+          onClose={() => setUpdateInfo(null)}
+        />
+      )}
 
       {/* Toast Notification */}
       {toast && (
