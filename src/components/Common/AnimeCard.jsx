@@ -101,14 +101,14 @@ const AnimeCard = React.memo(function AnimeCard({
               e.stopPropagation();
               onOpenAlert(anime, airingInfo);
             }}
-            className={`absolute top-2 left-2 z-10 w-7 h-7 rounded-md border-2 border-stone-900 flex items-center justify-center transition-transform active:scale-90 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] ${
+            className={`absolute top-2 left-2 z-20 w-8 h-8 rounded-md border-2 border-stone-900 flex items-center justify-center transition-all active:scale-90 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] ${
               isAlertActive
-                ? 'bg-amber-400 text-ink-900 ring-2 ring-amber-300 animate-pulse'
-                : 'bg-sand-50/90 dark:bg-sand-100/90 text-stone-700 hover:bg-amber-400 hover:text-ink-900'
+                ? 'bg-amber-400 text-ink-900 ring-2 ring-amber-300'
+                : 'bg-sand-50 dark:bg-stone-900 text-ink-900 dark:text-sand-50 hover:bg-amber-400 hover:text-ink-900'
             }`}
             title={isAlertActive ? 'Airing alert active — tap to manage' : 'Set Airing Notification / Alarm'}
           >
-            <Bell className={`w-3.5 h-3.5 ${isAlertActive ? 'fill-current' : ''}`} />
+            <Bell className={`w-4 h-4 ${isAlertActive ? 'fill-current text-ink-900' : 'text-stone-900 dark:text-sand-50'}`} />
           </button>
         )}
 
