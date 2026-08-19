@@ -1,15 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Play, Plus, Minus, Check, Star, Calendar, Clock, Film, ExternalLink, Bookmark, Bell } from 'lucide-react';
+import { X, Play, Plus, Minus, Check, Star, Calendar, Clock, Film, ExternalLink, Bookmark, Bell, Eye } from 'lucide-react';
 import { anilistQuery, ANIME_DETAIL_QUERY } from '../../services/anilist';
 import { getActiveAnimeAlerts } from '../../services/notifications';
-import { updateWatchlistRating } from '../../services/storage';
+import { updateWatchlistRating, upsertWatchlistEntry } from '../../services/storage';
 import AiringAlertModal from '../Schedule/AiringAlertModal';
+
+const STATUS_LIST = [
+  { id: 'watching', label: 'Watching', color: 'bg-status-watching text-sand-50' },
+  { id: 'completed', label: 'Completed', color: 'bg-status-completed text-sand-50' },
+  { id: 'plan_to_watch', label: 'Plan to Watch', color: 'bg-status-plan text-sand-50' },
+  { id: 'on_hold', label: 'On Hold', color: 'bg-status-hold text-sand-50' },
+  { id: 'dropped', label: 'Dropped', color: 'bg-status-dropped text-sand-50' }
+];
 
 export default function AnimeDetailModal({ 
   animeId, 
   onClose, 
-  watchlist, 
+  watchlist = [], 
   onUpdateStatus, 
   onRemoveItem,
   titleLanguage = 'english'
@@ -20,11 +28,13 @@ export default function AnimeDetailModal({
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [activeAlerts, setActiveAlerts] = useState({});
   const [localScore, setLocalScore] = useState(null);
+  const [localEps, setLocalEps] = useState(null);
 
   useEffect(() => {
     if (animeId) {
       document.body.style.overflow = 'hidden';
       setLocalScore(null);
+      setLocalEps(null);
       loadDetail(animeId);
       loadAlerts();
     } else {
@@ -59,6 +69,8 @@ export default function AnimeDetailModal({
   const currentEntry = (watchlist || []).find(item => (item.anime_id == animeId || item.id == animeId));
   const isAlertActive = !!activeAlerts[animeId];
   const effectiveScore = localScore !== null ? localScore : (currentEntry?.score || 0);
+  const totalEps = detail?.episodes || currentEntry?.total_episodes || null;
+  const effectiveEps = localEps !== null ? localEps : (currentEntry?.episodes_watched || 0);
 
   const getTitle = () => {
     if (!detail?.title) return 'Anime Details';
@@ -73,24 +85,42 @@ export default function AnimeDetailModal({
     await updateWatchlistRating(animeId, newRating);
   };
 
+  const handleStepEpisode = async (delta) => {
+    if (!detail) return;
+    const current = effectiveEps;
+    const next = Math.max(0, current + delta);
+    if (totalEps && next > totalEps) return;
+
+    setLocalEps(next);
+    const newStatus = (totalEps && next >= totalEps) ? 'completed' : (currentEntry?.status || 'watching');
+    await upsertWatchlistEntry(detail, newStatus, next);
+  };
+
   if (!animeId) return null;
+
+  const progressPercent = totalEps ? Math.min(100, Math.round((effectiveEps / totalEps) * 100)) : 0;
 
   const modalContent = (
     <div 
-      className="fixed inset-0 z-[9990] flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-[9990] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
       style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh' }}
       onClick={onClose}
     >
       
-      {/* Modal Container */}
+      {/* Modal / Bottom Sheet Container */}
       <div 
-        className="card-manga-panel bg-sand-50 dark:bg-sand-100 max-w-2xl w-full max-h-[90vh] overflow-y-auto hide-scrollbar rounded-lg relative flex flex-col"
+        className="card-manga-panel bg-sand-50 dark:bg-sand-100 max-w-2xl w-full max-h-[92vh] overflow-y-auto hide-scrollbar rounded-t-2xl sm:rounded-lg relative flex flex-col animate-slide-up border-b-0 sm:border-b-2"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Mobile Pull Handle Indicator */}
+        <div className="sm:hidden flex justify-center pt-2 pb-1">
+          <div className="w-12 h-1.5 bg-stone-400/60 rounded-full" />
+        </div>
+
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-sand-50/90 dark:bg-sand-200 border-2 border-stone-900 flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5"
+          className="absolute top-3 right-3 z-30 w-8 h-8 rounded-full bg-sand-50/90 dark:bg-sand-200 border-2 border-stone-900 flex items-center justify-center shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] active:scale-95 transition-all"
           title="Close Modal"
         >
           <X className="w-4 h-4 text-ink-900" />
@@ -103,7 +133,7 @@ export default function AnimeDetailModal({
             <div className="h-20 w-full shimmer-skeleton rounded" />
           </div>
         ) : detail ? (
-          <div className="space-y-4">
+          <div className="space-y-4 pb-6">
             
             {/* Banner & Header Image */}
             <div className="relative h-44 sm:h-52 w-full bg-sand-300 overflow-hidden border-b-2 border-stone-900">
@@ -112,21 +142,21 @@ export default function AnimeDetailModal({
                 alt={getTitle()}
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-stone-900/80 via-stone-900/30 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-stone-900/85 via-stone-900/40 to-transparent" />
 
               {/* Cover & Title Overlay */}
               <div className="absolute bottom-3 left-4 right-4 flex gap-3 items-end">
                 <img
                   src={detail.coverImage?.large}
-                  alt="Poster"
-                  className="w-20 h-28 object-cover rounded border-2 border-stone-900 shrink-0 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)]"
+                  alt={getTitle()}
+                  className="w-16 h-24 sm:w-20 sm:h-28 object-cover rounded border-2 border-sand-50 shadow-manga shrink-0 bg-sand-200"
                 />
-                <div className="text-white min-w-0 pb-1">
-                  <h2 className="font-display font-black text-base sm:text-xl leading-tight line-clamp-2 drop-shadow-md">
+                <div className="min-w-0 pr-6 space-y-1">
+                  <h2 className="font-display font-black text-base sm:text-xl text-sand-50 line-clamp-2 leading-tight drop-shadow-sm">
                     {getTitle()}
                   </h2>
-                  <p className="text-xs text-sand-200 font-sans mt-0.5 truncate">
-                    {detail.studios?.nodes?.[0]?.name} · {detail.seasonYear || detail.format || 'Anime'}
+                  <p className="text-[11px] text-amber-300 font-mono font-bold truncate">
+                    {detail.studios?.nodes?.[0]?.name || detail.format || 'TV Series'}
                   </p>
                 </div>
               </div>
@@ -134,94 +164,134 @@ export default function AnimeDetailModal({
 
             <div className="p-4 space-y-4">
               
-              {/* Watchlist & Airing Alert Action Bar */}
-              <div className="card-manga-panel p-3 bg-sand-100 dark:bg-sand-200 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Bookmark className="w-4 h-4 text-stone-600" />
-                  <span className="text-xs font-bold text-ink-900">Status:</span>
-                  <select
-                    value={currentEntry?.status || ''}
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        onUpdateStatus(detail, e.target.value);
-                      } else {
-                        onRemoveItem(detail.id);
-                      }
-                    }}
-                    className="px-2.5 py-1 text-xs font-black uppercase rounded border-2 border-stone-900 bg-sand-50 dark:bg-sand-300 text-ink-900 focus:outline-none"
-                  >
-                    <option value="">Not in list</option>
-                    <option value="watching">Watching</option>
-                    <option value="completed">Completed</option>
-                    <option value="plan_to_watch">Plan to Watch</option>
-                    <option value="on_hold">On Hold</option>
-                    <option value="dropped">Dropped</option>
-                  </select>
+              {/* Watchlist Status Fast Compartment Selector */}
+              <div className="card-manga-panel p-3 bg-sand-100 dark:bg-sand-200 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-ink-900 flex items-center gap-1.5">
+                    <Bookmark className="w-3.5 h-3.5 text-amber-500" />
+                    Tracking Status
+                  </span>
+                  
+                  {/* Airing Alert Button & Trailer Button */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setShowAlertModal(true)}
+                      className={`btn-manga text-xs px-2.5 py-1 flex items-center gap-1.5 font-bold ${
+                        isAlertActive 
+                          ? 'bg-amber-400 text-ink-900 ring-2 ring-amber-300' 
+                          : 'bg-sand-50 dark:bg-sand-300 hover:bg-amber-400 text-ink-900'
+                      }`}
+                      title="Set Airing Reminder / Alarm"
+                    >
+                      <Bell className={`w-3.5 h-3.5 ${isAlertActive ? 'fill-current' : ''}`} />
+                      <span>{isAlertActive ? 'Alert On' : 'Set Alert'}</span>
+                    </button>
+
+                    {detail.trailer?.site === 'youtube' && (
+                      <button
+                        onClick={() => setShowTrailer(!showTrailer)}
+                        className="btn-manga bg-amber-400 hover:bg-amber-300 text-ink-900 text-xs px-2.5 py-1 flex items-center gap-1.5 font-bold"
+                      >
+                        <Play className="w-3.5 h-3.5 fill-current" />
+                        <span>{showTrailer ? 'Hide' : 'Trailer'}</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  {/* Airing Alert Button */}
-                  <button
-                    onClick={() => setShowAlertModal(true)}
-                    className={`btn-manga text-xs px-2.5 py-1 flex items-center gap-1.5 font-bold ${
-                      isAlertActive 
-                        ? 'bg-amber-400 text-ink-900 ring-2 ring-amber-300' 
-                        : 'bg-sand-50 dark:bg-sand-300 hover:bg-amber-400 text-ink-900'
-                    }`}
-                    title="Set Airing Reminder / Alarm"
-                  >
-                    <Bell className={`w-3.5 h-3.5 ${isAlertActive ? 'fill-current' : ''}`} />
-                    <span>{isAlertActive ? 'Alert Active' : 'Set Alert'}</span>
-                  </button>
-
-                  {/* Trailer Button */}
-                  {detail.trailer?.site === 'youtube' && (
-                    <button
-                      onClick={() => setShowTrailer(!showTrailer)}
-                      className="btn-manga bg-amber-400 hover:bg-amber-300 text-ink-900 text-xs px-2.5 py-1 flex items-center gap-1.5"
-                    >
-                      <Play className="w-3.5 h-3.5 fill-current" />
-                      <span>{showTrailer ? 'Hide' : 'Trailer'}</span>
-                    </button>
-                  )}
+                {/* Status Pill Buttons Grid */}
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+                  {STATUS_LIST.map(st => {
+                    const isSelected = currentEntry?.status === st.id;
+                    return (
+                      <button
+                        key={st.id}
+                        onClick={() => onUpdateStatus(detail, st.id)}
+                        className={`py-1.5 px-2 rounded text-[11px] font-black border-2 border-stone-900 transition-all select-none ${
+                          isSelected
+                            ? 'bg-amber-400 text-ink-900 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] scale-[1.02]'
+                            : 'bg-sand-50 dark:bg-sand-300 text-stone-700 hover:bg-sand-200'
+                        }`}
+                      >
+                        {st.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* Progress & Star Rating (When Tracked in Watchlist) */}
+              {/* Interactive Episode Stepper (When in Watchlist) */}
               {currentEntry && (
-                <div className="card-manga-panel p-3 bg-sand-100 dark:bg-sand-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  {/* Episodes Watched Counter */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-ink-900">Progress:</span>
-                    <span className="font-mono text-xs font-bold px-2 py-0.5 bg-sand-50 dark:bg-sand-300 border border-stone-900 rounded">
-                      {currentEntry.episodes_watched || 0} / {detail.episodes || '?'} ep
-                    </span>
+                <div className="card-manga-panel p-3.5 bg-sand-100 dark:bg-sand-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-black text-ink-900 uppercase tracking-tight flex items-center gap-1.5">
+                        <Eye className="w-3.5 h-3.5 text-amber-500" />
+                        Episode Progress
+                      </span>
+                      <p className="text-[11px] text-stone-500 font-mono mt-0.5">
+                        {effectiveEps} of {totalEps || '?'} episodes watched ({progressPercent}%)
+                      </p>
+                    </div>
+
+                    {/* Stepper Buttons */}
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleStepEpisode(-1)}
+                        disabled={effectiveEps <= 0}
+                        className="w-8 h-8 rounded-md bg-sand-50 dark:bg-sand-300 border-2 border-stone-900 flex items-center justify-center font-bold text-ink-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5 disabled:opacity-40"
+                        title="Step Back (-1 Ep)"
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="w-10 text-center font-mono font-black text-sm text-ink-900">
+                        {effectiveEps}
+                      </span>
+                      <button
+                        onClick={() => handleStepEpisode(1)}
+                        disabled={totalEps && effectiveEps >= totalEps}
+                        className="btn-manga bg-amber-400 hover:bg-amber-300 text-ink-900 w-8 h-8 rounded-md font-bold text-sm shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5 disabled:opacity-40"
+                        title="Step Forward (+1 Ep)"
+                      >
+                        <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Rating Selector — 5 Stars (maps to /10 internally) */}
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold text-stone-600">Your Score:</span>
-                    <div className="flex items-center gap-0.5">
-                      {[2, 4, 6, 8, 10].map(star => (
-                        <button
-                          key={star}
-                          onClick={() => handleRatingChange(star)}
-                          className={`p-1.5 transition-transform hover:scale-125 active:scale-95 ${
-                            effectiveScore >= star
-                              ? 'text-amber-500'
-                              : 'text-stone-300 hover:text-amber-300'
-                          }`}
-                          title={`Rate ${star / 2}/5 (${star}/10)`}
-                        >
-                          <Star className={`w-5 h-5 ${effectiveScore >= star ? 'fill-current' : ''}`} />
-                        </button>
-                      ))}
-                      {effectiveScore > 0 && (
-                        <span className="font-mono text-xs font-black text-amber-600 ml-1.5">
-                          {effectiveScore}/10
-                        </span>
-                      )}
-                    </div>
+                  {/* Animated Progress Bar */}
+                  <div className="w-full h-2.5 bg-sand-300 dark:bg-sand-400 rounded-full border border-stone-900 overflow-hidden">
+                    <div 
+                      className="h-full bg-amber-400 transition-all duration-300 ease-out rounded-full"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 5-Star Rating Selector */}
+              {currentEntry && (
+                <div className="card-manga-panel p-3 bg-sand-100 dark:bg-sand-200 flex items-center justify-between">
+                  <span className="text-xs font-bold text-stone-600">Your Score:</span>
+                  <div className="flex items-center gap-1">
+                    {[2, 4, 6, 8, 10].map(star => (
+                      <button
+                        key={star}
+                        onClick={() => handleRatingChange(star)}
+                        className={`p-1 transition-transform hover:scale-125 active:scale-90 ${
+                          effectiveScore >= star
+                            ? 'text-amber-500 star-glow'
+                            : 'text-stone-300 hover:text-amber-300'
+                        }`}
+                        title={`Rate ${star / 2}/5 (${star}/10)`}
+                      >
+                        <Star className={`w-5 h-5 ${effectiveScore >= star ? 'fill-current' : ''}`} />
+                      </button>
+                    ))}
+                    {effectiveScore > 0 && (
+                      <span className="font-mono text-xs font-black text-amber-600 ml-1.5">
+                        {effectiveScore}/10
+                      </span>
+                    )}
                   </div>
                 </div>
               )}
@@ -251,7 +321,7 @@ export default function AnimeDetailModal({
 
               {/* Embedded Trailer Player */}
               {showTrailer && detail.trailer?.id && (
-                <div className="aspect-video w-full rounded border-2 border-stone-900 overflow-hidden shadow-manga">
+                <div className="aspect-video w-full rounded border-2 border-stone-900 overflow-hidden shadow-manga animate-fade-in">
                   <iframe
                     src={`https://www.youtube-nocookie.com/embed/${detail.trailer.id}?autoplay=1`}
                     title="Anime Trailer"
@@ -339,4 +409,3 @@ export default function AnimeDetailModal({
 
   return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }
-

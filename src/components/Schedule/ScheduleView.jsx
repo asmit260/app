@@ -227,7 +227,7 @@ export default function ScheduleView({
         </div>
 
         {/* Days Pill Selector */}
-        <div className="flex gap-2 overflow-x-auto hide-scrollbar pt-3 mt-3 border-t-2 border-sand-300 dark:border-sand-400">
+        <div className="flex gap-2 overflow-x-auto hide-scrollbar pt-3 mt-2 border-t-2 border-sand-300 dark:border-sand-400">
           {daysNav.map((day) => {
             const isToday = (todayIndex === 0 ? 6 : todayIndex - 1) === day.idx;
             const isSelected = selectedDay === day.idx;
@@ -236,16 +236,18 @@ export default function ScheduleView({
               <button
                 key={day.idx}
                 onClick={() => setSelectedDay(day.idx)}
-                className={`shrink-0 px-3.5 py-1.5 rounded-md font-sans text-xs font-black transition-all border-2 border-stone-900 relative ${
+                className={`shrink-0 px-4 py-2 rounded-lg font-sans text-xs font-black transition-all border-2 border-stone-900 relative active:scale-95 select-none ${
                   isSelected
                     ? 'bg-amber-400 text-ink-900 shadow-[2.5px_2.5px_0px_0px_rgba(24,19,13,1)] scale-[1.03]'
-                    : 'bg-sand-100 dark:bg-sand-300 text-stone-700 hover:bg-sand-200'
+                    : 'bg-sand-100 dark:bg-sand-300 text-stone-700 dark:text-stone-300 hover:bg-sand-200'
                 }`}
               >
-                {day.label}
+                <div className="flex flex-col items-center">
+                  <span className="text-[11px] uppercase tracking-wider">{day.label}</span>
+                </div>
                 {isToday && (
-                  <span className="absolute -top-1.5 -right-1.5 px-1 py-0 text-[8px] font-black uppercase bg-emerald-500 text-white border border-stone-900 rounded shadow-sm leading-tight">
-                    Now
+                  <span className="absolute -top-2 -right-1.5 px-1.5 py-0.2 text-[8px] font-black uppercase bg-emerald-500 text-white border border-stone-900 rounded-sm shadow-sm leading-tight">
+                    Today
                   </span>
                 )}
               </button>
@@ -256,9 +258,9 @@ export default function ScheduleView({
           {selectedDay !== (todayIndex === 0 ? 6 : todayIndex - 1) && (
             <button
               onClick={() => setSelectedDay(todayIndex === 0 ? 6 : todayIndex - 1)}
-              className="shrink-0 px-3 py-1.5 rounded-md font-sans text-xs font-black bg-navy-700 text-sand-50 border-2 border-stone-900 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] hover:bg-navy-600 transition-all flex items-center gap-1"
+              className="btn-manga shrink-0 px-3.5 py-2 rounded-lg font-sans text-xs font-black bg-navy-700 text-sand-50 border-2 border-stone-900 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] hover:bg-navy-600 transition-all flex items-center gap-1"
             >
-              ← Today
+              ← Jump to Today
             </button>
           )}
         </div>

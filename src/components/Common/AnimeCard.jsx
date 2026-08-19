@@ -24,6 +24,7 @@ const AnimeCard = React.memo(function AnimeCard({
   const [showDropdown, setShowDropdown] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
   const btnRef = useRef(null);
   const [dropdownDir, setDropdownDir] = useState('up'); // 'up' or 'down'
 
@@ -77,14 +78,18 @@ const AnimeCard = React.memo(function AnimeCard({
         className="block h-[180px] sm:h-[220px] w-full overflow-hidden relative border-b-2 border-stone-900 cursor-pointer bg-sand-200 dark:bg-sand-300"
         onClick={() => onSelectAnime(anime.id)}
       >
+        {!imgLoaded && !imgError && (
+          <div className="absolute inset-0 shimmer-skeleton z-0" />
+        )}
         {!imgError && cover ? (
           <img 
             src={cover} 
             alt={getTitle()}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className={`w-full h-full object-cover group-hover:scale-105 transition-all duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
             loading="lazy"
             decoding="async"
-            onError={() => setImgError(true)}
+            onLoad={() => setImgLoaded(true)}
+            onError={() => { setImgError(true); setImgLoaded(true); }}
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-sand-300 via-sand-200 to-amber-100 flex items-center justify-center p-3">
