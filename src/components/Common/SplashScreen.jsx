@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Zap } from 'lucide-react';
 import { prefetchInitialData } from '../../services/anilist';
-import { fetchLiveNews } from '../../services/news';
 
 export default function SplashScreen({ onFinish }) {
-  const [progress, setProgress] = useState(25);
+  const [progress, setProgress] = useState(30);
   const [statusText, setStatusText] = useState('Initializing Scout Database...');
   const [isFadingOut, setIsFadingOut] = useState(false);
 
@@ -23,46 +22,37 @@ export default function SplashScreen({ onFinish }) {
         setIsFadingOut(true);
         setTimeout(() => {
           if (isMounted) onFinish();
-        }, 250);
-      }, 150);
+        }, 200);
+      }, 100);
     };
 
-    // Step progression timers
+    // Step progression timer
     const t1 = setTimeout(() => {
       if (isMounted && !finished) {
-        setProgress(60);
-        setStatusText("Fetching Today's Airing Schedule...");
+        setProgress(75);
+        setStatusText("Fetching Airing Schedule...");
       }
     }, 200);
 
-    const t2 = setTimeout(() => {
-      if (isMounted && !finished) {
-        setProgress(85);
-        setStatusText("Loading Trending Anime News...");
-      }
-    }, 450);
+    // Fast schedule prefetching
+    prefetchInitialData()
+      .then(() => {
+        if (isMounted && !finished) {
+          setTimeout(completeSplash, 400);
+        }
+      })
+      .catch(() => {
+        if (isMounted && !finished) completeSplash();
+      });
 
-    // Parallel prefetching with quick fallback
-    Promise.allSettled([
-      prefetchInitialData(),
-      fetchLiveNews()
-    ]).then(() => {
-      if (isMounted && !finished) {
-        setTimeout(completeSplash, 600); // Allow at least 600ms for smooth animation
-      }
-    }).catch(() => {
-      if (isMounted && !finished) completeSplash();
-    });
-
-    // Hard ceiling timer (MAX 1100ms) - guarantees splash NEVER hangs
+    // Hard ceiling timer (MAX 850ms)
     const safetyTimer = setTimeout(() => {
       completeSplash();
-    }, 1100);
+    }, 850);
 
     return () => {
       isMounted = false;
       clearTimeout(t1);
-      clearTimeout(t2);
       clearTimeout(safetyTimer);
     };
   }, [onFinish]);
@@ -82,22 +72,16 @@ export default function SplashScreen({ onFinish }) {
 
       <div className="relative z-10 flex flex-col items-center max-w-xs w-full px-6 text-center">
         
-        {/* Animated Avatar / Scout Emblem */}
+        {/* Animated Brand Emblem */}
         <div className="relative mb-6">
-          {/* Rotating scouting aura ring */}
           <div className="absolute -inset-2.5 rounded-full border-2 border-dashed border-amber-400 animate-spin" style={{ animationDuration: '8s' }} />
           
-          <div className="w-24 h-24 rounded-full bg-navy-900 border-[3.5px] border-stone-900 overflow-hidden shadow-manga-lg flex items-center justify-center relative">
-            <img 
-              src="/assets/images/levi-avatar.webp" 
-              alt="Captain Levi" 
-              className="w-full h-full object-cover"
-              onError={(e) => { e.target.style.display = 'none'; }}
-            />
+          <div className="w-20 h-20 rounded-full bg-navy-900 border-[3px] border-stone-900 overflow-hidden shadow-manga-lg flex items-center justify-center relative font-display font-black text-3xl text-amber-400">
+            A
           </div>
 
-          <div className="absolute -bottom-2 -right-2 bg-amber-400 text-ink-900 p-1.5 rounded-full border-2 border-stone-900 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)]">
-            <Zap className="w-4 h-4 fill-current" />
+          <div className="absolute -bottom-1.5 -right-1.5 bg-amber-400 text-ink-900 p-1.5 rounded-full border-2 border-stone-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)]">
+            <Zap className="w-3.5 h-3.5 fill-current" />
           </div>
         </div>
 
@@ -107,7 +91,7 @@ export default function SplashScreen({ onFinish }) {
         </div>
 
         <p className="font-display font-bold text-xs text-stone-600 dark:text-stone-400 tracking-wide mb-8">
-          Anime Airing Timetables & Companion
+          Airing Timetable & Watchlist
         </p>
 
         {/* Dynamic Progress Bar */}
@@ -131,7 +115,7 @@ export default function SplashScreen({ onFinish }) {
       {/* Bottom Scout Regiment Creed */}
       <div className="absolute bottom-6 inset-x-0 text-center">
         <p className="font-mono text-[10px] uppercase font-bold text-stone-500 tracking-widest">
-          Powered by AniList & MAL
+          Powered by AniList
         </p>
       </div>
     </div>

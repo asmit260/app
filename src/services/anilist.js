@@ -1,18 +1,32 @@
-// AniList GraphQL API Service
-
+// AniList GraphQL API Service with Instant 0ms Cache
 const ANILIST_URL = 'https://graphql.anilist.co';
-const queryCache = new Map();
-const CACHE_TTL_MS = 1000 * 60 * 10; // 10 mins
+const memoryCache = new Map();
+const CACHE_TTL_MS = 1000 * 60 * 15; // 15 mins
 
 export async function anilistQuery(query, variables = {}) {
-  const cacheKey = query + JSON.stringify(variables);
-  const cached = queryCache.get(cacheKey);
-  if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
-    return cached.data;
+  const cacheKey = 'anilist_' + btoa(unescape(encodeURIComponent(query.slice(0, 40) + JSON.stringify(variables)))).slice(0, 40);
+
+  // 1. Check in-memory cache
+  const mem = memoryCache.get(cacheKey);
+  if (mem && (Date.now() - mem.timestamp < CACHE_TTL_MS)) {
+    return mem.data;
   }
 
+  // 2. Check session storage cache for instant cold recovery
+  try {
+    const raw = sessionStorage.getItem(cacheKey);
+    if (raw) {
+      const stored = JSON.parse(raw);
+      if (Date.now() - stored.timestamp < CACHE_TTL_MS) {
+        memoryCache.set(cacheKey, stored);
+        return stored.data;
+      }
+    }
+  } catch (_) {}
+
+  // 3. Network fetch
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  const timeoutId = setTimeout(() => controller.abort(), 6000);
 
   try {
     const response = await fetch(ANILIST_URL, {
@@ -31,10 +45,18 @@ export async function anilistQuery(query, variables = {}) {
     }
 
     const { data } = await response.json();
-    queryCache.set(cacheKey, { data, timestamp: Date.now() });
+    const entry = { data, timestamp: Date.now() };
+    memoryCache.set(cacheKey, entry);
+    try { sessionStorage.setItem(cacheKey, JSON.stringify(entry)); } catch (_) {}
     return data;
   } catch (err) {
     clearTimeout(timeoutId);
+    // If network fails, fallback to stale cache if available
+    if (mem?.data) return mem.data;
+    try {
+      const fallback = sessionStorage.getItem(cacheKey);
+      if (fallback) return JSON.parse(fallback).data;
+    } catch (_) {}
     throw err;
   }
 }

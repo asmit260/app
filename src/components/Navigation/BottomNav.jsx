@@ -1,17 +1,16 @@
 import React from 'react';
-import { Calendar, Compass, Bookmark, BarChart3, User } from 'lucide-react';
+import { Calendar, Bookmark, BarChart3, User } from 'lucide-react';
 
 export default function BottomNav({ activeTab, onSelectTab, watchingCount = 0 }) {
   const tabs = [
     { id: 'schedule', label: 'Schedule', icon: Calendar },
-    { id: 'explore', label: 'Explore', icon: Compass },
-    { id: 'mylist', label: 'My List', icon: Bookmark, badge: watchingCount },
-    { id: 'stats', label: 'Stats', icon: BarChart3 },
+    { id: 'mylist', label: 'Watchlist', icon: Bookmark, badge: watchingCount },
+    { id: 'stats', label: 'Analytics', icon: BarChart3 },
     { id: 'profile', label: 'Profile', icon: User }
   ];
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-40 bg-sand-50 dark:bg-sand-50/95 backdrop-blur-md border-t-[2.5px] border-stone-900 px-2 py-1.5 transition-colors duration-200 shadow-[0_-4px_16px_rgba(24,19,13,0.08)]">
+    <nav className="fixed bottom-0 inset-x-0 z-40 bg-sand-50 dark:bg-sand-50/95 backdrop-blur-md border-t-[2.5px] border-stone-900 px-3 py-2 transition-colors duration-200 shadow-[0_-4px_16px_rgba(24,19,13,0.08)]">
       <div className="max-w-md mx-auto flex items-center justify-around">
         {tabs.map(tab => {
           const Icon = tab.icon;
@@ -21,7 +20,7 @@ export default function BottomNav({ activeTab, onSelectTab, watchingCount = 0 })
             <button
               key={tab.id}
               onClick={() => onSelectTab(tab.id)}
-              className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg relative transition-all duration-150 active:scale-95 ${
+              className={`flex flex-col items-center justify-center py-1 px-4 rounded-lg relative transition-all duration-150 active:scale-95 ${
                 isActive 
                   ? 'text-ink-900 font-black' 
                   : 'text-stone-500 hover:text-stone-800 font-medium'
@@ -29,7 +28,7 @@ export default function BottomNav({ activeTab, onSelectTab, watchingCount = 0 })
             >
               {/* Active Tape Indicator */}
               {isActive && (
-                <span className="absolute -top-1.5 inset-x-1.5 h-1 bg-amber-400 border border-stone-900 rounded-full shadow-[1px_1px_0px_0px_rgba(24,19,13,1)]" />
+                <span className="absolute -top-2 inset-x-2 h-1 bg-amber-400 border border-stone-900 rounded-full shadow-[1px_1px_0px_0px_rgba(24,19,13,1)]" />
               )}
 
               <div className="relative">

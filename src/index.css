@@ -77,18 +77,33 @@
   --status-dropped-bg: rgba(248, 113, 113, 0.15);
 }
 
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+  overscroll-behavior-y: contain;
+}
+
 body {
-  font-family: 'DM Sans', system-ui, sans-serif;
+  font-family: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   background-color: var(--sand-100);
   color: var(--ink-900);
   letter-spacing: -0.005em;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+  user-select: none;
 }
 
 h1, h2, h3, .font-display {
   font-family: 'Lora', Georgia, serif;
   letter-spacing: -0.01em;
+  text-rendering: optimizeLegibility;
 }
 
 .font-mono {
@@ -96,43 +111,40 @@ h1, h2, h3, .font-display {
   font-variant-numeric: tabular-nums;
 }
 
+/* Manga Panel Styling with GPU Acceleration */
+.card-manga-panel {
+  background-color: var(--sand-50);
+  border: 2.5px solid #18130d;
+  box-shadow: 3.5px 3.5px 0px 0px #18130d;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: content;
+  content-visibility: auto;
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-manga-panel:hover {
+  transform: translateY(-2px) translateZ(0);
+  box-shadow: 5px 5px 0px 0px #18130d;
+}
+
 /* Manga Tape & Sticker styling */
 .manga-tape {
   border: 2px solid #18130d;
   background-color: var(--sand-50);
   box-shadow: 2px 2px 0px 0px rgba(24, 19, 13, 0.2);
-  transform: rotate(-0.5deg);
+  transform: rotate(-0.5deg) translateZ(0);
   transition: all 0.15s ease;
 }
 
 .manga-tape-active {
   background-color: #eab308 !important;
   color: #18130d !important;
-  transform: rotate(0.5deg) scale(1.02);
+  transform: rotate(0.5deg) scale(1.02) translateZ(0);
   box-shadow: 3px 3px 0px 0px #18130d;
 }
 
-.card-manga-panel {
-  background-color: var(--sand-50);
-  border: 2.5px solid #18130d;
-  box-shadow: 3.5px 3.5px 0px 0px #18130d;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.card-manga-panel:hover {
-  transform: translateY(-2px) scale(1.005);
-  box-shadow: 5px 5px 0px 0px #18130d;
-}
-
-@keyframes fade-in {
-  0% { opacity: 0; transform: translateY(4px); }
-  100% { opacity: 1; transform: translateY(0); }
-}
-
-.animate-fade-in {
-  animation: fade-in 0.2s ease-out both;
-}
-
+/* Snappy Button Interactions */
 .btn-manga {
   display: inline-flex;
   align-items: center;
@@ -140,12 +152,24 @@ h1, h2, h3, .font-display {
   border: 2px solid #18130d;
   box-shadow: 2.5px 2.5px 0px 0px #18130d;
   font-weight: 800;
-  transition: all 0.15s ease;
+  transform: translateZ(0);
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.15s ease;
+  touch-action: manipulation;
 }
 
 .btn-manga:active {
-  transform: translate(2px, 2px);
+  transform: translate(2px, 2px) translateZ(0);
   box-shadow: 0.5px 0.5px 0px 0px #18130d;
+}
+
+/* Ultra Smooth Fade-in Animation */
+@keyframes fade-in {
+  0% { opacity: 0; transform: translateY(3px) translateZ(0); }
+  100% { opacity: 1; transform: translateY(0) translateZ(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.15s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* Shimmer Skeleton */
@@ -162,7 +186,7 @@ h1, h2, h3, .font-display {
     var(--sand-300) 75%
   );
   background-size: 800px 100%;
-  animation: shimmer 1.4s infinite linear;
+  animation: shimmer 1.2s infinite linear;
 }
 
 /* Hide scrollbars */
@@ -172,19 +196,5 @@ h1, h2, h3, .font-display {
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
-}
-
-/* Chatbot styling */
-.scout-dot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  background-color: var(--stone-500);
-  border-radius: 50%;
-  animation: scout-bounce 1.2s ease-in-out infinite;
-}
-
-@keyframes scout-bounce {
-  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-  30% { transform: translateY(-6px); opacity: 1; }
+  -webkit-overflow-scrolling: touch;
 }

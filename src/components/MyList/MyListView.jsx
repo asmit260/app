@@ -24,9 +24,10 @@ export default function MyListView({
   const [sortBy, setSortBy] = useState('updated_at'); // 'updated_at' | 'title' | 'score'
   const [viewMode, setViewMode] = useState('grid');
 
-  const filteredList = watchlist.filter(item => {
+  const filteredList = (watchlist || []).filter(item => {
     const matchesStatus = activeStatus === 'all' || item.status === activeStatus;
-    const matchesQuery = !filterQuery || item.anime_title?.toLowerCase().includes(filterQuery.toLowerCase());
+    const title = (item.anime_title || '').toLowerCase();
+    const matchesQuery = !filterQuery || title.includes(filterQuery.toLowerCase());
     return matchesStatus && matchesQuery;
   }).sort((a, b) => {
     if (sortBy === 'title') return (a.anime_title || '').localeCompare(b.anime_title || '');
@@ -56,7 +57,7 @@ export default function MyListView({
               My Watchlist
             </h1>
             <p className="text-xs text-stone-500 font-mono mt-0.5">
-              {watchlist.length} anime tracked
+              {(watchlist || []).length} anime tracked
             </p>
           </div>
 
@@ -116,7 +117,7 @@ export default function MyListView({
             onChange={(e) => setSortBy(e.target.value)}
             className="bg-sand-100 dark:bg-sand-300 border-2 border-stone-900 rounded-md px-2 py-1.5 text-xs font-bold text-ink-900 focus:outline-none"
           >
-            <option value="updated_at">Recent</option>
+            <option value="updated_at">Last Updated</option>
             <option value="title">Title A-Z</option>
             <option value="score">Score</option>
           </select>
@@ -126,8 +127,8 @@ export default function MyListView({
         <div className="flex gap-1.5 overflow-x-auto hide-scrollbar pt-2 border-t border-sand-300 dark:border-sand-400">
           {STATUS_CONFIG.map(tab => {
             const count = tab.id === 'all' 
-              ? watchlist.length 
-              : watchlist.filter(i => i.status === tab.id).length;
+              ? (watchlist || []).length 
+              : (watchlist || []).filter(i => i.status === tab.id).length;
             const isSelected = activeStatus === tab.id;
 
             return (
@@ -153,39 +154,43 @@ export default function MyListView({
         <div className="card-manga-panel p-8 text-center bg-sand-50 dark:bg-sand-200">
           <Film className="w-10 h-10 text-stone-400 mx-auto mb-2" />
           <p className="font-display font-bold text-base text-ink-900">No anime in this list</p>
-          <p className="text-xs text-stone-500 font-sans mt-1">Browse the Schedule or Explore tab to add anime.</p>
+          <p className="text-xs text-stone-500 font-sans mt-1">Browse the Schedule tab to discover and add anime.</p>
         </div>
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-5">
-          {filteredList.map((item) => (
-            <AnimeCard
-              key={item.anime_id || item.id}
-              anime={{
-                id: item.anime_id || item.id,
-                title: item.anime_title,
-                coverImage: item.anime_cover_image,
-                totalEpisodes: item.total_episodes,
-                genres: item.genres,
-                averageScore: item.score ? item.score * 10 : null
-              }}
-              watchlistEntry={item}
-              onUpdateStatus={(anime, newStatus) => onUpdateStatus(anime.id, newStatus)}
-              onRemoveItem={onRemoveItem}
-              onSelectAnime={onSelectAnime}
-              titleLanguage={titleLanguage}
-            />
-          ))}
+          {filteredList.map((item) => {
+            const cover = item.anime_cover || item.anime_cover_image || item.coverImage || '';
+            return (
+              <AnimeCard
+                key={item.anime_id || item.id}
+                anime={{
+                  id: item.anime_id || item.id,
+                  title: item.anime_title,
+                  coverImage: cover,
+                  totalEpisodes: item.total_episodes,
+                  genres: item.genres,
+                  averageScore: item.score ? item.score * 10 : null
+                }}
+                watchlistEntry={item}
+                onUpdateStatus={(anime, newStatus) => onUpdateStatus(anime.id, newStatus)}
+                onRemoveItem={onRemoveItem}
+                onSelectAnime={onSelectAnime}
+                titleLanguage={titleLanguage}
+              />
+            );
+          })}
         </div>
       ) : (
         <div className="space-y-2.5">
           {filteredList.map((item) => {
             const total = item.total_episodes || null;
             const watched = item.episodes_watched || 0;
+            const cover = item.anime_cover || item.anime_cover_image || item.coverImage || '';
 
             return (
               <div
                 key={item.anime_id || item.id}
-                className="card-manga-panel p-3 flex gap-3 group relative items-center justify-between"
+                className="card-manga-panel p-3 flex gap-3 group relative items-center justify-between bg-sand-50 dark:bg-sand-200"
               >
                 {/* Anime Info */}
                 <div 
@@ -193,9 +198,9 @@ export default function MyListView({
                   onClick={() => onSelectAnime(item.anime_id || item.id)}
                 >
                   <img 
-                    src={item.anime_cover_image} 
+                    src={cover} 
                     alt={item.anime_title} 
-                    className="w-12 h-16 object-cover rounded-sm border-2 border-stone-900 shrink-0"
+                    className="w-12 h-16 object-cover rounded-sm border-2 border-stone-900 shrink-0 bg-sand-200"
                   />
                   <div className="min-w-0 pr-2">
                     <h3 className="font-display font-bold text-sm text-ink-900 leading-snug line-clamp-1 group-hover:text-navy-700">
@@ -239,7 +244,11 @@ export default function MyListView({
                   </button>
 
                   <button
-                    onClick={() => onRemoveItem(item.anime_id || item.id)}
+                    onClick={() => {
+                      if (window.confirm(`Remove "${item.anime_title}" from your watchlist?`)) {
+                        onRemoveItem(item.anime_id || item.id);
+                      }
+                    }}
                     className="p-1.5 rounded hover:bg-status-dropped-bg text-stone-400 hover:text-status-dropped transition-colors"
                     title="Remove from list"
                   >

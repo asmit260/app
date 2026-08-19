@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Clock, Calendar as CalendarIcon, Globe, LayoutGrid, List } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Clock, Calendar as CalendarIcon, Globe, LayoutGrid, List, Search, Filter, Sparkles, Check } from 'lucide-react';
 import { anilistQuery, WEEKLY_AIRING_SCHEDULE_QUERY } from '../../services/anilist';
+import { getActiveAnimeAlerts } from '../../services/notifications';
 import AnimeCard from '../Common/AnimeCard';
+import AiringAlertModal from './AiringAlertModal';
 
 export default function ScheduleView({ 
   watchlist, 
   onUpdateWatchlist, 
-  onRemoveItem,
+  onRemoveItem, 
   onSelectAnime, 
   titleLanguage = 'english' 
 }) {
@@ -15,16 +17,39 @@ export default function ScheduleView({
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('grid');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterMode, setFilterMode] = useState('all'); // 'all' | 'tracked' | 'upcoming'
+  const [activeAlerts, setActiveAlerts] = useState({});
+  const [selectedAlertAnime, setSelectedAlertAnime] = useState(null);
+  const [selectedAlertInfo, setSelectedAlertInfo] = useState(null);
+
   const userTimezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', []);
 
   // Fast hash map for watchlist lookups
   const watchlistMap = useMemo(() => {
     const map = {};
-    watchlist.forEach(item => {
+    (watchlist || []).forEach(item => {
       map[item.anime_id || item.id] = item;
     });
     return map;
   }, [watchlist]);
+
+  // Load active airing alerts
+  const loadAlerts = useCallback(async () => {
+    try {
+      const alerts = await getActiveAnimeAlerts();
+      setActiveAlerts(alerts);
+    } catch (e) {
+      console.error("Failed to load alerts:", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAlerts();
+    const handleAlertsChanged = () => loadAlerts();
+    window.addEventListener('anitrack-alerts-changed', handleAlertsChanged);
+    return () => window.removeEventListener('anitrack-alerts-changed', handleAlertsChanged);
+  }, [loadAlerts]);
 
   useEffect(() => {
     fetchDaySchedule(selectedDay);
@@ -58,48 +83,77 @@ export default function ScheduleView({
     }
   };
 
-  const formatAiringTime = (unix) => {
-    const d = new Date(unix * 1000);
+  const daysNav = [
+    { label: 'Mon', idx: 0 },
+    { label: 'Tue', idx: 1 },
+    { label: 'Wed', idx: 2 },
+    { label: 'Thu', idx: 3 },
+    { label: 'Fri', idx: 4 },
+    { label: 'Sat', idx: 5 },
+    { label: 'Sun', idx: 6 },
+  ];
+
+  const formatAiringTime = (unixSeconds) => {
+    const d = new Date(unixSeconds * 1000);
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const formatCountdown = (unix) => {
-    const diff = unix - Math.floor(Date.now() / 1000);
+  const formatCountdown = (unixSeconds) => {
+    const now = Math.floor(Date.now() / 1000);
+    const diff = unixSeconds - now;
     if (diff <= 0) return 'Aired';
     const hours = Math.floor(diff / 3600);
     const mins = Math.floor((diff % 3600) / 60);
-    if (hours > 24) return `in ${Math.floor(hours / 24)}d ${hours % 24}h`;
-    return `in ${hours}h ${mins}m`;
+    if (hours > 24) {
+      const days = Math.floor(hours / 24);
+      return `${days}d ${hours % 24}h`;
+    }
+    return `${hours}h ${mins}m`;
   };
 
-  const daysNav = [
-    { label: 'Mon', full: 'Monday', idx: 0 },
-    { label: 'Tue', full: 'Tuesday', idx: 1 },
-    { label: 'Wed', full: 'Wednesday', idx: 2 },
-    { label: 'Thu', full: 'Thursday', idx: 3 },
-    { label: 'Fri', full: 'Friday', idx: 4 },
-    { label: 'Sat', full: 'Saturday', idx: 5 },
-    { label: 'Sun', full: 'Sunday', idx: 6 }
-  ];
+  const handleOpenAlertModal = (anime, airingInfo) => {
+    setSelectedAlertAnime(anime);
+    setSelectedAlertInfo(airingInfo);
+  };
+
+  // Filter schedules based on search and selected mode
+  const filteredSchedules = useMemo(() => {
+    const now = Math.floor(Date.now() / 1000);
+    return schedules.filter(item => {
+      const media = item.media;
+      const title = (media?.title?.english || media?.title?.romaji || media?.title?.native || '').toLowerCase();
+      const matchesSearch = !searchQuery.trim() || title.includes(searchQuery.trim().toLowerCase());
+
+      if (!matchesSearch) return false;
+
+      if (filterMode === 'tracked') {
+        return !!watchlistMap[media?.id];
+      }
+      if (filterMode === 'upcoming') {
+        return item.airingAt > now;
+      }
+      return true;
+    });
+  }, [schedules, searchQuery, filterMode, watchlistMap]);
 
   return (
     <div className="space-y-4 pb-20">
-      
-      {/* Header Banner */}
-      <div className="card-manga-panel p-4 bg-sand-50 dark:bg-sand-200">
+
+      {/* Header & Days Navigator Bar */}
+      <div className="card-manga-panel p-4 bg-sand-50 dark:bg-sand-200 space-y-3">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-display font-black text-xl md:text-2xl text-ink-900 uppercase tracking-tight">
               Airing Schedule
             </h1>
-            <p className="text-xs text-stone-600 font-sans mt-0.5 flex items-center gap-1">
-              <Globe className="w-3.5 h-3.5 text-stone-500" />
-              Timezone: <span className="font-bold text-ink-900">{userTimezone.replace('_', ' ')}</span>
+            <p className="text-xs text-stone-500 font-mono flex items-center gap-1 mt-0.5">
+              <Globe className="w-3.5 h-3.5" />
+              <span>{userTimezone}</span>
             </p>
           </div>
 
           {/* View Mode Toggle */}
-          <div className="flex items-center gap-1.5 bg-sand-200 dark:bg-sand-300 p-1 rounded-md border-2 border-stone-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)]">
+          <div className="flex items-center gap-1 bg-sand-200 dark:bg-sand-300 p-1 rounded-md border-2 border-stone-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)]">
             <button
               onClick={() => setViewMode('grid')}
               className={`p-1.5 rounded transition-all ${
@@ -125,6 +179,53 @@ export default function ScheduleView({
           </div>
         </div>
 
+        {/* Search & Quick Filter Controls */}
+        <div className="flex flex-col sm:flex-row gap-2 pt-1">
+          <div className="relative flex-grow">
+            <Search className="w-4 h-4 absolute left-3 top-2.5 text-stone-500" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search anime title..."
+              className="w-full pl-9 pr-3 py-1.5 bg-sand-100 dark:bg-sand-300 border-2 border-stone-900 rounded-md font-sans text-xs text-ink-900 focus:outline-none focus:ring-1 focus:ring-amber-400"
+            />
+          </div>
+
+          <div className="flex gap-1.5 shrink-0 overflow-x-auto hide-scrollbar">
+            <button
+              onClick={() => setFilterMode('all')}
+              className={`px-2.5 py-1 text-xs font-bold rounded border-2 border-stone-900 transition-all ${
+                filterMode === 'all'
+                  ? 'bg-amber-400 text-ink-900 font-black shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)]'
+                  : 'bg-sand-100 dark:bg-sand-300 text-stone-700 hover:bg-sand-200'
+              }`}
+            >
+              All Shows ({schedules.length})
+            </button>
+            <button
+              onClick={() => setFilterMode('tracked')}
+              className={`px-2.5 py-1 text-xs font-bold rounded border-2 border-stone-900 transition-all flex items-center gap-1 ${
+                filterMode === 'tracked'
+                  ? 'bg-amber-400 text-ink-900 font-black shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)]'
+                  : 'bg-sand-100 dark:bg-sand-300 text-stone-700 hover:bg-sand-200'
+              }`}
+            >
+              <span>My Watchlist</span>
+            </button>
+            <button
+              onClick={() => setFilterMode('upcoming')}
+              className={`px-2.5 py-1 text-xs font-bold rounded border-2 border-stone-900 transition-all ${
+                filterMode === 'upcoming'
+                  ? 'bg-amber-400 text-ink-900 font-black shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)]'
+                  : 'bg-sand-100 dark:bg-sand-300 text-stone-700 hover:bg-sand-200'
+              }`}
+            >
+              Upcoming Only
+            </button>
+          </div>
+        </div>
+
         {/* Days Pill Selector */}
         <div className="flex gap-2 overflow-x-auto hide-scrollbar pt-3 mt-3 border-t-2 border-sand-300 dark:border-sand-400">
           {daysNav.map((day) => {
@@ -143,11 +244,23 @@ export default function ScheduleView({
               >
                 {day.label}
                 {isToday && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-status-watching border border-stone-900" />
+                  <span className="absolute -top-1.5 -right-1.5 px-1 py-0 text-[8px] font-black uppercase bg-emerald-500 text-white border border-stone-900 rounded shadow-sm leading-tight">
+                    Now
+                  </span>
                 )}
               </button>
             );
           })}
+
+          {/* Back to Today (when viewing a different day) */}
+          {selectedDay !== (todayIndex === 0 ? 6 : todayIndex - 1) && (
+            <button
+              onClick={() => setSelectedDay(todayIndex === 0 ? 6 : todayIndex - 1)}
+              className="shrink-0 px-3 py-1.5 rounded-md font-sans text-xs font-black bg-navy-700 text-sand-50 border-2 border-stone-900 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] hover:bg-navy-600 transition-all flex items-center gap-1"
+            >
+              ← Today
+            </button>
+          )}
         </div>
       </div>
 
@@ -158,11 +271,15 @@ export default function ScheduleView({
             <div key={i} className="card-manga-panel h-[385px] shimmer-skeleton rounded-md" />
           ))}
         </div>
-      ) : schedules.length === 0 ? (
+      ) : filteredSchedules.length === 0 ? (
         <div className="card-manga-panel p-8 text-center bg-sand-50 dark:bg-sand-200">
           <CalendarIcon className="w-10 h-10 text-stone-400 mx-auto mb-2" />
-          <p className="font-display font-bold text-base text-ink-900">No scheduled episodes found</p>
-          <p className="text-xs text-stone-500 font-sans mt-1">Check back later or browse other weekdays.</p>
+          <p className="font-display font-bold text-base text-ink-900">
+            {filterMode === 'tracked' ? 'No tracked anime airing on this day' : 'No matching episodes found'}
+          </p>
+          <p className="text-xs text-stone-500 font-sans mt-1">
+            {filterMode === 'tracked' ? 'Switch to "All Shows" or check other weekdays.' : 'Try adjusting your search query.'}
+          </p>
         </div>
       ) : (
         <div className={
@@ -170,15 +287,17 @@ export default function ScheduleView({
             ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-5"
             : "space-y-3"
         }>
-          {schedules.map((item) => {
+          {filteredSchedules.map((item) => {
             const media = item.media;
             const isAired = item.airingAt <= Math.floor(Date.now() / 1000);
             const airingInfo = {
               episode: item.episode,
               time: formatAiringTime(item.airingAt),
               countdown: formatCountdown(item.airingAt),
+              airingAt: item.airingAt,
               isAired
             };
+            const isAlertActive = !!activeAlerts[media.id];
 
             return (
               <AnimeCard
@@ -190,11 +309,27 @@ export default function ScheduleView({
                 onSelectAnime={onSelectAnime}
                 titleLanguage={titleLanguage}
                 airingInfo={airingInfo}
+                isAlertActive={isAlertActive}
+                onOpenAlert={handleOpenAlertModal}
               />
             );
           })}
         </div>
       )}
+
+      {/* Airing Alert Modal */}
+      <AiringAlertModal
+        isOpen={!!selectedAlertAnime}
+        onClose={() => {
+          setSelectedAlertAnime(null);
+          setSelectedAlertInfo(null);
+        }}
+        anime={selectedAlertAnime}
+        airingInfo={selectedAlertInfo}
+        existingAlert={selectedAlertAnime ? activeAlerts[selectedAlertAnime.id] : null}
+        onAlertUpdated={loadAlerts}
+        titleLanguage={titleLanguage}
+      />
 
     </div>
   );

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { User, Sun, Moon, Globe, Shield, Download, Upload, Trash2, Check, AlertTriangle } from 'lucide-react';
-import { saveProfileSettings, saveWatchlist } from '../../services/storage';
+import { User, Sun, Moon, Globe, Download, Upload, Trash2, LogOut, AlertTriangle } from 'lucide-react';
+import { saveProfileSettings, exportWatchlistJSON, importWatchlistJSON, resetAllData } from '../../services/storage';
+import { signOut } from '../../services/auth';
 
 export default function ProfileView({ 
   profile, 
@@ -8,60 +9,78 @@ export default function ProfileView({
   darkMode, 
   onToggleTheme, 
   watchlist,
-  onReloadWatchlist
+  onReloadWatchlist,
+  currentUser
 }) {
   const [username, setUsername] = useState(profile.username || 'Scout Trainee');
   const [titleLang, setTitleLang] = useState(profile.titleLanguage || 'english');
   const [savedMessage, setSavedMessage] = useState('');
   const [showConfirmReset, setShowConfirmReset] = useState(false);
 
-  const handleSave = () => {
+  React.useEffect(() => {
+    if (profile.username) setUsername(profile.username);
+    if (profile.titleLanguage) setTitleLang(profile.titleLanguage);
+  }, [profile]);
+
+  // Auto-save whenever username or titleLang changes (debounced)
+  React.useEffect(() => {
+    const timer = setTimeout(async () => {
+      const updated = {
+        ...profile,
+        username,
+        titleLanguage: titleLang,
+        theme: darkMode ? 'dark' : 'light'
+      };
+      onUpdateProfile(updated);
+      await saveProfileSettings(updated);
+      setSavedMessage('✓ Saved');
+      setTimeout(() => setSavedMessage(''), 1200);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [username, titleLang]);
+
+  // Also save theme changes immediately
+  React.useEffect(() => {
     const updated = {
       ...profile,
       username,
       titleLanguage: titleLang,
       theme: darkMode ? 'dark' : 'light'
     };
-    onUpdateProfile(updated);
     saveProfileSettings(updated);
-    setSavedMessage('Settings saved successfully!');
+  }, [darkMode]);
+
+  const handleExport = async () => {
+    await exportWatchlistJSON();
+    setSavedMessage('Backup downloaded!');
     setTimeout(() => setSavedMessage(''), 2000);
   };
 
-  const handleImportJson = (e) => {
+  const handleImportJson = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const data = JSON.parse(evt.target.result);
-        const list = Array.isArray(data) ? data : (data.entries || []);
-        if (list.length > 0) {
-          saveWatchlist(list);
-          onReloadWatchlist();
-          setSavedMessage(`Imported ${list.length} anime into watchlist!`);
-          setTimeout(() => setSavedMessage(''), 3000);
-        }
-      } catch (err) {
-        alert("Invalid JSON backup file");
-      }
-    };
-    reader.readAsText(file);
+    const count = await importWatchlistJSON(file);
+    if (count > 0) {
+      onReloadWatchlist();
+      setSavedMessage(`Imported ${count} anime into watchlist!`);
+      setTimeout(() => setSavedMessage(''), 3000);
+    } else {
+      setSavedMessage('Import failed or file was empty.');
+      setTimeout(() => setSavedMessage(''), 3000);
+    }
   };
 
-  const handleResetData = () => {
-    // Only clear AniTrack-specific keys, not ALL localStorage (Capacitor etc.)
-    const appKeys = [
-      'anitrack_app_watchlist', 'anitrack_app_progress',
-      'anitrack_app_history', 'anitrack_app_profile',
-      'anitrack_app_theme', 'anitrack_app_custom_lists'
-    ];
-    appKeys.forEach(k => localStorage.removeItem(k));
+  const handleResetData = async () => {
+    await resetAllData();
     onReloadWatchlist();
     setShowConfirmReset(false);
     setSavedMessage('All data reset to defaults.');
     setTimeout(() => setSavedMessage(''), 2000);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    onReloadWatchlist();
   };
 
   return (
@@ -77,11 +96,16 @@ export default function ProfileView({
             <h1 className="font-display font-black text-xl text-ink-900">
               {username}
             </h1>
+            {currentUser?.email && (
+              <p className="text-xs text-stone-500 font-mono mt-0.5">
+                {currentUser.email}
+              </p>
+            )}
             <p className="text-xs text-stone-500 font-sans mt-0.5">
-              Scout Regiment · Anime Companion
+              {(watchlist || []).length} anime tracked · {(watchlist || []).filter(i => i.status === 'completed').length} completed
             </p>
             <span className="inline-block px-2 py-0.5 mt-1 text-[10px] font-black uppercase bg-amber-400 text-ink-900 border border-stone-900 rounded">
-              Local Mode
+              {currentUser ? 'Signed In' : 'Local Mode'}
             </span>
           </div>
         </div>
@@ -142,12 +166,12 @@ export default function ProfileView({
           </button>
         </div>
 
-        <button
-          onClick={handleSave}
-          className="w-full btn-manga bg-amber-400 hover:bg-amber-300 text-ink-900 py-2.5 rounded font-black text-sm uppercase tracking-wide"
-        >
-          Save Preferences
-        </button>
+        {/* Save button is now optional since we auto-save. Shown as a visual anchor. */}
+        {savedMessage && (
+          <div className="text-xs font-bold text-status-watching text-center py-1 animate-fade-in">
+            {savedMessage}
+          </div>
+        )}
       </div>
 
       {/* Backup & Data Management */}
@@ -157,6 +181,15 @@ export default function ProfileView({
         </h2>
 
         <div className="flex gap-2">
+          {/* Export JSON */}
+          <button
+            onClick={handleExport}
+            className="flex-1 btn-manga bg-sand-100 dark:bg-sand-300 hover:bg-amber-400 text-ink-900 text-xs py-2 px-3 flex items-center justify-center gap-1.5"
+          >
+            <Download className="w-4 h-4" />
+            <span>Export JSON</span>
+          </button>
+
           {/* Import JSON */}
           <label className="flex-1 btn-manga bg-sand-100 dark:bg-sand-300 hover:bg-amber-400 text-ink-900 text-xs py-2 px-3 flex items-center justify-center gap-1.5 cursor-pointer">
             <Upload className="w-4 h-4" />
@@ -199,6 +232,19 @@ export default function ProfileView({
           )}
         </div>
       </div>
+
+      {/* Sign Out */}
+      {currentUser && (
+        <div className="card-manga-panel p-4 bg-sand-50 dark:bg-sand-200">
+          <button
+            onClick={handleSignOut}
+            className="w-full btn-manga bg-status-dropped hover:bg-red-600 text-sand-50 py-2.5 rounded font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign Out
+          </button>
+        </div>
+      )}
 
     </div>
   );

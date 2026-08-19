@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Clock, ChevronDown, Check, Plus, Trash2, Eye } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Clock, ChevronDown, Check, Plus, Trash2, Eye, Bell } from 'lucide-react';
 
 const STATUS_LABELS = {
   watching: { label: 'Watching', bg: 'bg-status-watching-bg text-status-watching border-status-watching/40' },
@@ -9,7 +9,7 @@ const STATUS_LABELS = {
   dropped: { label: 'Dropped', bg: 'bg-status-dropped-bg text-status-dropped border-status-dropped/40' }
 };
 
-export default function AnimeCard({
+const AnimeCard = React.memo(function AnimeCard({
   anime,
   watchlistEntry,
   onUpdateStatus,
@@ -17,9 +17,15 @@ export default function AnimeCard({
   onSelectAnime,
   titleLanguage = 'english',
   airingInfo = null,
-  whyWatch = null
+  whyWatch = null,
+  isAlertActive = false,
+  onOpenAlert = null
 }) {
   const [showDropdown, setShowDropdown] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
+  const [imgError, setImgError] = useState(false);
+  const btnRef = useRef(null);
+  const [dropdownDir, setDropdownDir] = useState('up'); // 'up' or 'down'
 
   const getTitle = () => {
     if (!anime) return 'Unknown Title';
@@ -29,7 +35,7 @@ export default function AnimeCard({
     return anime.title?.english || anime.title?.romaji || anime.title?.native || 'Unknown Title';
   };
 
-  const cover = anime.coverImage?.large || anime.coverImage?.medium || anime.coverImage || '';
+  const cover = anime.coverImage?.large || anime.coverImage?.medium || anime.coverImage || anime.anime_cover || anime.image || '';
   const score = anime.averageScore;
   const studio = anime.studios?.nodes?.[0]?.name || anime.studio || anime.format || 'TV';
   const genres = anime.genres || [];
@@ -46,27 +52,65 @@ export default function AnimeCard({
       onRemoveItem(anime.id);
     } else {
       onUpdateStatus(anime, newStatus);
+      // Flash success feedback
+      setJustSaved(true);
+      setTimeout(() => setJustSaved(false), 800);
     }
+  };
+
+  const handleToggleDropdown = (e) => {
+    e.stopPropagation();
+    if (!showDropdown && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      // If button is in the top half of viewport, open downward; else upward
+      setDropdownDir(rect.top < window.innerHeight * 0.45 ? 'down' : 'up');
+    }
+    setShowDropdown(!showDropdown);
   };
 
   return (
     <article 
-      className="card-manga-panel group relative flex flex-col min-h-[385px] sm:min-h-[420px] h-full bg-sand-50 dark:bg-sand-200 transition-all duration-200"
+      className={`card-manga-panel group relative flex flex-col min-h-[385px] sm:min-h-[420px] h-full bg-sand-50 dark:bg-sand-200 transition-all duration-200 ${airingInfo?.isAired ? 'opacity-75' : ''}`}
     >
       {/* Poster Image Area */}
       <div 
         className="block h-[180px] sm:h-[220px] w-full overflow-hidden relative border-b-2 border-stone-900 cursor-pointer bg-sand-200 dark:bg-sand-300"
         onClick={() => onSelectAnime(anime.id)}
       >
-        <img 
-          src={cover} 
-          alt={getTitle()}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          loading="lazy"
-          decoding="async"
-        />
+        {!imgError && cover ? (
+          <img 
+            src={cover} 
+            alt={getTitle()}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
+            decoding="async"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-sand-300 via-sand-200 to-amber-100 flex items-center justify-center p-3">
+            <span className="font-display font-black text-sm text-stone-500 text-center line-clamp-3">{getTitle()}</span>
+          </div>
+        )}
         {/* Dark Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent pointer-events-none" />
+
+        {/* Top Left Airing Alert Bell Button */}
+        {airingInfo && onOpenAlert && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenAlert(anime, airingInfo);
+            }}
+            className={`absolute top-2 left-2 z-10 w-7 h-7 rounded-md border-2 border-stone-900 flex items-center justify-center transition-transform active:scale-90 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] ${
+              isAlertActive
+                ? 'bg-amber-400 text-ink-900 ring-2 ring-amber-300 animate-pulse'
+                : 'bg-sand-50/90 dark:bg-sand-100/90 text-stone-700 hover:bg-amber-400 hover:text-ink-900'
+            }`}
+            title={isAlertActive ? 'Airing alert active — tap to manage' : 'Set Airing Notification / Alarm'}
+          >
+            <Bell className={`w-3.5 h-3.5 ${isAlertActive ? 'fill-current' : ''}`} />
+          </button>
+        )}
 
         {/* Top Right Progress Indicator (if tracked) */}
         {watchlistEntry && (
@@ -83,6 +127,11 @@ export default function AnimeCard({
           <span className="bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-sm border border-white/20">
             {airingInfo ? `Ep ${airingInfo.episode}${totalEps ? ' / ' + totalEps : ''}` : `${totalEps ? totalEps + ' Ep' : 'TBA'}`}
           </span>
+          {airingInfo?.isAired && (
+            <span className="bg-emerald-500 text-white px-2 py-0.5 rounded-sm font-black text-[10px] uppercase border border-emerald-700 shadow-sm">
+              ✓ Aired
+            </span>
+          )}
           {score && (
             <span className="bg-amber-400 text-ink-900 px-2 py-0.5 rounded-sm font-black border border-stone-900 shadow-[1.5px_1.5px_0px_0px_rgba(0,0,0,1)]">
               ★ {score}%
@@ -121,6 +170,11 @@ export default function AnimeCard({
                 {g}
               </span>
             ))}
+            {genres.length > 3 && (
+              <span className="px-1.5 py-0.5 bg-sand-300 dark:bg-sand-400 text-stone-600 text-[9px] font-bold rounded border border-stone-900/20 shrink-0">
+                +{genres.length - 3}
+              </span>
+            )}
           </div>
 
           {/* Airing schedule time & countdown */}
@@ -142,18 +196,23 @@ export default function AnimeCard({
         {/* Direct Interactive Status Action Button */}
         <div className="mt-3 pt-2 border-t border-sand-300 dark:border-sand-400 relative">
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowDropdown(!showDropdown);
-            }}
+            ref={btnRef}
+            onClick={handleToggleDropdown}
             className={`w-full py-2 px-3 rounded-md text-xs font-bold text-left border-2 border-stone-900 flex items-center justify-between transition-all hover:scale-[1.01] active:translate-y-0.5 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] ${
-              statusConfig 
-                ? statusConfig.bg 
-                : 'bg-sand-100 dark:bg-sand-300 text-ink-900 hover:bg-sand-200'
+              justSaved
+                ? 'bg-emerald-400 text-ink-900 border-emerald-600 scale-[1.03]'
+                : statusConfig 
+                  ? statusConfig.bg 
+                  : 'bg-sand-100 dark:bg-sand-300 text-ink-900 hover:bg-sand-200'
             }`}
           >
             <span className="truncate flex items-center gap-1.5">
-              {currentStatus ? (
+              {justSaved ? (
+                <>
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Saved!</span>
+                </>
+              ) : currentStatus ? (
                 <>
                   <Check className="w-3.5 h-3.5" />
                   <span>{statusConfig.label}</span>
@@ -161,7 +220,7 @@ export default function AnimeCard({
               ) : (
                 <>
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Add to list</span>
+                  <span>Add to Watchlist</span>
                 </>
               )}
             </span>
@@ -178,7 +237,9 @@ export default function AnimeCard({
               />
 
               <div 
-                className="absolute bottom-full left-0 right-0 mb-1 z-50 bg-sand-50 dark:bg-sand-100 border-2 border-stone-900 rounded-md shadow-manga-lg py-1 overflow-hidden animate-fade-in"
+                className={`absolute left-0 right-0 z-50 bg-sand-50 dark:bg-sand-100 border-2 border-stone-900 rounded-md shadow-manga-lg py-1 overflow-hidden animate-fade-in ${
+                  dropdownDir === 'down' ? 'top-full mt-1' : 'bottom-full mb-1'
+                }`}
                 onClick={(e) => e.stopPropagation()}
               >
                 {Object.entries(STATUS_LABELS).map(([statusKey, cfg]) => (
@@ -216,4 +277,6 @@ export default function AnimeCard({
       </div>
     </article>
   );
-}
+});
+
+export default AnimeCard;

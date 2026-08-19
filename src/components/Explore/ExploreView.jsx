@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Search, Sparkles, MessageCircle, Newspaper, ExternalLink, LayoutGrid, List } from 'lucide-react';
 import { anilistQuery, SEARCH_ANIME_QUERY, EXPLORE_VIBE_QUERY, POPULAR_DISCUSSIONS_QUERY } from '../../services/anilist';
 import { fetchLiveNews } from '../../services/news';
+import { getActiveAnimeAlerts } from '../../services/notifications';
 import { underratedAnime } from '../../data/underratedAnime';
 import AnimeCard from '../Common/AnimeCard';
+import AiringAlertModal from '../Schedule/AiringAlertModal';
 
 const GENRES = ['Action', 'Adventure', 'Comedy', 'Drama', 'Fantasy', 'Horror', 'Mecha', 'Mystery', 'Psychological', 'Romance', 'Sci-Fi', 'Slice of Life', 'Sports', 'Supernatural', 'Thriller'];
 
@@ -23,15 +25,32 @@ export default function ExploreView({
   const [loadingNews, setLoadingNews] = useState(true);
   const [discussions, setDiscussions] = useState([]);
   const [loadingDiscussions, setLoadingDiscussions] = useState(true);
+  const [activeAlerts, setActiveAlerts] = useState({});
+  const [selectedAlertAnime, setSelectedAlertAnime] = useState(null);
+  const [selectedAlertInfo, setSelectedAlertInfo] = useState(null);
 
   // Fast hash map for watchlist lookups
   const watchlistMap = useMemo(() => {
     const map = {};
-    watchlist.forEach(item => {
+    (watchlist || []).forEach(item => {
       map[item.anime_id || item.id] = item;
     });
     return map;
   }, [watchlist]);
+
+  const loadAlerts = useCallback(async () => {
+    try {
+      const alerts = await getActiveAnimeAlerts();
+      setActiveAlerts(alerts);
+    } catch (_) {}
+  }, []);
+
+  useEffect(() => {
+    loadAlerts();
+    const handleAlertsChanged = () => loadAlerts();
+    window.addEventListener('anitrack-alerts-changed', handleAlertsChanged);
+    return () => window.removeEventListener('anitrack-alerts-changed', handleAlertsChanged);
+  }, [loadAlerts]);
 
   useEffect(() => {
     loadNewsAndDiscussions();
@@ -44,22 +63,26 @@ export default function ExploreView({
     return () => clearTimeout(timer);
   }, [searchQuery, selectedGenre]);
 
-  const loadNewsAndDiscussions = async () => {
-    try {
-      fetchLiveNews().then(items => {
-        setNews(items);
-        setLoadingNews(false);
-      });
+  const loadNewsAndDiscussions = () => {
+    fetchLiveNews()
+      .then(items => {
+        setNews(items || []);
+      })
+      .catch(err => {
+        console.warn("Live news fetch failed:", err);
+      })
+      .finally(() => setLoadingNews(false));
 
-      anilistQuery(POPULAR_DISCUSSIONS_QUERY).then(res => {
+    anilistQuery(POPULAR_DISCUSSIONS_QUERY)
+      .then(res => {
         if (res?.Page?.threads) {
           setDiscussions(res.Page.threads.filter(t => t.mediaCategories?.length > 0));
         }
-        setLoadingDiscussions(false);
-      });
-    } catch (e) {
-      console.error(e);
-    }
+      })
+      .catch(err => {
+        console.warn("Discussions query failed:", err);
+      })
+      .finally(() => setLoadingDiscussions(false));
   };
 
   const handleSearch = async () => {
@@ -83,7 +106,6 @@ export default function ExploreView({
           setResults(res.Page.media);
         }
       } else {
-        // Default to curated 49 gems
         setResults(underratedAnime);
       }
     } catch (err) {
@@ -98,45 +120,36 @@ export default function ExploreView({
 
       {/* Search Input Bar */}
       <div className="card-manga-panel p-3 bg-sand-50 dark:bg-sand-200">
-        <div className="relative flex items-center">
-          <Search className="w-5 h-5 absolute left-3 text-stone-500 pointer-events-none" />
+        <div className="relative">
+          <Search className="w-4 h-4 absolute left-3 top-3 text-stone-500" />
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => {
-              setSelectedGenre('');
-              setSearchQuery(e.target.value);
-            }}
-            placeholder="Search anime by title, studio, or trope..."
-            className="w-full pl-10 pr-4 py-2 bg-sand-100 dark:bg-sand-300 border-2 border-stone-900 rounded-md font-sans text-sm text-ink-900 placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search thousands of anime by name..."
+            className="w-full pl-9 pr-4 py-2 bg-sand-100 dark:bg-sand-300 border-2 border-stone-900 rounded-md font-sans text-xs sm:text-sm text-ink-900 font-medium focus:outline-none focus:ring-2 focus:ring-amber-400"
           />
         </div>
 
         {/* Genre Filter Pills */}
-        <div className="flex gap-2 overflow-x-auto hide-scrollbar pt-3 mt-2 border-t border-sand-300 dark:border-sand-400">
+        <div className="flex gap-1.5 overflow-x-auto hide-scrollbar pt-3 mt-2 border-t border-sand-300 dark:border-sand-400">
           <button
-            onClick={() => {
-              setSearchQuery('');
-              setSelectedGenre('');
-            }}
-            className={`shrink-0 px-3 py-1 rounded-md text-xs font-black transition-all border-2 border-stone-900 ${
-              !selectedGenre && !searchQuery
-                ? 'bg-amber-400 text-ink-900 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] scale-[1.02]'
+            onClick={() => setSelectedGenre('')}
+            className={`shrink-0 px-3 py-1 text-xs font-black rounded border-2 border-stone-900 transition-all ${
+              !selectedGenre 
+                ? 'bg-amber-400 text-ink-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] scale-[1.02]' 
                 : 'bg-sand-100 dark:bg-sand-300 text-stone-700 hover:bg-sand-200'
             }`}
           >
-            All Gems (49)
+            All Genres
           </button>
           {GENRES.map((g) => (
             <button
               key={g}
-              onClick={() => {
-                setSearchQuery('');
-                setSelectedGenre(g);
-              }}
-              className={`shrink-0 px-3 py-1 rounded-md text-xs font-black transition-all border-2 border-stone-900 ${
+              onClick={() => setSelectedGenre(selectedGenre === g ? '' : g)}
+              className={`shrink-0 px-3 py-1 text-xs font-bold rounded border-2 border-stone-900 transition-all ${
                 selectedGenre === g
-                  ? 'bg-amber-400 text-ink-900 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] scale-[1.02]'
+                  ? 'bg-amber-400 text-ink-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] scale-[1.02]'
                   : 'bg-sand-100 dark:bg-sand-300 text-stone-700 hover:bg-sand-200'
               }`}
             >
@@ -146,7 +159,7 @@ export default function ExploreView({
         </div>
       </div>
 
-      {/* TRENDING NEWS SECTION (Shown when not searching) */}
+      {/* TRENDING NEWS SECTION */}
       {!searchQuery && !selectedGenre && (
         <section className="space-y-3">
           <div className="flex items-center justify-between">
@@ -206,7 +219,7 @@ export default function ExploreView({
         </section>
       )}
 
-      {/* POPULAR DISCUSSIONS SECTION (Shown when not searching) */}
+      {/* POPULAR DISCUSSIONS SECTION */}
       {!searchQuery && !selectedGenre && discussions.length > 0 && (
         <section className="space-y-3">
           <div className="flex items-center justify-between">
@@ -258,13 +271,10 @@ export default function ExploreView({
         <div className="flex items-center justify-between">
           <h2 className="font-display font-black text-lg md:text-xl text-ink-900 uppercase tracking-tight flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-amber-500" />
-            <span>
-              {searchQuery ? `Search Results (${results.length})` : selectedGenre ? `${selectedGenre} Anime (${results.length})` : 'Hidden Gems (49 Masterpieces)'}
-            </span>
+            <span>{searchQuery ? 'Search Results' : selectedGenre ? `${selectedGenre} Anime` : 'Curated Masterpieces'}</span>
           </h2>
 
-          {/* View Mode Toggle */}
-          <div className="flex items-center gap-1.5 bg-sand-200 dark:bg-sand-300 p-1 rounded-md border-2 border-stone-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)]">
+          <div className="flex items-center gap-1 bg-sand-200 dark:bg-sand-300 p-1 rounded-md border-2 border-stone-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)]">
             <button
               onClick={() => setViewMode('grid')}
               className={`p-1.5 rounded transition-all ${
@@ -317,11 +327,32 @@ export default function ExploreView({
                 onSelectAnime={onSelectAnime}
                 titleLanguage={titleLanguage}
                 whyWatch={anime.whyWatch}
+                isAlertActive={!!activeAlerts[anime.id]}
+                onOpenAlert={(a, info) => {
+                  setSelectedAlertAnime(a);
+                  setSelectedAlertInfo(info || { airingAt: Math.floor(Date.now()/1000) + 86400, episode: 1 });
+                }}
               />
             ))}
           </div>
         )}
       </section>
+
+      {/* Airing Alert Modal */}
+      {selectedAlertAnime && (
+        <AiringAlertModal
+          isOpen={!!selectedAlertAnime}
+          onClose={() => {
+            setSelectedAlertAnime(null);
+            setSelectedAlertInfo(null);
+          }}
+          anime={selectedAlertAnime}
+          airingInfo={selectedAlertInfo}
+          existingAlert={activeAlerts[selectedAlertAnime.id]}
+          onAlertUpdated={loadAlerts}
+          titleLanguage={titleLanguage}
+        />
+      )}
 
     </div>
   );

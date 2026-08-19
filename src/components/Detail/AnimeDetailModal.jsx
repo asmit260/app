@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Play, Plus, Check, Star, Calendar, Clock, Film, ExternalLink, Bookmark } from 'lucide-react';
+import { X, Play, Plus, Minus, Check, Star, Calendar, Clock, Film, ExternalLink, Bookmark, Bell } from 'lucide-react';
 import { anilistQuery, ANIME_DETAIL_QUERY } from '../../services/anilist';
+import { getActiveAnimeAlerts } from '../../services/notifications';
+import { updateWatchlistRating } from '../../services/storage';
+import AiringAlertModal from '../Schedule/AiringAlertModal';
 
 export default function AnimeDetailModal({ 
   animeId, 
@@ -13,12 +16,22 @@ export default function AnimeDetailModal({
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showTrailer, setShowTrailer] = useState(false);
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const [activeAlerts, setActiveAlerts] = useState({});
 
   useEffect(() => {
     if (animeId) {
       loadDetail(animeId);
+      loadAlerts();
     }
   }, [animeId]);
+
+  const loadAlerts = async () => {
+    try {
+      const alerts = await getActiveAnimeAlerts();
+      setActiveAlerts(alerts);
+    } catch (_) {}
+  };
 
   const loadDetail = async (id) => {
     setLoading(true);
@@ -34,13 +47,19 @@ export default function AnimeDetailModal({
     }
   };
 
-  const currentEntry = watchlist.find(item => item.anime_id === animeId || item.id === animeId);
+  const currentEntry = (watchlist || []).find(item => (item.anime_id == animeId || item.id == animeId));
+  const isAlertActive = !!activeAlerts[animeId];
 
   const getTitle = () => {
     if (!detail?.title) return 'Anime Details';
     if (titleLanguage === 'romaji') return detail.title.romaji || detail.title.english || detail.title.native;
     if (titleLanguage === 'native') return detail.title.native || detail.title.romaji || detail.title.english;
     return detail.title.english || detail.title.romaji || detail.title.native;
+  };
+
+  const handleRatingChange = async (rating) => {
+    const newRating = currentEntry?.score === rating ? 0 : rating;
+    await updateWatchlistRating(animeId, newRating);
   };
 
   if (!animeId) return null;
@@ -103,11 +122,11 @@ export default function AnimeDetailModal({
 
             <div className="p-4 space-y-4">
               
-              {/* Watchlist Action Bar */}
+              {/* Watchlist & Airing Alert Action Bar */}
               <div className="card-manga-panel p-3 bg-sand-100 dark:bg-sand-200 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <Bookmark className="w-4 h-4 text-stone-600" />
-                  <span className="text-xs font-bold text-ink-900">Watchlist Status:</span>
+                  <span className="text-xs font-bold text-ink-900">Status:</span>
                   <select
                     value={currentEntry?.status || ''}
                     onChange={(e) => {
@@ -128,16 +147,95 @@ export default function AnimeDetailModal({
                   </select>
                 </div>
 
-                {detail.trailer?.site === 'youtube' && (
+                <div className="flex items-center gap-2">
+                  {/* Airing Alert Button */}
                   <button
-                    onClick={() => setShowTrailer(!showTrailer)}
-                    className="btn-manga bg-amber-400 hover:bg-amber-300 text-ink-900 text-xs px-3 py-1 flex items-center gap-1.5"
+                    onClick={() => setShowAlertModal(true)}
+                    className={`btn-manga text-xs px-2.5 py-1 flex items-center gap-1.5 font-bold ${
+                      isAlertActive 
+                        ? 'bg-amber-400 text-ink-900 ring-2 ring-amber-300' 
+                        : 'bg-sand-50 dark:bg-sand-300 hover:bg-amber-400 text-ink-900'
+                    }`}
+                    title="Set Airing Reminder / Alarm"
                   >
-                    <Play className="w-3.5 h-3.5 fill-current" />
-                    <span>{showTrailer ? 'Hide Trailer' : 'Watch Trailer'}</span>
+                    <Bell className={`w-3.5 h-3.5 ${isAlertActive ? 'fill-current' : ''}`} />
+                    <span>{isAlertActive ? 'Alert Active' : 'Set Alert'}</span>
                   </button>
-                )}
+
+                  {/* Trailer Button */}
+                  {detail.trailer?.site === 'youtube' && (
+                    <button
+                      onClick={() => setShowTrailer(!showTrailer)}
+                      className="btn-manga bg-amber-400 hover:bg-amber-300 text-ink-900 text-xs px-2.5 py-1 flex items-center gap-1.5"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      <span>{showTrailer ? 'Hide' : 'Trailer'}</span>
+                    </button>
+                  )}
+                </div>
               </div>
+
+              {/* Progress & Star Rating (When Tracked in Watchlist) */}
+              {currentEntry && (
+                <div className="card-manga-panel p-3 bg-sand-100 dark:bg-sand-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  {/* Episodes Watched Counter */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-ink-900">Progress:</span>
+                    <span className="font-mono text-xs font-bold px-2 py-0.5 bg-sand-50 dark:bg-sand-300 border border-stone-900 rounded">
+                      {currentEntry.episodes_watched || 0} / {detail.episodes || '?'} ep
+                    </span>
+                  </div>
+
+                  {/* Rating Selector — 5 Stars (maps to /10 internally) */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-stone-600">Your Score:</span>
+                    <div className="flex items-center gap-0.5">
+                      {[2, 4, 6, 8, 10].map(star => (
+                        <button
+                          key={star}
+                          onClick={() => handleRatingChange(star)}
+                          className={`p-1.5 transition-transform hover:scale-125 active:scale-95 ${
+                            (currentEntry.score || 0) >= star
+                              ? 'text-amber-500'
+                              : 'text-stone-300 hover:text-amber-300'
+                          }`}
+                          title={`Rate ${star / 2}/5 (${star}/10)`}
+                        >
+                          <Star className={`w-5 h-5 ${(currentEntry.score || 0) >= star ? 'fill-current' : ''}`} />
+                        </button>
+                      ))}
+                      {currentEntry.score > 0 && (
+                        <span className="font-mono text-xs font-black text-amber-600 ml-1.5">
+                          {currentEntry.score}/10
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Next Airing Info Banner */}
+              {detail.nextAiringEpisode && (
+                <div className="p-3 bg-amber-100/80 dark:bg-amber-950/40 border-2 border-stone-900 rounded-md flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    <div>
+                      <p className="text-xs font-black text-ink-900">
+                        Episode {detail.nextAiringEpisode.episode} Airing
+                      </p>
+                      <p className="text-[10px] text-stone-600 dark:text-stone-400 font-mono">
+                        {new Date(detail.nextAiringEpisode.airingAt * 1000).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowAlertModal(true)}
+                    className="btn-manga bg-amber-400 text-ink-900 text-[10px] px-2.5 py-1 font-black"
+                  >
+                    Remind Me
+                  </button>
+                </div>
+              )}
 
               {/* Embedded Trailer Player */}
               {showTrailer && detail.trailer?.id && (
@@ -156,7 +254,7 @@ export default function AnimeDetailModal({
               <div className="flex flex-wrap gap-2 text-xs font-bold">
                 {detail.averageScore && (
                   <span className="px-2.5 py-1 bg-amber-400 text-ink-900 border-2 border-stone-900 rounded shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] font-mono">
-                    ★ {detail.averageScore}% Score
+                    ★ {detail.averageScore}% Community
                   </span>
                 )}
                 {detail.episodes && (
@@ -179,7 +277,7 @@ export default function AnimeDetailModal({
                 </p>
               </div>
 
-              {/* Genres & Tags */}
+              {/* Genres & Themes */}
               <div className="space-y-1.5 pt-2 border-t border-sand-300 dark:border-sand-400">
                 <span className="text-xs font-bold text-stone-600">Genres & Themes:</span>
                 <div className="flex flex-wrap gap-1.5">
@@ -203,6 +301,27 @@ export default function AnimeDetailModal({
         )}
 
       </div>
+
+      {/* Airing Alert Modal */}
+      {detail && (
+        <AiringAlertModal
+          isOpen={showAlertModal}
+          onClose={() => setShowAlertModal(false)}
+          anime={detail}
+          airingInfo={detail.nextAiringEpisode ? {
+            airingAt: detail.nextAiringEpisode.airingAt,
+            episode: detail.nextAiringEpisode.episode,
+            time: new Date(detail.nextAiringEpisode.airingAt * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          } : {
+            airingAt: Math.floor(Date.now() / 1000) + 3600,
+            episode: 1,
+            time: 'Next Episode'
+          }}
+          existingAlert={activeAlerts[detail.id]}
+          onAlertUpdated={loadAlerts}
+          titleLanguage={titleLanguage}
+        />
+      )}
     </div>
   );
 }
