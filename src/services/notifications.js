@@ -1,20 +1,8 @@
 // Notification & Calendar Reminder Service
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { supabase } from './supabase.js';
 import { getUser } from './auth.js';
-
-// Safe dynamic loader for Capacitor plugin with timeout
-async function getLocalNotifications() {
-  try {
-    const mod = await Promise.race([
-      import('@capacitor/local-notifications'),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('import timeout')), 2500))
-    ]);
-    return mod?.LocalNotifications || null;
-  } catch (err) {
-    console.warn("Capacitor LocalNotifications not available or timed out:", err);
-    return null;
-  }
-}
 
 // ─── ICS & Calendar Helpers ─────────────────────────────────────
 
@@ -35,7 +23,14 @@ function foldLines(icsText) {
 export function openPhoneCalendar({ title, startUnix, durationMinutes = 25, episode, leadMinutes = 15 }) {
   try {
     const safeTitle = episode ? `${title} (Ep ${episode})` : (title || 'Anime Airing');
-    const safeUnix = startUnix || Math.floor(Date.now() / 1000);
+    let safeUnix = startUnix || Math.floor(Date.now() / 1000);
+    const nowUnix = Math.floor(Date.now() / 1000);
+    
+    // If airing time already passed, shift to next week
+    if (safeUnix <= nowUnix) {
+      safeUnix += 7 * 86400;
+    }
+
     const description = `AniTrack Airing Reminder for ${safeTitle}`;
     
     const start = new Date(safeUnix * 1000).toISOString().replace(/[-:\.]/g, '').slice(0, 15) + 'Z';
@@ -97,42 +92,29 @@ export function openPhoneCalendar({ title, startUnix, durationMinutes = 25, epis
 // ─── Native Local Notifications ─────────────────────────────────
 
 export async function requestNotificationPermission() {
-  try {
-    const ln = await getLocalNotifications();
-    if (ln) {
-      try {
-        const check = await Promise.race([
-          ln.checkPermissions(),
-          new Promise(res => setTimeout(() => res({ display: 'granted' }), 1000))
-        ]);
-        if (check?.display === 'granted') {
-          return 'granted';
-        }
-      } catch (_) {}
-
-      const status = await Promise.race([
-        ln.requestPermissions(),
-        new Promise(res => setTimeout(() => res({ display: 'granted' }), 2500))
-      ]);
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const check = await LocalNotifications.checkPermissions();
+      if (check?.display === 'granted') {
+        return 'granted';
+      }
+      const status = await LocalNotifications.requestPermissions();
       if (status?.display === 'denied') {
         return 'denied';
       }
       return 'granted';
+    } catch (err) {
+      console.warn("Native permission request exception:", err);
+      return 'granted';
     }
-  } catch (err) {
-    console.warn("Permission request error:", err);
   }
 
-  // Desktop browser fallback ONLY (never in Capacitor WebView)
-  if (typeof window !== 'undefined' && !window.Capacitor?.isNativePlatform?.() && 'Notification' in window) {
+  // Desktop browser fallback
+  if (typeof window !== 'undefined' && 'Notification' in window) {
     try {
       if (Notification.permission === 'granted') return 'granted';
       if (Notification.permission === 'denied') return 'denied';
-      const webPerm = await Promise.race([
-        Notification.requestPermission(),
-        new Promise(res => setTimeout(() => res('granted'), 1500))
-      ]);
-      return webPerm || 'granted';
+      return await Notification.requestPermission();
     } catch (_) {}
   }
 
@@ -141,64 +123,64 @@ export async function requestNotificationPermission() {
 
 export async function scheduleDeviceNotification({ animeId, title, episode, airingAt, leadMinutes = 15 }) {
   try {
-    const notifyTimeMs = (airingAt * 1000) - (leadMinutes * 60 * 1000);
-    const nowMs = Date.now();
-    const scheduleDate = notifyTimeMs > nowMs + 2000 ? new Date(notifyTimeMs) : new Date(nowMs + 4000);
+    const nowUnix = Math.floor(Date.now() / 1000);
+    // If the episode has already aired, schedule for next week's episode (+7 days)
+    let targetUnix = airingAt;
+    if (targetUnix <= nowUnix) {
+      targetUnix += 7 * 86400;
+    }
+
+    const notifyUnix = targetUnix - (leadMinutes * 60);
+    const scheduleDate = notifyUnix > nowUnix ? new Date(notifyUnix * 1000) : new Date(Date.now() + 5000);
 
     const episodeText = episode ? `Episode ${episode}` : 'New Episode';
-    const leadText = leadMinutes > 0 ? `airs in ${leadMinutes} minutes!` : 'is airing right now!';
+    const leadText = leadMinutes > 0 ? `airs in ${leadMinutes} minutes!` : 'is airing now!';
     
     // Ensure safe positive 32-bit int notification ID for Android
     const numericId = parseInt(animeId, 10);
     const notificationId = (!isNaN(numericId) ? Math.abs(numericId) : Math.floor(Math.random() * 1000000)) % 2147483647;
 
     // 1. Native Capacitor LocalNotifications
-    const ln = await getLocalNotifications();
-    if (ln) {
+    if (Capacitor.isNativePlatform()) {
       try {
-        await Promise.race([
-          ln.schedule({
-            notifications: [
-              {
-                id: notificationId,
-                title: `⚔️ Airing Alert: ${title}`,
-                body: `${episodeText} ${leadText}`,
-                schedule: { 
-                  at: scheduleDate,
-                  allowWhileIdle: true 
-                },
-                extra: { animeId, episode }
-              }
-            ]
-          }),
-          new Promise(res => setTimeout(res, 2000))
-        ]);
+        await LocalNotifications.schedule({
+          notifications: [
+            {
+              id: notificationId,
+              title: `⚔️ Airing Alert: ${title}`,
+              body: `${episodeText} ${leadText}`,
+              schedule: { 
+                at: scheduleDate,
+                allowWhileIdle: true 
+              },
+              extra: { animeId, episode }
+            }
+          ]
+        });
         return true;
       } catch (nativeErr) {
         console.warn("Native LocalNotifications schedule error:", nativeErr);
       }
     }
 
-    // 2. Safe Desktop browser fallback (skipped in Capacitor)
-    if (typeof window !== 'undefined' && !window.Capacitor?.isNativePlatform?.() && 'Notification' in window && Notification.permission === 'granted') {
-      try {
-        const delayMs = notifyTimeMs - nowMs;
-        if (delayMs <= 0) {
+    // 2. Desktop browser fallback
+    if (typeof window !== 'undefined' && !Capacitor.isNativePlatform() && 'Notification' in window && Notification.permission === 'granted') {
+      const delayMs = (notifyUnix * 1000) - Date.now();
+      if (delayMs <= 0) {
+        try {
+          new Notification(`⚔️ Airing Alert: ${title}`, {
+            body: `${episodeText} ${leadText}`
+          });
+        } catch (_) {}
+      } else if (delayMs < 2147483647) {
+        setTimeout(() => {
           try {
             new Notification(`⚔️ Airing Alert: ${title}`, {
               body: `${episodeText} ${leadText}`
             });
           } catch (_) {}
-        } else if (delayMs < 2147483647) {
-          setTimeout(() => {
-            try {
-              new Notification(`⚔️ Airing Alert: ${title}`, {
-                body: `${episodeText} ${leadText}`
-              });
-            } catch (_) {}
-          }, delayMs);
-        }
-      } catch (_) {}
+        }, delayMs);
+      }
     }
   } catch (err) {
     console.error("scheduleDeviceNotification unexpected error:", err);
@@ -211,14 +193,10 @@ export async function cancelDeviceNotification(animeId) {
   try {
     const numericId = parseInt(animeId, 10);
     const notificationId = (!isNaN(numericId) ? Math.abs(numericId) : 0) % 2147483647;
-    const ln = await getLocalNotifications();
-    if (ln) {
-      await Promise.race([
-        ln.cancel({
-          notifications: [{ id: notificationId }]
-        }),
-        new Promise(res => setTimeout(res, 1500))
-      ]);
+    if (Capacitor.isNativePlatform()) {
+      await LocalNotifications.cancel({
+        notifications: [{ id: notificationId }]
+      });
     }
   } catch (err) {
     console.warn("Cancel notification error:", err);
@@ -291,4 +269,5 @@ export async function removeAnimeAlert(animeId) {
     console.error("removeAnimeAlert error:", e);
   }
 }
+
 

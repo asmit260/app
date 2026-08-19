@@ -72,7 +72,7 @@ export default function AiringAlertModal({
     setSuccessMessage('');
 
     try {
-      // 1. Request notification permission (with safety timeout)
+      // 1. Request notification permission
       const permission = await requestNotificationPermission();
       if (permission === 'denied') {
         setPermissionError('Notification permission was blocked. Please enable notifications in your phone Settings.');
@@ -80,23 +80,28 @@ export default function AiringAlertModal({
         return;
       }
 
-      // 2. Schedule local notification
-      await scheduleDeviceNotification({
-        animeId: anime.id || anime.anime_id,
-        title: getTitle(),
-        episode,
-        airingAt,
-        leadMinutes
-      });
-
-      // 3. Save alert in DB
-      await saveAnimeAlert({
-        animeId: anime.id || anime.anime_id,
-        title: getTitle(),
-        cover,
-        airingAt,
-        episode,
-        leadMinutes
+      // 2. Schedule local notification & save to database in parallel with a 3s hard timeout
+      await Promise.race([
+        Promise.all([
+          scheduleDeviceNotification({
+            animeId: anime.id || anime.anime_id,
+            title: getTitle(),
+            episode,
+            airingAt,
+            leadMinutes
+          }),
+          saveAnimeAlert({
+            animeId: anime.id || anime.anime_id,
+            title: getTitle(),
+            cover,
+            airingAt,
+            episode,
+            leadMinutes
+          })
+        ]),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
+      ]).catch((err) => {
+        console.warn("Parallel alert schedule completed with fallback:", err);
       });
 
       setSuccessMessage('Airing reminder scheduled!');
@@ -106,7 +111,7 @@ export default function AiringAlertModal({
         setSuccessMessage('');
         setLoading(false);
         onClose();
-      }, 800);
+      }, 600);
     } catch (err) {
       console.error("Alert save error:", err);
       setPermissionError('Could not schedule reminder. Please try again.');
