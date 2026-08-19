@@ -160,19 +160,25 @@ export default function MyListView({
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-5">
           {filteredList.map((item) => {
             const cover = item.anime_cover || item.anime_cover_image || item.coverImage || '';
+            const animeObj = {
+              id: item.anime_id || item.id,
+              title: item.anime_title,
+              anime_title: item.anime_title,
+              coverImage: cover,
+              anime_cover: cover,
+              totalEpisodes: item.total_episodes,
+              episodes: item.total_episodes,
+              genres: item.genres,
+              duration: item.duration,
+              score: item.score,
+              averageScore: item.score ? item.score * 10 : null
+            };
             return (
               <AnimeCard
                 key={item.anime_id || item.id}
-                anime={{
-                  id: item.anime_id || item.id,
-                  title: item.anime_title,
-                  coverImage: cover,
-                  totalEpisodes: item.total_episodes,
-                  genres: item.genres,
-                  averageScore: item.score ? item.score * 10 : null
-                }}
+                anime={animeObj}
                 watchlistEntry={item}
-                onUpdateStatus={(anime, newStatus) => onUpdateStatus(anime.id, newStatus)}
+                onUpdateStatus={(anime, newStatus) => onUpdateStatus(item.anime_id || item.id, newStatus)}
                 onRemoveItem={onRemoveItem}
                 onSelectAnime={onSelectAnime}
                 titleLanguage={titleLanguage}
@@ -213,7 +219,7 @@ export default function MyListView({
                         value={item.status}
                         onChange={(e) => {
                           e.stopPropagation();
-                          onUpdateStatus(item.anime_id || item.id, e.target.value);
+                          onUpdateStatus(item.anime_id || item.id, e.target.value, item);
                         }}
                         onClick={(e) => e.stopPropagation()}
                         className="text-[10px] font-black uppercase px-2 py-0.5 rounded border border-stone-900 bg-sand-100 dark:bg-sand-300 text-ink-900 focus:outline-none"

@@ -55,6 +55,16 @@ export default function App() {
     }
   }, []);
 
+  // Debounced reload to prevent triple-firing from cascading events
+  const reloadTimerRef = React.useRef(null);
+  const debouncedReload = useCallback(() => {
+    if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
+    reloadTimerRef.current = setTimeout(() => {
+      loadAllData();
+      reloadTimerRef.current = null;
+    }, 80);
+  }, [loadAllData]);
+
   useEffect(() => {
     loadAllData();
 
@@ -64,19 +74,17 @@ export default function App() {
       loadAllData();
     });
 
-    // Listen for watchlist or db changes
-    const handleListChange = () => {
-      loadAllData();
-    };
-    window.addEventListener('anitrack-watchlist-changed', handleListChange);
-    window.addEventListener('anitrack-db-changed', handleListChange);
+    // Listen for watchlist or db changes (debounced)
+    window.addEventListener('anitrack-watchlist-changed', debouncedReload);
+    window.addEventListener('anitrack-db-changed', debouncedReload);
 
     return () => {
       authSub?.data?.subscription?.unsubscribe?.();
-      window.removeEventListener('anitrack-watchlist-changed', handleListChange);
-      window.removeEventListener('anitrack-db-changed', handleListChange);
+      window.removeEventListener('anitrack-watchlist-changed', debouncedReload);
+      window.removeEventListener('anitrack-db-changed', debouncedReload);
+      if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
     };
-  }, [loadAllData]);
+  }, [loadAllData, debouncedReload]);
 
   const showToast = (message) => {
     setToast(message);
@@ -96,8 +104,39 @@ export default function App() {
     showToast("Signed in successfully!");
   };
 
+  // Build a full anime object from a watchlist item (for upsert calls that only have an ID)
+  const buildAnimeFromWatchlistItem = (animeId, existingItem) => {
+    if (!existingItem) return { id: animeId };
+    return {
+      id: existingItem.anime_id || existingItem.id || animeId,
+      title: existingItem.anime_title,
+      anime_title: existingItem.anime_title,
+      coverImage: existingItem.anime_cover,
+      anime_cover: existingItem.anime_cover,
+      genres: existingItem.genres,
+      duration: existingItem.duration,
+      totalEpisodes: existingItem.total_episodes,
+      episodes: existingItem.total_episodes,
+      score: existingItem.score,
+      episodes_watched: existingItem.episodes_watched,
+    };
+  };
+
   const handleUpdateWatchlist = async (anime, status) => {
-    const updated = await upsertWatchlistEntry(anime, status);
+    // If anime is a full object from AniList (has title object or coverImage), use it directly
+    // If anime is a bare {id} (from MyListView), look up the existing watchlist entry to preserve metadata
+    let fullAnime = anime;
+    const animeId = anime.id || anime.anime_id;
+
+    if (!anime.title && !anime.anime_title && !anime.coverImage) {
+      // Bare ID — look up existing entry in current watchlist state
+      const existingItem = watchlist.find(i => 
+        (i.anime_id == animeId || i.id == animeId)
+      );
+      fullAnime = buildAnimeFromWatchlistItem(animeId, existingItem);
+    }
+
+    const updated = await upsertWatchlistEntry(fullAnime, status);
     if (updated) {
       await loadAllData();
       showToast(`Saved "${updated.anime_title}" to ${status.replace('_', ' ')}`);
@@ -111,11 +150,8 @@ export default function App() {
     const isFinished = item.total_episodes && nextEp >= item.total_episodes;
     const status = isFinished ? 'completed' : item.status;
 
-    await upsertWatchlistEntry(
-      { id: animeId, title: item.anime_title, anime_title: item.anime_title, coverImage: item.anime_cover },
-      status, 
-      nextEp
-    );
+    const fullAnime = buildAnimeFromWatchlistItem(animeId, item);
+    await upsertWatchlistEntry(fullAnime, status, nextEp);
     await loadAllData();
     showToast(`+1 Episode logged for "${item.anime_title}" (${nextEp})`);
   };
@@ -156,7 +192,12 @@ export default function App() {
         {activeTab === 'mylist' && (
           <MyListView
             watchlist={watchlist}
-            onUpdateStatus={(id, status) => handleUpdateWatchlist({ id }, status)}
+            onUpdateStatus={(id, status, existingItem) => {
+              // Build full anime from the watchlist item to preserve metadata
+              const item = existingItem || watchlist.find(i => (i.anime_id == id || i.id == id));
+              const fullAnime = buildAnimeFromWatchlistItem(id, item);
+              handleUpdateWatchlist(fullAnime, status);
+            }}
             onIncrementEpisode={handleIncrementEpisode}
             onRemoveItem={handleRemoveWatchlistItem}
             onSelectAnime={(id) => setSelectedAnimeId(id)}

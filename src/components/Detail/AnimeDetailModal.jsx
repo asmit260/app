@@ -19,10 +19,12 @@ export default function AnimeDetailModal({
   const [showTrailer, setShowTrailer] = useState(false);
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [activeAlerts, setActiveAlerts] = useState({});
+  const [localScore, setLocalScore] = useState(null);
 
   useEffect(() => {
     if (animeId) {
       document.body.style.overflow = 'hidden';
+      setLocalScore(null);
       loadDetail(animeId);
       loadAlerts();
     } else {
@@ -56,6 +58,7 @@ export default function AnimeDetailModal({
 
   const currentEntry = (watchlist || []).find(item => (item.anime_id == animeId || item.id == animeId));
   const isAlertActive = !!activeAlerts[animeId];
+  const effectiveScore = localScore !== null ? localScore : (currentEntry?.score || 0);
 
   const getTitle = () => {
     if (!detail?.title) return 'Anime Details';
@@ -65,7 +68,8 @@ export default function AnimeDetailModal({
   };
 
   const handleRatingChange = async (rating) => {
-    const newRating = currentEntry?.score === rating ? 0 : rating;
+    const newRating = effectiveScore === rating ? 0 : rating;
+    setLocalScore(newRating);
     await updateWatchlistRating(animeId, newRating);
   };
 
@@ -203,18 +207,18 @@ export default function AnimeDetailModal({
                           key={star}
                           onClick={() => handleRatingChange(star)}
                           className={`p-1.5 transition-transform hover:scale-125 active:scale-95 ${
-                            (currentEntry.score || 0) >= star
+                            effectiveScore >= star
                               ? 'text-amber-500'
                               : 'text-stone-300 hover:text-amber-300'
                           }`}
                           title={`Rate ${star / 2}/5 (${star}/10)`}
                         >
-                          <Star className={`w-5 h-5 ${(currentEntry.score || 0) >= star ? 'fill-current' : ''}`} />
+                          <Star className={`w-5 h-5 ${effectiveScore >= star ? 'fill-current' : ''}`} />
                         </button>
                       ))}
-                      {currentEntry.score > 0 && (
+                      {effectiveScore > 0 && (
                         <span className="font-mono text-xs font-black text-amber-600 ml-1.5">
-                          {currentEntry.score}/10
+                          {effectiveScore}/10
                         </span>
                       )}
                     </div>

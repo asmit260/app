@@ -49,7 +49,6 @@ class LocalStorageMockDb {
   saveDb(db) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
-      window.dispatchEvent(new CustomEvent('anitrack-db-changed'));
     } catch (e) {
       console.error("saveDb storage error:", e);
     }
