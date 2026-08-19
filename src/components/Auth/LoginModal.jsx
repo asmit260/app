@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Eye, EyeOff, Mail, Lock, UserPlus, LogIn } from 'lucide-react';
 import { signIn, signUp, signInWithGoogle } from '../../services/auth';
 
@@ -10,6 +11,19 @@ export default function LoginModal({ isOpen, onClose, onAuthSuccess }) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+      setError('');
+      setLoading(false);
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -52,13 +66,14 @@ export default function LoginModal({ isOpen, onClose, onAuthSuccess }) {
     }
   };
 
-  return (
+  const modalContent = (
     <div 
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in"
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh' }}
       onClick={onClose}
     >
       <div 
-        className="relative max-w-sm w-full bg-sand-50/95 dark:bg-sand-100/95 backdrop-blur-2xl p-7 rounded-lg border-2 border-stone-900 shadow-manga-lg overflow-hidden"
+        className="relative max-w-sm w-full bg-sand-50/95 dark:bg-sand-100/95 backdrop-blur-2xl p-7 rounded-lg border-2 border-stone-900 shadow-manga-lg overflow-hidden max-h-[90vh] overflow-y-auto hide-scrollbar"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Ambient background blobs */}
@@ -225,4 +240,7 @@ export default function LoginModal({ isOpen, onClose, onAuthSuccess }) {
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }
+

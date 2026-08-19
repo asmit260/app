@@ -2,13 +2,16 @@
 import { supabase } from './supabase.js';
 import { getUser } from './auth.js';
 
-// Safe dynamic loader for Capacitor plugin
+// Safe dynamic loader for Capacitor plugin with timeout
 async function getLocalNotifications() {
   try {
-    const mod = await import('@capacitor/local-notifications');
-    return mod.LocalNotifications;
+    const mod = await Promise.race([
+      import('@capacitor/local-notifications'),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('import timeout')), 2500))
+    ]);
+    return mod?.LocalNotifications || null;
   } catch (err) {
-    console.warn("Capacitor LocalNotifications not available:", err);
+    console.warn("Capacitor LocalNotifications not available or timed out:", err);
     return null;
   }
 }
@@ -30,61 +33,65 @@ function foldLines(icsText) {
 }
 
 export function openPhoneCalendar({ title, startUnix, durationMinutes = 25, episode, leadMinutes = 15 }) {
-  const safeTitle = episode ? `${title} (Ep ${episode})` : (title || 'Anime Airing');
-  const safeUnix = startUnix || Math.floor(Date.now() / 1000);
-  const description = `AniTrack Airing Reminder for ${safeTitle}`;
-  
-  const start = new Date(safeUnix * 1000).toISOString().replace(/[-:\.]/g, '').slice(0, 15) + 'Z';
-  const end = new Date((safeUnix + durationMinutes * 60) * 1000).toISOString().replace(/[-:\.]/g, '').slice(0, 15) + 'Z';
-  
-  const cleanTitle = encodeURIComponent(safeTitle);
-  const cleanDesc = encodeURIComponent(description);
+  try {
+    const safeTitle = episode ? `${title} (Ep ${episode})` : (title || 'Anime Airing');
+    const safeUnix = startUnix || Math.floor(Date.now() / 1000);
+    const description = `AniTrack Airing Reminder for ${safeTitle}`;
+    
+    const start = new Date(safeUnix * 1000).toISOString().replace(/[-:\.]/g, '').slice(0, 15) + 'Z';
+    const end = new Date((safeUnix + durationMinutes * 60) * 1000).toISOString().replace(/[-:\.]/g, '').slice(0, 15) + 'Z';
+    
+    const cleanTitle = encodeURIComponent(safeTitle);
+    const cleanDesc = encodeURIComponent(description);
 
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  const isAndroid = /Android/.test(navigator.userAgent);
+    const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isAndroid = typeof navigator !== 'undefined' && /Android/.test(navigator.userAgent);
 
-  if (isAndroid) {
-    const fallbackUrl = encodeURIComponent(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${cleanTitle}&dates=${start}/${end}&details=${cleanDesc}`);
-    const intentUrl = `intent://#Intent;action=android.intent.action.INSERT;type=vnd.android.cursor.item/event;S.title=${cleanTitle};S.description=${cleanDesc};l.beginTime=${safeUnix * 1000};l.endTime=${(safeUnix + durationMinutes * 60) * 1000};S.browser_fallback_url=${fallbackUrl};end`;
-    window.location.href = intentUrl;
-    return;
+    if (isAndroid) {
+      const fallbackUrl = encodeURIComponent(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${cleanTitle}&dates=${start}/${end}&details=${cleanDesc}`);
+      const intentUrl = `intent://#Intent;action=android.intent.action.INSERT;type=vnd.android.cursor.item/event;S.title=${cleanTitle};S.description=${cleanDesc};l.beginTime=${safeUnix * 1000};l.endTime=${(safeUnix + durationMinutes * 60) * 1000};S.browser_fallback_url=${fallbackUrl};end`;
+      window.location.href = intentUrl;
+      return;
+    }
+
+    if (isIOS) {
+      const dtstamp = new Date().toISOString().replace(/[-:\.]/g, '').slice(0, 15) + 'Z';
+      const escapeIcs = (str) => (str || '').replace(/[\\,;]/g, '\\$&').replace(/\r?\n/g, '\\n');
+      const icsTitle = escapeIcs(safeTitle);
+      const icsDesc = escapeIcs(description);
+      const uid = `anitrack-${safeUnix}-${(title || 'anime').replace(/[^a-zA-Z0-9]/g, '-').slice(0, 30)}@anitrack.com`;
+
+      const ics = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//AniTrack//Anime Calendar 1.0//EN',
+        'CALSCALE:GREGORIAN',
+        'METHOD:PUBLISH',
+        'BEGIN:VEVENT',
+        `UID:${uid}`,
+        `DTSTAMP:${dtstamp}`,
+        `SUMMARY:${icsTitle}`,
+        `DTSTART:${start}`,
+        `DTEND:${end}`,
+        `DESCRIPTION:${icsDesc}`,
+        'BEGIN:VALARM',
+        'ACTION:DISPLAY',
+        `TRIGGER:-PT${leadMinutes}M`,
+        `DESCRIPTION:Reminder: ${icsTitle}`,
+        'END:VALARM',
+        'END:VEVENT',
+        'END:VCALENDAR'
+      ].join('\r\n');
+
+      window.location.href = `data:text/calendar;charset=utf8,${encodeURIComponent(foldLines(ics))}`;
+      return;
+    }
+
+    const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${cleanTitle}&dates=${start}/${end}&details=${cleanDesc}`;
+    window.open(gcalUrl, '_blank');
+  } catch (err) {
+    console.error("openPhoneCalendar error:", err);
   }
-
-  if (isIOS) {
-    const dtstamp = new Date().toISOString().replace(/[-:\.]/g, '').slice(0, 15) + 'Z';
-    const escapeIcs = (str) => (str || '').replace(/[\\,;]/g, '\\$&').replace(/\r?\n/g, '\\n');
-    const icsTitle = escapeIcs(safeTitle);
-    const icsDesc = escapeIcs(description);
-    const uid = `anitrack-${safeUnix}-${(title || 'anime').replace(/[^a-zA-Z0-9]/g, '-').slice(0, 30)}@anitrack.com`;
-
-    const ics = [
-      'BEGIN:VCALENDAR',
-      'VERSION:2.0',
-      'PRODID:-//AniTrack//Anime Calendar 1.0//EN',
-      'CALSCALE:GREGORIAN',
-      'METHOD:PUBLISH',
-      'BEGIN:VEVENT',
-      `UID:${uid}`,
-      `DTSTAMP:${dtstamp}`,
-      `SUMMARY:${icsTitle}`,
-      `DTSTART:${start}`,
-      `DTEND:${end}`,
-      `DESCRIPTION:${icsDesc}`,
-      'BEGIN:VALARM',
-      'ACTION:DISPLAY',
-      `TRIGGER:-PT${leadMinutes}M`,
-      `DESCRIPTION:Reminder: ${icsTitle}`,
-      'END:VALARM',
-      'END:VEVENT',
-      'END:VCALENDAR'
-    ].join('\r\n');
-
-    window.location.href = `data:text/calendar;charset=utf8,${encodeURIComponent(foldLines(ics))}`;
-    return;
-  }
-
-  const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${cleanTitle}&dates=${start}/${end}&details=${cleanDesc}`;
-  window.open(gcalUrl, '_blank');
 }
 
 // ─── Native Local Notifications ─────────────────────────────────
@@ -93,17 +100,39 @@ export async function requestNotificationPermission() {
   try {
     const ln = await getLocalNotifications();
     if (ln) {
-      const status = await ln.requestPermissions();
-      if (status.display === 'granted') {
-        return 'granted';
-      }
-    }
-  } catch (_) {}
+      try {
+        const check = await Promise.race([
+          ln.checkPermissions(),
+          new Promise(res => setTimeout(() => res({ display: 'granted' }), 1000))
+        ]);
+        if (check?.display === 'granted') {
+          return 'granted';
+        }
+      } catch (_) {}
 
-  if ('Notification' in window) {
+      const status = await Promise.race([
+        ln.requestPermissions(),
+        new Promise(res => setTimeout(() => res({ display: 'granted' }), 2500))
+      ]);
+      if (status?.display === 'denied') {
+        return 'denied';
+      }
+      return 'granted';
+    }
+  } catch (err) {
+    console.warn("Permission request error:", err);
+  }
+
+  // Desktop browser fallback ONLY (never in Capacitor WebView)
+  if (typeof window !== 'undefined' && !window.Capacitor?.isNativePlatform?.() && 'Notification' in window) {
     try {
-      const permission = await Notification.requestPermission();
-      return permission;
+      if (Notification.permission === 'granted') return 'granted';
+      if (Notification.permission === 'denied') return 'denied';
+      const webPerm = await Promise.race([
+        Notification.requestPermission(),
+        new Promise(res => setTimeout(() => res('granted'), 1500))
+      ]);
+      return webPerm || 'granted';
     } catch (_) {}
   }
 
@@ -111,118 +140,155 @@ export async function requestNotificationPermission() {
 }
 
 export async function scheduleDeviceNotification({ animeId, title, episode, airingAt, leadMinutes = 15 }) {
-  const notifyTimeMs = (airingAt * 1000) - (leadMinutes * 60 * 1000);
-  const nowMs = Date.now();
-  const scheduleDate = notifyTimeMs > nowMs ? new Date(notifyTimeMs) : new Date(nowMs + 1000);
-
-  const episodeText = episode ? `Episode ${episode}` : 'New Episode';
-  const leadText = leadMinutes > 0 ? `airs in ${leadMinutes} minutes!` : 'is airing right now!';
-  const notificationId = Math.abs(parseInt(animeId) || Math.floor(Math.random() * 100000));
-
-  // 1. Try Native Capacitor LocalNotifications
   try {
+    const notifyTimeMs = (airingAt * 1000) - (leadMinutes * 60 * 1000);
+    const nowMs = Date.now();
+    const scheduleDate = notifyTimeMs > nowMs + 2000 ? new Date(notifyTimeMs) : new Date(nowMs + 4000);
+
+    const episodeText = episode ? `Episode ${episode}` : 'New Episode';
+    const leadText = leadMinutes > 0 ? `airs in ${leadMinutes} minutes!` : 'is airing right now!';
+    
+    // Ensure safe positive 32-bit int notification ID for Android
+    const numericId = parseInt(animeId, 10);
+    const notificationId = (!isNaN(numericId) ? Math.abs(numericId) : Math.floor(Math.random() * 1000000)) % 2147483647;
+
+    // 1. Native Capacitor LocalNotifications
     const ln = await getLocalNotifications();
     if (ln) {
-      await ln.schedule({
-        notifications: [
-          {
-            id: notificationId,
-            title: `⚔️ Airing Alert: ${title}`,
-            body: `${episodeText} ${leadText}`,
-            schedule: { 
-              at: scheduleDate,
-              allowWhileIdle: true 
-            },
-            extra: { animeId, episode }
-          }
-        ]
-      });
-      return true;
+      try {
+        await Promise.race([
+          ln.schedule({
+            notifications: [
+              {
+                id: notificationId,
+                title: `⚔️ Airing Alert: ${title}`,
+                body: `${episodeText} ${leadText}`,
+                schedule: { 
+                  at: scheduleDate,
+                  allowWhileIdle: true 
+                },
+                extra: { animeId, episode }
+              }
+            ]
+          }),
+          new Promise(res => setTimeout(res, 2000))
+        ]);
+        return true;
+      } catch (nativeErr) {
+        console.warn("Native LocalNotifications schedule error:", nativeErr);
+      }
     }
-  } catch (nativeErr) {
-    console.warn("Native LocalNotifications error, falling back to Web API:", nativeErr);
-  }
 
-  // 2. Fallback for browser
-  if ('Notification' in window && Notification.permission === 'granted') {
-    const delayMs = notifyTimeMs - nowMs;
-    if (delayMs <= 0) {
-      new Notification(`⚔️ Airing Alert: ${title}`, {
-        body: `${episodeText} ${leadText}`
-      });
-    } else if (delayMs < 2147483647) {
-      setTimeout(() => {
-        new Notification(`⚔️ Airing Alert: ${title}`, {
-          body: `${episodeText} ${leadText}`
-        });
-      }, delayMs);
+    // 2. Safe Desktop browser fallback (skipped in Capacitor)
+    if (typeof window !== 'undefined' && !window.Capacitor?.isNativePlatform?.() && 'Notification' in window && Notification.permission === 'granted') {
+      try {
+        const delayMs = notifyTimeMs - nowMs;
+        if (delayMs <= 0) {
+          try {
+            new Notification(`⚔️ Airing Alert: ${title}`, {
+              body: `${episodeText} ${leadText}`
+            });
+          } catch (_) {}
+        } else if (delayMs < 2147483647) {
+          setTimeout(() => {
+            try {
+              new Notification(`⚔️ Airing Alert: ${title}`, {
+                body: `${episodeText} ${leadText}`
+              });
+            } catch (_) {}
+          }, delayMs);
+        }
+      } catch (_) {}
     }
+  } catch (err) {
+    console.error("scheduleDeviceNotification unexpected error:", err);
   }
 
   return true;
 }
 
 export async function cancelDeviceNotification(animeId) {
-  const notificationId = Math.abs(parseInt(animeId) || 0);
   try {
+    const numericId = parseInt(animeId, 10);
+    const notificationId = (!isNaN(numericId) ? Math.abs(numericId) : 0) % 2147483647;
     const ln = await getLocalNotifications();
     if (ln) {
-      await ln.cancel({
-        notifications: [{ id: notificationId }]
-      });
+      await Promise.race([
+        ln.cancel({
+          notifications: [{ id: notificationId }]
+        }),
+        new Promise(res => setTimeout(res, 1500))
+      ]);
     }
-  } catch (_) {}
+  } catch (err) {
+    console.warn("Cancel notification error:", err);
+  }
 }
 
 // ─── Persistent Alert CRUD in Supabase Mock DB ──────────────────
 
 export async function getActiveAnimeAlerts() {
-  const user = await getUser() || { id: 'local_user' };
-  const { data } = await supabase
-    .from('calendar_events')
-    .select('*')
-    .eq('user_id', user.id);
-  
-  const alertsMap = {};
-  (data || []).forEach(item => {
-    if (item.anime_id) {
-      alertsMap[item.anime_id] = item;
-    }
-  });
-  return alertsMap;
+  try {
+    const user = await getUser() || { id: 'local_user' };
+    const { data } = await supabase
+      .from('calendar_events')
+      .select('*')
+      .eq('user_id', user.id);
+    
+    const alertsMap = {};
+    (data || []).forEach(item => {
+      if (item.anime_id) {
+        alertsMap[item.anime_id] = item;
+      }
+    });
+    return alertsMap;
+  } catch (e) {
+    console.error("getActiveAnimeAlerts error:", e);
+    return {};
+  }
 }
 
 export async function saveAnimeAlert({ animeId, title, cover, airingAt, episode, leadMinutes = 15 }) {
-  const user = await getUser() || { id: 'local_user' };
-  const id = `${user.id}_alert_${animeId}`;
+  try {
+    const user = await getUser() || { id: 'local_user' };
+    const id = `${user.id}_alert_${animeId}`;
 
-  const payload = {
-    id,
-    user_id: user.id,
-    anime_id: parseInt(animeId),
-    title,
-    cover,
-    airing_at: airingAt,
-    episode,
-    lead_minutes: leadMinutes,
-    created_at: new Date().toISOString()
-  };
+    const payload = {
+      id,
+      user_id: user.id,
+      anime_id: parseInt(animeId, 10) || animeId,
+      title,
+      cover,
+      airing_at: airingAt,
+      episode,
+      lead_minutes: leadMinutes,
+      created_at: new Date().toISOString()
+    };
 
-  await supabase.from('calendar_events').upsert(payload);
-  window.dispatchEvent(new CustomEvent('anitrack-alerts-changed'));
-  return payload;
+    await supabase.from('calendar_events').upsert(payload);
+    window.dispatchEvent(new CustomEvent('anitrack-alerts-changed'));
+    return payload;
+  } catch (e) {
+    console.error("saveAnimeAlert error:", e);
+    return null;
+  }
 }
 
 export async function removeAnimeAlert(animeId) {
-  const user = await getUser() || { id: 'local_user' };
-  
-  await cancelDeviceNotification(animeId);
+  try {
+    const user = await getUser() || { id: 'local_user' };
+    
+    await cancelDeviceNotification(animeId);
 
-  await supabase
-    .from('calendar_events')
-    .delete()
-    .eq('user_id', user.id)
-    .eq('anime_id', parseInt(animeId));
-  
-  window.dispatchEvent(new CustomEvent('anitrack-alerts-changed'));
+    await supabase
+      .from('calendar_events')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('anime_id', parseInt(animeId, 10) || animeId);
+    
+    window.dispatchEvent(new CustomEvent('anitrack-alerts-changed'));
+  } catch (e) {
+    console.error("removeAnimeAlert error:", e);
+  }
 }
+

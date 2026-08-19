@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Play, Plus, Minus, Check, Star, Calendar, Clock, Film, ExternalLink, Bookmark, Bell } from 'lucide-react';
 import { anilistQuery, ANIME_DETAIL_QUERY } from '../../services/anilist';
 import { getActiveAnimeAlerts } from '../../services/notifications';
@@ -21,9 +22,15 @@ export default function AnimeDetailModal({
 
   useEffect(() => {
     if (animeId) {
+      document.body.style.overflow = 'hidden';
       loadDetail(animeId);
       loadAlerts();
+    } else {
+      document.body.style.overflow = '';
     }
+    return () => {
+      document.body.style.overflow = '';
+    };
   }, [animeId]);
 
   const loadAlerts = async () => {
@@ -64,9 +71,10 @@ export default function AnimeDetailModal({
 
   if (!animeId) return null;
 
-  return (
+  const modalContent = (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-[9990] flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-sm animate-fade-in"
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh' }}
       onClick={onClose}
     >
       
@@ -324,4 +332,7 @@ export default function AnimeDetailModal({
       )}
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }
+
