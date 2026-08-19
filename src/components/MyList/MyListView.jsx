@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Search, Download, Film, LayoutGrid, List } from 'lucide-react';
+import { Plus, Trash2, Search, Download, Film, LayoutGrid, List, Sparkles } from 'lucide-react';
 import AnimeCard from '../Common/AnimeCard';
+import AddAnimeModal from './AddAnimeModal';
 
 const STATUS_CONFIG = [
   { id: 'all', label: 'All', color: 'bg-stone-900 text-sand-50' },
@@ -23,6 +24,7 @@ export default function MyListView({
   const [filterQuery, setFilterQuery] = useState('');
   const [sortBy, setSortBy] = useState('updated_at'); // 'updated_at' | 'title' | 'score'
   const [viewMode, setViewMode] = useState('grid');
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const filteredList = (watchlist || []).filter(item => {
     const matchesStatus = activeStatus === 'all' || item.status === activeStatus;
@@ -62,6 +64,16 @@ export default function MyListView({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Direct Add Anime Button */}
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="btn-manga bg-amber-400 hover:bg-amber-300 text-ink-900 text-xs px-3 py-1.5 flex items-center gap-1.5 font-black shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5"
+              title="Search and Add Anime to Watchlist"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>Add Anime</span>
+            </button>
+
             {/* View Mode Toggle */}
             <div className="flex items-center gap-1 bg-sand-200 dark:bg-sand-300 p-1 rounded-md border-2 border-stone-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)]">
               <button
@@ -151,10 +163,19 @@ export default function MyListView({
 
       {/* List / Grid Display */}
       {filteredList.length === 0 ? (
-        <div className="card-manga-panel p-8 text-center bg-sand-50 dark:bg-sand-200">
-          <Film className="w-10 h-10 text-stone-400 mx-auto mb-2" />
-          <p className="font-display font-bold text-base text-ink-900">No anime in this list</p>
-          <p className="text-xs text-stone-500 font-sans mt-1">Browse the Schedule tab to discover and add anime.</p>
+        <div className="card-manga-panel p-8 text-center bg-sand-50 dark:bg-sand-200 space-y-3">
+          <Film className="w-10 h-10 text-stone-400 mx-auto" />
+          <div>
+            <p className="font-display font-bold text-base text-ink-900">No anime in this list</p>
+            <p className="text-xs text-stone-500 font-sans mt-0.5">Search and add any anime or discover shows in Schedule.</p>
+          </div>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="btn-manga bg-amber-400 text-ink-900 px-4 py-2 text-xs font-black inline-flex items-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)]"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            <span>Search & Add Anime</span>
+          </button>
         </div>
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-5">
@@ -267,6 +288,17 @@ export default function MyListView({
         </div>
       )}
 
+      {/* Add Anime Search Modal */}
+      <AddAnimeModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        watchlist={watchlist}
+        onUpdateStatus={onUpdateStatus}
+        onSelectAnime={onSelectAnime}
+        titleLanguage={titleLanguage}
+      />
+
     </div>
   );
 }
+
