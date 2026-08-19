@@ -24,11 +24,27 @@ export default function App() {
   const [watchlist, setWatchlist] = useState([]);
   const [history, setHistory] = useState([]);
   const [profile, setProfile] = useState({ username: 'Scout Trainee', titleLanguage: 'english', theme: 'light' });
-  const [darkMode, setDarkMode] = useState(false);
+  // Default to light theme unless explicitly saved as 'dark'
+  const [darkMode, setDarkMode] = useState(() => {
+    try {
+      return localStorage.getItem('anitrack_theme') === 'dark';
+    } catch (_) {
+      return false;
+    }
+  });
   const [selectedAnimeId, setSelectedAnimeId] = useState(null);
   const [toast, setToast] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [showLogin, setShowLogin] = useState(false);
+
+  // Sync DOM with darkMode state on mount and change
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
 
   // Load all data (watchlist, history, profile)
   const loadAllData = useCallback(async () => {
@@ -46,10 +62,17 @@ export default function App() {
       setHistory(hist || []);
       if (userProfile) setProfile(userProfile);
       
-      const isDark = userProfile?.theme === 'dark' || window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setDarkMode(isDark);
-      if (isDark) document.documentElement.classList.add('dark');
-      else document.documentElement.classList.remove('dark');
+      // Determine theme strictly from user preference (default: light)
+      // Never force dark based on OS matchMedia
+      const storedTheme = localStorage.getItem('anitrack_theme');
+      if (storedTheme) {
+        const isDark = storedTheme === 'dark';
+        setDarkMode(isDark);
+      } else if (userProfile?.theme) {
+        const isDark = userProfile.theme === 'dark';
+        setDarkMode(isDark);
+        try { localStorage.setItem('anitrack_theme', userProfile.theme); } catch (_) {}
+      }
     } catch (err) {
       console.error("Failed to load app data:", err);
     }
@@ -91,11 +114,23 @@ export default function App() {
     setTimeout(() => setToast(null), 2500);
   };
 
-  const handleToggleTheme = () => {
+  const handleToggleTheme = async () => {
     const nextDark = !darkMode;
     setDarkMode(nextDark);
-    if (nextDark) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
+    const themeName = nextDark ? 'dark' : 'light';
+    try {
+      localStorage.setItem('anitrack_theme', themeName);
+    } catch (_) {}
+    
+    // Save to user profile settings
+    try {
+      const updatedProfile = {
+        ...profile,
+        theme: themeName
+      };
+      setProfile(updatedProfile);
+      await saveProfileSettings(updatedProfile);
+    } catch (_) {}
   };
 
   const handleAuthSuccess = async () => {

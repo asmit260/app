@@ -24,6 +24,7 @@ export default function ProfileView({
 
   // Auto-save whenever username or titleLang changes (debounced)
   React.useEffect(() => {
+    if (username === profile.username && titleLang === profile.titleLanguage) return;
     const timer = setTimeout(async () => {
       const updated = {
         ...profile,
@@ -38,17 +39,6 @@ export default function ProfileView({
     }, 600);
     return () => clearTimeout(timer);
   }, [username, titleLang]);
-
-  // Also save theme changes immediately
-  React.useEffect(() => {
-    const updated = {
-      ...profile,
-      username,
-      titleLanguage: titleLang,
-      theme: darkMode ? 'dark' : 'light'
-    };
-    saveProfileSettings(updated);
-  }, [darkMode]);
 
   const handleExport = async () => {
     await exportWatchlistJSON();
