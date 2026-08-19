@@ -7,7 +7,11 @@ export default function UpdateModal({ updateInfo, onClose }) {
 
   const handleInstall = () => {
     if (updateInfo.downloadUrl) {
-      window.open(updateInfo.downloadUrl, '_system');
+      try {
+        window.open(updateInfo.downloadUrl, '_system');
+      } catch (_) {
+        window.location.href = updateInfo.downloadUrl;
+      }
     }
     onClose();
   };

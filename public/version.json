@@ -1,0 +1,7 @@
+{
+  "version": "1.0.1",
+  "name": "AniTrack v1.0.1 - Mobile Design & Watchlist Upgrade",
+  "releaseNotes": "• New Quick Search & Add Anime with tracking status in Watchlist\n• Elevated Mobile UI/UX with smooth bottom sheet and episode stepper\n• High-contrast manga styling & airing alarms\n• Blazing fast performance & auto-updates",
+  "apkUrl": "https://github.com/asmit260/app/releases/latest/download/app-debug.apk",
+  "publishedAt": "2026-08-19"
+}
