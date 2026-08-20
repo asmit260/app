@@ -237,7 +237,7 @@ export default function App() {
       />
 
       {/* Main Screen Content View */}
-      <main className="flex-grow max-w-5xl w-full mx-auto p-3 sm:p-6">
+      <main className="flex-grow max-w-5xl w-full mx-auto p-3 sm:p-6 pb-24 sm:pb-28">
         <div key={activeTab} className="animate-fade-in">
         {activeTab === 'schedule' && (
           <ScheduleView

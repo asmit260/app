@@ -4,7 +4,9 @@ const memoryCache = new Map();
 const CACHE_TTL_MS = 1000 * 60 * 15; // 15 mins
 
 export async function anilistQuery(query, variables = {}) {
-  const cacheKey = 'anilist_' + btoa(unescape(encodeURIComponent(query.slice(0, 40) + JSON.stringify(variables)))).slice(0, 40);
+  // Generate a distinct, collision-free cache key including all variable parameters
+  const qName = (query.match(/(?:query|mutation)\s+(\w+)/) || [])[1] || 'query';
+  const cacheKey = `anitrack_v2_${qName}_${JSON.stringify(variables)}`;
 
   // 1. Check in-memory cache
   const mem = memoryCache.get(cacheKey);
@@ -41,6 +43,21 @@ export async function anilistQuery(query, variables = {}) {
     clearTimeout(timeoutId);
 
     if (!response.ok) {
+      if (response.status === 429) {
+        // Rate limited: wait 800ms and try once more
+        await new Promise(r => setTimeout(r, 800));
+        const retryRes = await fetch(ANILIST_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ query, variables })
+        });
+        if (retryRes.ok) {
+          const { data } = await retryRes.json();
+          const entry = { data, timestamp: Date.now() };
+          memoryCache.set(cacheKey, entry);
+          return data;
+        }
+      }
       throw new Error(`AniList API returned ${response.status}`);
     }
 
@@ -57,6 +74,7 @@ export async function anilistQuery(query, variables = {}) {
       const fallback = sessionStorage.getItem(cacheKey);
       if (fallback) return JSON.parse(fallback).data;
     } catch (_) {}
+    console.warn("AniList network request failed:", err);
     throw err;
   }
 }

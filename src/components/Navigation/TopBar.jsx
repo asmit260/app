@@ -26,6 +26,7 @@ export default function TopBar({
   const titles = {
     schedule: 'Airing Schedule',
     mylist: 'My Watchlist',
+    explore: 'Explore & Discover',
     stats: 'Anime Analytics',
     profile: 'Profile & Settings'
   };
@@ -37,7 +38,7 @@ export default function TopBar({
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-sand-100/90 dark:bg-sand-100/90 backdrop-blur-md border-b-2 border-stone-900 px-4 py-3 transition-colors duration-200">
+    <header className="sticky top-0 z-30 bg-sand-100/90 dark:bg-sand-100/90 backdrop-blur-md border-b-2 border-stone-900 px-4 pt-[max(env(safe-area-inset-top,0px),12px)] pb-3 transition-colors duration-200">
       <div className="max-w-5xl mx-auto flex items-center justify-between">
         
         {/* Brand Sticker */}

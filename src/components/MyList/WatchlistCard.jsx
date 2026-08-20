@@ -22,6 +22,7 @@ export default function WatchlistCard({
   titleLanguage = 'english'
 }) {
   const [isBouncing, setIsBouncing] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   const animeId = item.anime_id || item.id;
   const cover = item.anime_cover || item.anime_cover_image || item.coverImage || '';
@@ -63,16 +64,17 @@ export default function WatchlistCard({
       >
         {/* Left: 3:4 Crisp Poster Cover */}
         <div className="relative w-[78px] sm:w-[92px] h-[108px] sm:h-[120px] shrink-0 rounded overflow-hidden border-2 border-stone-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] bg-sand-200 dark:bg-sand-300">
-          {cover ? (
+          {!imgError && cover ? (
             <img 
               src={cover} 
               alt={item.anime_title} 
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               loading="lazy"
+              onError={() => setImgError(true)}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-stone-400">
-              <Film className="w-6 h-6" />
+            <div className="w-full h-full bg-gradient-to-br from-sand-300 via-sand-200 to-amber-100 flex items-center justify-center p-2 text-stone-500">
+              <span className="font-display font-black text-[10px] text-center line-clamp-3 leading-tight">{item.anime_title}</span>
             </div>
           )}
 

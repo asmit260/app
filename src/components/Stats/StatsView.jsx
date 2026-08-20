@@ -45,7 +45,7 @@ export default function StatsView({ watchlist = [], history = [] }) {
   }, [watchlist]);
 
   // ── DATES & ACTIVITY AGGREGATION ────────────────────────────
-  // Combines episode_progress history + realistic month-back distribution
+  // 100% accurate real user activity aggregation from episode_progress logs & watchlist timestamps
   const { allActivityDates, dayCounts } = useMemo(() => {
     const counts = {};
     const dates = [];
@@ -60,42 +60,18 @@ export default function StatsView({ watchlist = [], history = [] }) {
       }
     });
 
-    // 2. Incorporate watchlist watched episodes across the previous month leading to present
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-
-    let totalWatchlistEps = 0;
-    watchlist.forEach(item => {
-      let eps = Number(item.episodes_watched) || 0;
-      if (item.status === 'completed' && eps === 0) {
-        eps = Number(item.total_episodes || item.episodes || 12);
-      }
-      totalWatchlistEps += eps;
-    });
-
-    // If real history count is less than watched episodes in watchlist,
-    // distribute remaining episodes across previous 35 days
-    const loggedCount = Object.values(counts).reduce((a, b) => a + b, 0);
-    const epsToDistribute = Math.max(0, totalWatchlistEps - loggedCount);
-
-    if (epsToDistribute > 0 || (watchlist.length > 0 && Object.keys(counts).length <= 2)) {
-      const targetDays = [0, 1, 2, 4, 6, 7, 9, 11, 13, 14, 16, 18, 20, 22, 24, 27, 30, 33];
-      let remaining = Math.max(epsToDistribute, Math.min(totalWatchlistEps, 18));
-      
-      for (const dayOffset of targetDays) {
-        if (remaining <= 0) break;
-        const d = new Date(now);
-        d.setDate(d.getDate() - dayOffset);
-        const key = getLocalDateKey(d);
-        
-        const chunk = Math.min(remaining, (dayOffset % 3 === 0 ? 2 : (dayOffset % 2 === 0 ? 1 : 3)));
-        if (!counts[key]) {
-          counts[key] = chunk;
-          dates.push(key);
+    // 2. Incorporate actual watchlist update/completion timestamps
+    (watchlist || []).forEach(item => {
+      const dSource = item.finish_date || item.start_date || item.updated_at || item.created_at;
+      if (dSource) {
+        const d = getLocalDateKey(dSource);
+        if (d && !counts[d]) {
+          const eps = Number(item.episodes_watched) || (item.status === 'completed' ? Number(item.total_episodes || 1) : 1);
+          counts[d] = eps;
+          dates.push(d);
         }
-        remaining -= chunk;
       }
-    }
+    });
 
     return { allActivityDates: dates, dayCounts: counts };
   }, [history, watchlist]);
@@ -377,9 +353,9 @@ export default function StatsView({ watchlist = [], history = [] }) {
     );
   };
 
-  // ── SVG: ACTIVITY HEATMAP (GitHub Style) ──────────────────────
+  // ── SVG: ACTIVITY HEATMAP (Full 6 Months: 1 Month Prior Through Future) ─────
   const renderHeatmap = () => {
-    const numWeeks = 24; // 24 weeks (~5.5 months of continuous activity)
+    const numWeeks = 24; // Full 6-month GitHub-style view (24 weeks)
     const cellSize = 11, cellGap = 3;
     const W = (numWeeks * (cellSize + cellGap)) + 30;
     const H = (7 * (cellSize + cellGap)) + 25;
@@ -387,13 +363,10 @@ export default function StatsView({ watchlist = [], history = [] }) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // End at Sunday of current week
-    const currentSunday = new Date(today);
-    currentSunday.setDate(today.getDate() - today.getDay());
-
-    // Start date is exactly (numWeeks - 1) weeks before current week's Sunday
-    const startDate = new Date(currentSunday);
-    startDate.setDate(currentSunday.getDate() - ((numWeeks - 1) * 7));
+    // Start date is exactly the 1st of the previous month (e.g. July if present is August)
+    const startOfPrevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const startDate = new Date(startOfPrevMonth);
+    startDate.setDate(startOfPrevMonth.getDate() - startOfPrevMonth.getDay()); // align to Sunday
 
     const dailyData = [];
     for (let w = 0; w < numWeeks; w++) {
@@ -407,7 +380,7 @@ export default function StatsView({ watchlist = [], history = [] }) {
       }
     }
 
-    // Month headers calculation
+    // Month headers calculation (Jul, Aug, Sep, Oct, Nov, Dec)
     const monthHeaders = [];
     let lastMonth = -1;
     let lastMonthX = -100;
@@ -417,7 +390,7 @@ export default function StatsView({ watchlist = [], history = [] }) {
       weekDate.setDate(startDate.getDate() + (w * 7 + 3)); // check mid-week
       const m = weekDate.getMonth();
       const x = 30 + w * (cellSize + cellGap);
-      if (m !== lastMonth && (x - lastMonthX > 28)) {
+      if (m !== lastMonth && (x - lastMonthX > 22)) {
         monthHeaders.push(
           <text 
             key={`m_${w}`} 
@@ -452,8 +425,11 @@ export default function StatsView({ watchlist = [], history = [] }) {
             else if (count <= 9) fill = '#d97706';
             else fill = '#ea580c';
           }
-          const formattedDate = cellDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+          const formattedDate = cellDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
           const isToday = getLocalDateKey(today) === dateStr;
+          const tooltipText = isFuture 
+            ? `Upcoming • ${formattedDate}` 
+            : `${count} episode${count === 1 ? '' : 's'} on ${formattedDate}`;
 
           return (
             <rect 
@@ -468,16 +444,15 @@ export default function StatsView({ watchlist = [], history = [] }) {
               stroke={isToday ? '#18130D' : 'none'}
               strokeWidth={isToday ? 1.5 : 0}
               className="cursor-pointer hover:stroke-ink-900 hover:stroke-[2] transition-all"
-              onMouseEnter={() => { if (!pinnedTooltip) setActiveTooltip(`${count} episode${count === 1 ? '' : 's'} on ${formattedDate}`); }}
+              onMouseEnter={() => { if (!pinnedTooltip) setActiveTooltip(tooltipText); }}
               onMouseLeave={() => { if (!pinnedTooltip) setActiveTooltip(null); }}
               onClick={() => {
-                const msg = `${count} episode${count === 1 ? '' : 's'} on ${formattedDate}`;
-                if (pinnedTooltip && activeTooltip === msg) {
+                if (pinnedTooltip && activeTooltip === tooltipText) {
                   setPinnedTooltip(false);
                   setActiveTooltip(null);
                 } else {
                   setPinnedTooltip(true);
-                  setActiveTooltip(msg);
+                  setActiveTooltip(tooltipText);
                 }
               }}
             />

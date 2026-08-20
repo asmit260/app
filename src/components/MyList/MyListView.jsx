@@ -49,23 +49,32 @@ export default function MyListView({
   // Normalize string for fuzzy search
   const cleanStr = (str) => (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
-  // Filtered & Sorted Watchlist Items
+  // Filtered & Sorted Watchlist Items (Instant 0ms search across ALL tabs when typing)
   const filteredList = useMemo(() => {
+    const rawQ = searchQuery.trim().toLowerCase();
     const q = cleanStr(searchQuery);
 
     return watchlist.filter(item => {
-      // Status match (or show all if searching across watchlist)
-      const matchesStatus = activeStatus === 'all' || item.status === activeStatus;
+      // When searching, match across ALL tabs; when not searching, match activeStatus tab
+      const matchesStatus = !rawQ ? (activeStatus === 'all' || item.status === activeStatus) : true;
       
-      if (!q) return matchesStatus;
+      if (!rawQ) return matchesStatus;
 
-      // Smart search across title, romaji, english, and genres
+      // Smart multi-field search: title, english, romaji, native, studio, and genres
+      const t = (item.anime_title || '').toLowerCase();
       const t1 = cleanStr(item.anime_title);
-      const t2 = cleanStr(item.title?.english);
-      const t3 = cleanStr(item.title?.romaji);
-      const genres = cleanStr((item.genres || []).join(' '));
+      const t2 = cleanStr(item.title?.english || item.english_title);
+      const t3 = cleanStr(item.title?.romaji || item.romaji_title);
+      const t4 = (item.studio || '').toLowerCase();
+      const genres = (item.genres || []).join(' ').toLowerCase();
 
-      const matchesQuery = t1.includes(q) || t2.includes(q) || t3.includes(q) || genres.includes(q);
+      const matchesQuery = 
+        t.includes(rawQ) ||
+        t1.includes(q) || 
+        t2.includes(q) || 
+        t3.includes(q) || 
+        t4.includes(rawQ) ||
+        genres.includes(rawQ);
 
       return matchesStatus && matchesQuery;
     }).sort((a, b) => {
@@ -84,24 +93,10 @@ export default function MyListView({
     });
   }, [watchlist, activeStatus, searchQuery, sortBy]);
 
-  // Other status matches when filtering (e.g. searching on "Watching" tab but anime is in "Completed")
-  const crossTabMatches = useMemo(() => {
-    if (!searchQuery.trim() || activeStatus === 'all') return [];
-    const q = cleanStr(searchQuery);
-
-    return watchlist.filter(item => {
-      if (item.status === activeStatus) return false;
-      const t1 = cleanStr(item.anime_title);
-      const t2 = cleanStr(item.title?.english);
-      const t3 = cleanStr(item.title?.romaji);
-      return t1.includes(q) || t2.includes(q) || t3.includes(q);
-    });
-  }, [watchlist, activeStatus, searchQuery]);
-
-  // Live AniList Global Search (Debounced 320ms when query is typed)
+  // Live AniList Global Search (Fast 150ms debounce for instant live results)
   useEffect(() => {
     const q = searchQuery.trim();
-    if (q.length < 2) {
+    if (!q) {
       setGlobalResults([]);
       setGlobalLoading(false);
       return;
@@ -119,7 +114,7 @@ export default function MyListView({
         if (data?.Page?.media) {
           // Filter out shows already in watchlist
           const watchlistIds = new Set(watchlist.map(i => Number(i.anime_id || i.id)));
-          const unadded = data.Page.media.filter(m => !watchlistIds.has(Number(m.id))).slice(0, 6);
+          const unadded = data.Page.media.filter(m => !watchlistIds.has(Number(m.id))).slice(0, 8);
           setGlobalResults(unadded);
         }
       } catch (err) {
@@ -127,7 +122,7 @@ export default function MyListView({
       } finally {
         setGlobalLoading(false);
       }
-    }, 320);
+    }, 150);
 
     return () => clearTimeout(timer);
   }, [searchQuery, watchlist]);
@@ -349,21 +344,6 @@ export default function MyListView({
         </div>
 
       </div>
-
-      {/* ═══ CROSS-TAB SEARCH NOTIFICATION ═══ */}
-      {crossTabMatches.length > 0 && (
-        <div className="p-2.5 bg-sky-500/10 border-2 border-sky-500/40 rounded-lg flex items-center justify-between text-xs">
-          <span className="text-sky-800 dark:text-sky-300 font-bold">
-            Found {crossTabMatches.length} match in other tabs ({crossTabMatches[0].anime_title})
-          </span>
-          <button
-            onClick={() => setActiveStatus('all')}
-            className="btn-manga bg-sky-500 text-white text-[10px] font-black px-2 py-0.5 rounded shadow-sm"
-          >
-            View in All ({crossTabMatches.length})
-          </button>
-        </div>
-      )}
 
       {/* ═══ WATCHLIST ITEMS DISPLAY ═══ */}
       {filteredList.length === 0 && !searchQuery.trim() ? (

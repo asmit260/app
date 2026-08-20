@@ -74,7 +74,7 @@ export default function AddAnimeModal({
       } finally {
         setLoading(false);
       }
-    }, 320);
+    }, 150);
 
     return () => clearTimeout(timer);
   }, [searchQuery, isOpen]);

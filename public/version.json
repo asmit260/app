@@ -1,7 +1,7 @@
 {
-  "version": "1.0.6",
-  "name": "AniTrack v1.0.6 - Universal Search & Heatmap Enhancements",
-  "releaseNotes": "• Universal Watchlist search with live AniList global discovery & 1-tap add\n• Fixed anime card dropdown z-index stacking and opaque background\n• Fixed anime detail modal stale data caching when switching anime\n• Enhanced 30-day heatmap with past month activity projection and accurate stats\n• Mobile-first header layout optimization",
+  "version": "1.0.7",
+  "name": "AniTrack v1.0.7 - Crash Fixes & Heatmap Timeline Upgrade",
+  "releaseNotes": "• Fixed crossTabMatches error on Watchlist\n• Full 6-month Heatmap timeline starting 1 month prior (July) through December\n• Android status bar & camera notch safe area padding\n• Poster image fallback placeholders\n• Optimized bundle & deleted unused legacy files",
   "apkUrl": "https://github.com/asmit260/app/releases/latest/download/app-debug.apk",
   "publishedAt": "2026-08-20"
 }
