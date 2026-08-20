@@ -38,7 +38,7 @@ export async function upsertWatchlistEntry(anime, status, episodesWatched = null
 
   let finalEpisodesWatched = episodesWatched !== null 
     ? episodesWatched 
-    : (existing ? existing.episodes_watched : 0);
+    : (existing ? existing.episodes_watched : (status === 'completed' && (anime.episodes || anime.totalEpisodes) ? (anime.episodes || anime.totalEpisodes) : (status === 'watching' ? 1 : 0)));
 
   // Extract cover safely from any format
   let coverUrl = '';
@@ -80,6 +80,7 @@ export async function upsertWatchlistEntry(anime, status, episodesWatched = null
     total_episodes: anime.totalEpisodes || anime.episodes || (existing ? existing.total_episodes : null),
     episodes_watched: finalEpisodesWatched,
     score: (anime.score !== undefined && anime.score !== null) ? anime.score : (existing ? existing.score || 0 : 0),
+    rewatch_count: anime.rewatch_count !== undefined ? anime.rewatch_count : (existing ? existing.rewatch_count || 0 : 0),
     updated_at: new Date().toISOString()
   };
 
@@ -108,6 +109,24 @@ export async function upsertWatchlistEntry(anime, status, episodesWatched = null
 
   window.dispatchEvent(new CustomEvent('anitrack-watchlist-changed'));
   return payload;
+}
+
+/**
+ * Start a new rewatch cycle for an anime, preserving previous completion and score
+ */
+export async function startRewatch(anime) {
+  const animeId = parseInt(anime.id || anime.anime_id);
+  if (!animeId) return null;
+  const existing = await getWatchlistItem(animeId);
+  const currentRewatches = (existing?.rewatch_count || 0) + 1;
+
+  const res = await upsertWatchlistEntry({
+    ...anime,
+    rewatch_count: currentRewatches
+  }, 'watching', 1);
+
+  await logEpisodeProgress(animeId, 1, `Started Rewatch #${currentRewatches}`);
+  return res;
 }
 
 export async function getWatchlistItem(animeId) {
@@ -159,22 +178,22 @@ export async function logEpisodeProgress(animeId, episodeNumber, note = '') {
     .select('id')
     .eq('user_id', user.id)
     .eq('anime_id', parseInt(animeId))
-    .eq('episode_number', episodeNumber)
+    .eq('episode_number', parseInt(episodeNumber))
     .maybeSingle();
 
   if (existing) {
-    await supabase.from('episode_progress').update({
-      note: note || null,
-      watched_at: new Date().toISOString()
-    }).eq('id', existing.id);
+    await supabase.from('episode_progress')
+      .update({ watched_at: new Date().toISOString(), note: note || `Episode ${episodeNumber}` })
+      .eq('id', existing.id);
   } else {
-    await supabase.from('episode_progress').insert({
-      user_id: user.id,
-      anime_id: parseInt(animeId),
-      episode_number: episodeNumber,
-      note: note || null,
-      watched_at: new Date().toISOString()
-    });
+    await supabase.from('episode_progress')
+      .insert({
+        user_id: user.id,
+        anime_id: parseInt(animeId),
+        episode_number: parseInt(episodeNumber),
+        watched_at: new Date().toISOString(),
+        note: note || `Episode ${episodeNumber}`
+      });
   }
 }
 
@@ -194,12 +213,11 @@ export async function getWatchHistory() {
   return data || [];
 }
 
-// ─── Profile ────────────────────────────────────────────────────
+// ─── Profile & Data Management ──────────────────────────────────
 
 export async function getProfileSettings() {
   const user = await getUser();
   if (!user) {
-    // Try to load local profile
     const { data } = await supabase.from('profiles').select('*').eq('id', 'local_user').maybeSingle();
     return {
       username: data?.display_name || 'Scout Trainee',
@@ -208,52 +226,49 @@ export async function getProfileSettings() {
       email: ''
     };
   }
-  
+
   const { data } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
-    .single();
-  
-  if (data) {
-    return {
-      username: data.display_name || data.username || 'Scout Trainee',
-      titleLanguage: data.title_language || 'english',
-      theme: data.theme || 'light',
-      bio: data.bio || '',
-      email: user.email || ''
-    };
-  }
-  
+    .maybeSingle();
+
   return {
-    username: user.raw_user_meta_data?.display_name || user.email?.split('@')[0] || 'Scout Trainee',
-    titleLanguage: 'english',
-    theme: 'light',
+    username: data?.display_name || user.user_metadata?.display_name || user.email?.split('@')[0] || 'Anime Scout',
+    titleLanguage: data?.title_language || 'english',
+    theme: data?.theme || 'light',
     email: user.email || ''
   };
 }
 
-export async function saveProfileSettings(settings) {
+export async function updateProfileSettings(settings) {
   const user = await getEffectiveUser();
   
-  await supabase.from('profiles').upsert({
+  const payload = {
     id: user.id,
-    display_name: settings.username,
-    title_language: settings.titleLanguage,
-    theme: settings.theme,
-    bio: settings.bio || '',
+    display_name: settings.username || 'Anime Scout',
+    title_language: settings.titleLanguage || 'english',
+    theme: settings.theme || 'light',
     updated_at: new Date().toISOString()
-  });
+  };
+
+  const { error } = await supabase
+    .from('profiles')
+    .upsert(payload);
+
+  if (error) {
+    console.error("Profile update error:", error);
+  }
   
-  window.dispatchEvent(new CustomEvent('anitrack-profile-changed', { detail: settings }));
+  window.dispatchEvent(new CustomEvent('anitrack-db-changed'));
+  return payload;
 }
 
-// ─── Data Export ─────────────────────────────────────────────────
+export const saveProfileSettings = updateProfileSettings;
 
 export async function exportWatchlistJSON() {
-  const watchlist = await getStoredWatchlist();
-  const history = await getWatchHistory();
-  const blob = new Blob([JSON.stringify({ watchlist, history }, null, 2)], { type: 'application/json' });
+  const list = await getStoredWatchlist();
+  const blob = new Blob([JSON.stringify(list, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -262,60 +277,24 @@ export async function exportWatchlistJSON() {
   URL.revokeObjectURL(url);
 }
 
-export async function importWatchlistJSON(file) {
-  const user = await getEffectiveUser();
-
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = async (evt) => {
-      try {
-        const raw = JSON.parse(evt.target.result);
-        const list = Array.isArray(raw) ? raw : (raw.watchlist || raw.entries || []);
-        
-        for (const item of list) {
-          await supabase.from('watchlist').upsert({
-            ...item,
-            user_id: user.id,
-            updated_at: new Date().toISOString()
-          });
-        }
-
-        if (raw.history && Array.isArray(raw.history)) {
-          for (const h of raw.history) {
-            await supabase.from('episode_progress').upsert({
-              ...h,
-              user_id: user.id
-            });
-          }
-        }
-        
-        window.dispatchEvent(new CustomEvent('anitrack-watchlist-changed'));
-        resolve(list.length);
-      } catch (err) {
-        console.error("Import error:", err);
-        resolve(0);
-      }
-    };
-    reader.readAsText(file);
-  });
+export async function importWatchlistJSON(jsonData) {
+  try {
+    const items = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
+    if (!Array.isArray(items)) return { success: false, error: 'Invalid backup format' };
+    
+    for (const item of items) {
+      await upsertWatchlistEntry(item, item.status || 'watching', item.episodes_watched || 0);
+    }
+    return { success: true, count: items.length };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
 }
-
-// ─── Data Reset ─────────────────────────────────────────────────
 
 export async function resetAllData() {
   const user = await getEffectiveUser();
-  const db = JSON.parse(localStorage.getItem('anitrack_mock_db') || '{}');
-  
-  ['watchlist', 'episode_progress', 'calendar_events', 'custom_lists', 'custom_list_items'].forEach(table => {
-    if (db[table]) {
-      Object.keys(db[table]).forEach(key => {
-        if (db[table][key]?.user_id === user.id || (user.id === 'local_user' && !db[table][key]?.user_id)) {
-          delete db[table][key];
-        }
-      });
-    }
-  });
-  
-  localStorage.setItem('anitrack_mock_db', JSON.stringify(db));
+  await supabase.from('watchlist').delete().eq('user_id', user.id);
+  await supabase.from('episode_progress').delete().eq('user_id', user.id);
   window.dispatchEvent(new CustomEvent('anitrack-watchlist-changed'));
+  window.dispatchEvent(new CustomEvent('anitrack-db-changed'));
 }

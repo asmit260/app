@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Play, Plus, Minus, Check, Star, Calendar, Clock, Film, ExternalLink, Bookmark, Bell, Eye } from 'lucide-react';
 import { anilistQuery, ANIME_DETAIL_QUERY } from '../../services/anilist';
 import { getActiveAnimeAlerts } from '../../services/notifications';
-import { updateWatchlistRating, upsertWatchlistEntry } from '../../services/storage';
+import { updateWatchlistRating, upsertWatchlistEntry, startRewatch } from '../../services/storage';
 import AiringAlertModal from '../Schedule/AiringAlertModal';
 
 const STATUS_LIST = [
@@ -218,6 +218,27 @@ export default function AnimeDetailModal({
                     );
                   })}
                 </div>
+
+                {/* Rewatch Action Button (When Completed or Rewatching) */}
+                {currentEntry && (currentEntry.status === 'completed' || (currentEntry.rewatch_count || 0) > 0) && (
+                  <div className="pt-1 flex items-center justify-between border-t border-sand-300 dark:border-sand-400">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                        {currentEntry.rewatch_count > 0 ? `🔁 Rewatch #${currentEntry.rewatch_count + 1} Active` : 'Completed 1st Watch'}
+                      </span>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        await startRewatch(detail);
+                        setLocalEps(1);
+                      }}
+                      className="btn-manga bg-amber-400 hover:bg-amber-300 text-ink-900 text-[11px] px-3 py-1 rounded font-black flex items-center gap-1.5 shadow-sm active:scale-95"
+                      title="Start a new rewatch pass without losing your completion history"
+                    >
+                      <span>🔁 Start Rewatch</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Interactive Episode Stepper (When in Watchlist) */}
