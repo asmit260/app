@@ -182,6 +182,39 @@ h1, h2, h3, .font-display {
   animation: slide-up 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* Subtle Tactile Bounce on Increment/Click */
+@keyframes bounce-subtle {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.18); }
+  75% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+.animate-bounce-subtle {
+  animation: bounce-subtle 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+/* Star Sparkle Pulse */
+@keyframes star-pulse {
+  0% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.35) rotate(12deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+.animate-star-pulse {
+  animation: star-pulse 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+/* Streak Flame Aura Pulse */
+@keyframes flame-glow {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.4)); }
+  50% { transform: scale(1.08); filter: drop-shadow(0 0 9px rgba(239, 68, 68, 0.8)); }
+}
+
+.animate-flame-glow {
+  animation: flame-glow 2s ease-in-out infinite;
+}
+
 /* Shimmer Skeleton Loader */
 @keyframes shimmer {
   0% { background-position: -400px 0; }

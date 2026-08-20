@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { User, Sun, Moon, Globe, Download, Upload, Trash2, LogOut, AlertTriangle, Sparkles, RefreshCw, Loader2 } from 'lucide-react';
+import { User, Sun, Moon, Globe, Download, Upload, Trash2, LogOut, AlertTriangle, Sparkles, RefreshCw, Loader2, Volume2, VolumeX } from 'lucide-react';
 import { saveProfileSettings, exportWatchlistJSON, importWatchlistJSON, resetAllData } from '../../services/storage';
 import { signOut } from '../../services/auth';
 import { CURRENT_APP_VERSION } from '../../services/updater';
+import { sound } from '../../services/soundEffects';
 
 export default function ProfileView({ 
   profile, 
@@ -16,6 +17,7 @@ export default function ProfileView({
 }) {
   const [username, setUsername] = useState(profile.username || 'Scout Trainee');
   const [titleLang, setTitleLang] = useState(profile.titleLanguage || 'english');
+  const [soundEnabled, setSoundEnabled] = useState(sound.enabled);
   const [savedMessage, setSavedMessage] = useState('');
   const [showConfirmReset, setShowConfirmReset] = useState(false);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
@@ -169,6 +171,30 @@ export default function ProfileView({
           >
             {darkMode ? <Sun className="w-3.5 h-3.5 text-amber-500" /> : <Moon className="w-3.5 h-3.5" />}
             <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
+          </button>
+        </div>
+
+        {/* Sound Effects Toggle */}
+        <div className="flex items-center justify-between pt-2 border-t border-sand-300 dark:border-sand-400">
+          <div>
+            <p className="text-xs font-bold text-ink-900">Sound Effects & Haptics</p>
+            <p className="text-[10px] text-stone-500 font-sans">Play micro-tones on taps, episode steps & celebrations</p>
+          </div>
+          <button
+            onClick={() => {
+              const next = !soundEnabled;
+              setSoundEnabled(next);
+              sound.setEnabled(next);
+              if (next) sound.playSaveSuccess();
+            }}
+            className={`btn-manga px-3 py-1.5 text-xs flex items-center gap-1.5 ${
+              soundEnabled 
+                ? 'bg-amber-400 text-ink-900 font-black' 
+                : 'bg-sand-100 dark:bg-sand-300 text-stone-500'
+            }`}
+          >
+            {soundEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+            <span>{soundEnabled ? 'Enabled' : 'Muted'}</span>
           </button>
         </div>
 

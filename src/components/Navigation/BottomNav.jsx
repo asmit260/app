@@ -1,5 +1,6 @@
 import React from 'react';
 import { Calendar, Bookmark, BarChart3, User } from 'lucide-react';
+import { sound } from '../../services/soundEffects';
 
 export default function BottomNav({ activeTab, onSelectTab, watchingCount = 0 }) {
   const tabs = [
@@ -8,6 +9,11 @@ export default function BottomNav({ activeTab, onSelectTab, watchingCount = 0 })
     { id: 'stats', label: 'Analytics', icon: BarChart3 },
     { id: 'profile', label: 'Profile', icon: User }
   ];
+
+  const handleTabClick = (tabId) => {
+    sound.playTab();
+    onSelectTab(tabId);
+  };
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-40 manga-dock px-3 pt-2 pb-[max(0.65rem,env(safe-area-inset-bottom))] transition-colors duration-200">
@@ -19,7 +25,7 @@ export default function BottomNav({ activeTab, onSelectTab, watchingCount = 0 })
           return (
             <button
               key={tab.id}
-              onClick={() => onSelectTab(tab.id)}
+              onClick={() => handleTabClick(tab.id)}
               className={`flex flex-col items-center justify-center py-1 px-3.5 rounded-xl relative transition-all duration-150 active:scale-90 select-none ${
                 isActive 
                   ? 'text-ink-900 font-black' 

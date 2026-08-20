@@ -1,7 +1,7 @@
 {
-  "version": "1.0.2",
-  "name": "AniTrack v1.0.2 - Smart Airing Presets & Rewatch Engine",
-  "releaseNotes": "• 1-Tap Smart Caught Up presets for ongoing anime\n• Rewatch Engine: track rewatches without losing completion history\n• Real-time graph & streak synchronization\n• Upgraded high-speed search and mobile bottom sheets",
+  "version": "1.0.3",
+  "name": "AniTrack v1.0.3 - Audio Synthesizer, Confetti & Micro-Animations",
+  "releaseNotes": "• Procedural Web Audio synthesizer (0ms latency, zero extra download size)\n• GPU-accelerated Confetti celebration on anime completion & rewatch\n• Star sparkle & episode counter bounce micro-animations\n• Sound & Haptic FX toggle in Profile settings",
   "apkUrl": "https://github.com/asmit260/app/releases/latest/download/app-debug.apk",
   "publishedAt": "2026-08-20"
 }

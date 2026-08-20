@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, X, Check, Plus, Minus, Loader2, Star, Film, Eye, Sparkles, Zap, Clock, Bookmark } from 'lucide-react';
 import { anilistQuery, SEARCH_ANIME_QUERY } from '../../services/anilist';
+import { sound } from '../../services/soundEffects';
+import { fireConfetti } from '../../utils/confetti';
 
 export default function AddAnimeModal({ 
   isOpen, 
@@ -107,6 +109,13 @@ export default function AddAnimeModal({
       if (status === 'completed') finalEp = total || 1;
       else if (status === 'watching') finalEp = (anime.nextAiringEpisode?.episode ? anime.nextAiringEpisode.episode - 1 : 1);
       else finalEp = 0;
+    }
+
+    if (status === 'completed') {
+      sound.playCelebration();
+      fireConfetti();
+    } else {
+      sound.playSaveSuccess();
     }
 
     const payload = {

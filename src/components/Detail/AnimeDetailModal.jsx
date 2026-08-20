@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Play, Plus, Minus, Check, Star, Calendar, Clock, Film, ExternalLink, Bookmark, Bell, Eye } from 'lucide-react';
+import { X, Play, Plus, Minus, Check, Star, Calendar, Clock, Film, ExternalLink, Bookmark, Bell, Eye, Sparkles } from 'lucide-react';
 import { anilistQuery, ANIME_DETAIL_QUERY } from '../../services/anilist';
 import { getActiveAnimeAlerts } from '../../services/notifications';
 import { updateWatchlistRating, upsertWatchlistEntry, startRewatch } from '../../services/storage';
+import { sound } from '../../services/soundEffects';
+import { fireConfetti } from '../../utils/confetti';
 import AiringAlertModal from '../Schedule/AiringAlertModal';
 
 const STATUS_LIST = [
@@ -29,6 +31,8 @@ export default function AnimeDetailModal({
   const [activeAlerts, setActiveAlerts] = useState({});
   const [localScore, setLocalScore] = useState(null);
   const [localEps, setLocalEps] = useState(null);
+  const [steppingAnim, setSteppingAnim] = useState(false);
+  const [ratingAnimStar, setRatingAnimStar] = useState(null);
 
   useEffect(() => {
     if (animeId) {
@@ -82,6 +86,9 @@ export default function AnimeDetailModal({
   const handleRatingChange = async (rating) => {
     const newRating = effectiveScore === rating ? 0 : rating;
     setLocalScore(newRating);
+    setRatingAnimStar(rating);
+    sound.playStarRate(rating / 2);
+    setTimeout(() => setRatingAnimStar(null), 400);
     await updateWatchlistRating(animeId, newRating);
   };
 
@@ -92,8 +99,29 @@ export default function AnimeDetailModal({
     if (totalEps && next > totalEps) return;
 
     setLocalEps(next);
-    const newStatus = (totalEps && next >= totalEps) ? 'completed' : (currentEntry?.status || 'watching');
+    setSteppingAnim(true);
+    setTimeout(() => setSteppingAnim(false), 300);
+
+    const isFinished = totalEps && next >= totalEps;
+    if (isFinished) {
+      sound.playCelebration();
+      fireConfetti();
+    } else {
+      sound.playEpisodeStep();
+    }
+
+    const newStatus = isFinished ? 'completed' : (currentEntry?.status || 'watching');
     await upsertWatchlistEntry(detail, newStatus, next);
+  };
+
+  const handleStatusChange = async (stId) => {
+    if (stId === 'completed') {
+      sound.playCelebration();
+      fireConfetti();
+    } else {
+      sound.playSaveSuccess();
+    }
+    await onUpdateStatus(detail, stId);
   };
 
   if (!animeId) return null;
@@ -206,8 +234,8 @@ export default function AnimeDetailModal({
                     return (
                       <button
                         key={st.id}
-                        onClick={() => onUpdateStatus(detail, st.id)}
-                        className={`py-1.5 px-2 rounded text-[11px] font-black border-2 border-stone-900 transition-all select-none ${
+                        onClick={() => handleStatusChange(st.id)}
+                        className={`py-1.5 px-2 rounded text-[11px] font-black border-2 border-stone-900 transition-all select-none active:scale-95 ${
                           isSelected
                             ? 'bg-amber-400 text-ink-900 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] scale-[1.02]'
                             : 'bg-sand-50 dark:bg-sand-300 text-stone-700 hover:bg-sand-200'
@@ -229,6 +257,8 @@ export default function AnimeDetailModal({
                     </div>
                     <button
                       onClick={async () => {
+                        sound.playCelebration();
+                        fireConfetti();
                         await startRewatch(detail);
                         setLocalEps(1);
                       }}
@@ -265,7 +295,7 @@ export default function AnimeDetailModal({
                       >
                         <Minus className="w-3.5 h-3.5" />
                       </button>
-                      <span className="w-10 text-center font-mono font-black text-sm text-ink-900">
+                      <span className={`w-10 text-center font-mono font-black text-sm text-ink-900 ${steppingAnim ? 'animate-bounce-subtle text-amber-600 dark:text-amber-400' : ''}`}>
                         {effectiveEps}
                       </span>
                       <button
@@ -282,7 +312,7 @@ export default function AnimeDetailModal({
                   {/* Animated Progress Bar */}
                   <div className="w-full h-2.5 bg-sand-300 dark:bg-sand-400 rounded-full border border-stone-900 overflow-hidden">
                     <div 
-                      className="h-full bg-amber-400 transition-all duration-300 ease-out rounded-full"
+                      className="h-full bg-amber-400 transition-all duration-300 ease-out rounded-full shadow-sm"
                       style={{ width: `${progressPercent}%` }}
                     />
                   </div>
@@ -298,7 +328,9 @@ export default function AnimeDetailModal({
                       <button
                         key={star}
                         onClick={() => handleRatingChange(star)}
-                        className={`p-1 transition-transform hover:scale-125 active:scale-90 ${
+                        className={`p-1 transition-transform hover:scale-125 active:scale-90 select-none ${
+                          ratingAnimStar === star ? 'animate-star-pulse' : ''
+                        } ${
                           effectiveScore >= star
                             ? 'text-amber-500 star-glow'
                             : 'text-stone-300 hover:text-amber-300'
@@ -309,7 +341,7 @@ export default function AnimeDetailModal({
                       </button>
                     ))}
                     {effectiveScore > 0 && (
-                      <span className="font-mono text-xs font-black text-amber-600 ml-1.5">
+                      <span className="font-mono text-xs font-black text-amber-600 ml-1.5 animate-fade-in">
                         {effectiveScore}/10
                       </span>
                     )}

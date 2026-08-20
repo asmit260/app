@@ -514,10 +514,13 @@ export default function StatsView({ watchlist = [], history = [] }) {
         <div className="card-manga-panel p-3.5 bg-sand-50 dark:bg-sand-200">
           <div className="flex items-center justify-between text-stone-500">
             <span className="text-[10px] font-black uppercase">Streak</span>
-            <Flame className="w-4 h-4 text-red-500" />
+            <Flame className={`w-4 h-4 ${streak.current > 0 ? 'animate-flame-glow text-amber-500' : 'text-stone-400'}`} />
           </div>
-          <p className="font-mono font-black text-2xl text-red-500 mt-1">{streak.current}d 🔥</p>
-          <span className="text-[10px] text-stone-500 font-mono">Best: {streak.longest}d</span>
+          <p className="font-mono font-black text-2xl text-ink-900 mt-1 flex items-center gap-1.5">
+            <span className={streak.current > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-stone-400'}>{streak.current}d</span>
+            {streak.current > 0 && <span className="text-base animate-bounce-subtle select-none">🔥</span>}
+          </p>
+          <span className="text-[10px] text-stone-500 font-mono">Best: {streak.longest}d streak</span>
         </div>
       </div>
 
