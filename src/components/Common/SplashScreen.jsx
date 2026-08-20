@@ -3,55 +3,45 @@ import { Zap } from 'lucide-react';
 import { prefetchInitialData } from '../../services/anilist';
 
 export default function SplashScreen({ onFinish }) {
-  const [progress, setProgress] = useState(30);
+  const [progress, setProgress] = useState(40);
   const [statusText, setStatusText] = useState('Initializing Scout Database...');
   const [isFadingOut, setIsFadingOut] = useState(false);
 
   useEffect(() => {
-    let isMounted = true;
     let finished = false;
 
-    const completeSplash = () => {
-      if (finished || !isMounted) return;
+    const safeFinish = () => {
+      if (finished) return;
       finished = true;
       setProgress(100);
-      setStatusText("Ready! Shinzo wo Sasageyo!");
-
+      setIsFadingOut(true);
       setTimeout(() => {
-        if (!isMounted) return;
-        setIsFadingOut(true);
-        setTimeout(() => {
-          if (isMounted) onFinish();
-        }, 200);
-      }, 100);
+        onFinish?.();
+      }, 150);
     };
 
-    // Step progression timer
+    // Step 1 progress bump
     const t1 = setTimeout(() => {
-      if (isMounted && !finished) {
-        setProgress(75);
-        setStatusText("Fetching Airing Schedule...");
+      if (!finished) {
+        setProgress(85);
+        setStatusText("Ready! Shinzo wo Sasageyo!");
       }
-    }, 200);
+    }, 150);
 
-    // Fast schedule prefetching
+    // Fast background schedule prefetching
     prefetchInitialData()
       .then(() => {
-        if (isMounted && !finished) {
-          setTimeout(completeSplash, 400);
-        }
+        setTimeout(safeFinish, 200);
       })
       .catch(() => {
-        if (isMounted && !finished) completeSplash();
+        safeFinish();
       });
 
-    // Hard ceiling timer (MAX 850ms)
-    const safetyTimer = setTimeout(() => {
-      completeSplash();
-    }, 850);
+    // Guaranteed hard ceiling exit timer (max 500ms)
+    const safetyTimer = setTimeout(safeFinish, 500);
 
     return () => {
-      isMounted = false;
+      finished = true;
       clearTimeout(t1);
       clearTimeout(safetyTimer);
     };
@@ -59,15 +49,16 @@ export default function SplashScreen({ onFinish }) {
 
   return (
     <div 
-      className={`fixed inset-0 z-[100] flex flex-col items-center justify-center bg-sand-100 dark:bg-sand-100 transition-all duration-300 select-none ${
-        isFadingOut ? 'opacity-0 scale-105 pointer-events-none' : 'opacity-100 scale-100'
+      onClick={onFinish}
+      className={`fixed inset-0 z-[100] flex flex-col items-center justify-center bg-sand-100 dark:bg-sand-100 transition-opacity duration-200 select-none cursor-pointer ${
+        isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
     >
       {/* Ambient background comic dots */}
       <div className="absolute inset-0 bg-manga-dots opacity-40 pointer-events-none" />
 
       {/* Decorative Glow Blobs */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-amber-400/20 rounded-full blur-3xl pointer-events-none animate-pulse" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-amber-400/20 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 left-1/2 -translate-x-1/2 w-64 h-64 bg-navy-700/15 rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative z-10 flex flex-col items-center max-w-xs w-full px-6 text-center">
@@ -98,7 +89,7 @@ export default function SplashScreen({ onFinish }) {
         <div className="w-full space-y-2">
           <div className="h-3 w-full bg-sand-200 dark:bg-sand-300 rounded-full border-2 border-stone-900 overflow-hidden p-0.5 shadow-sm">
             <div 
-              className="h-full bg-amber-400 rounded-full border-r border-stone-900 transition-all duration-300 ease-out"
+              className="h-full bg-amber-400 rounded-full border-r border-stone-900 transition-all duration-200 ease-out"
               style={{ width: `${progress}%` }}
             />
           </div>

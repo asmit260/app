@@ -119,21 +119,32 @@ export default function ScheduleView({
   // Filter schedules based on search and selected mode
   const filteredSchedules = useMemo(() => {
     const now = Math.floor(Date.now() / 1000);
-    return schedules.filter(item => {
-      const media = item.media;
-      const title = (media?.title?.english || media?.title?.romaji || media?.title?.native || '').toLowerCase();
-      const matchesSearch = !searchQuery.trim() || title.includes(searchQuery.trim().toLowerCase());
+    return schedules
+      .filter(item => {
+        const media = item.media;
+        const title = (media?.title?.english || media?.title?.romaji || media?.title?.native || '').toLowerCase();
+        const matchesSearch = !searchQuery.trim() || title.includes(searchQuery.trim().toLowerCase());
 
-      if (!matchesSearch) return false;
+        if (!matchesSearch) return false;
 
-      if (filterMode === 'tracked') {
-        return !!watchlistMap[media?.id];
-      }
-      if (filterMode === 'upcoming') {
-        return item.airingAt > now;
-      }
-      return true;
-    });
+        if (filterMode === 'tracked') {
+          return !!watchlistMap[media?.id];
+        }
+        if (filterMode === 'upcoming') {
+          return item.airingAt > now;
+        }
+        return true;
+      })
+      .map(item => ({
+        ...item,
+        airingInfo: {
+          episode: item.episode,
+          time: formatAiringTime(item.airingAt),
+          countdown: formatCountdown(item.airingAt),
+          airingAt: item.airingAt,
+          isAired: item.airingAt <= now
+        }
+      }));
   }, [schedules, searchQuery, filterMode, watchlistMap]);
 
   return (
@@ -289,33 +300,20 @@ export default function ScheduleView({
             ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-5"
             : "space-y-3"
         }>
-          {filteredSchedules.map((item) => {
-            const media = item.media;
-            const isAired = item.airingAt <= Math.floor(Date.now() / 1000);
-            const airingInfo = {
-              episode: item.episode,
-              time: formatAiringTime(item.airingAt),
-              countdown: formatCountdown(item.airingAt),
-              airingAt: item.airingAt,
-              isAired
-            };
-            const isAlertActive = !!activeAlerts[media.id];
-
-            return (
-              <AnimeCard
-                key={item.id}
-                anime={media}
-                watchlistEntry={watchlistMap[media.id]}
-                onUpdateStatus={onUpdateWatchlist}
-                onRemoveItem={onRemoveItem}
-                onSelectAnime={onSelectAnime}
-                titleLanguage={titleLanguage}
-                airingInfo={airingInfo}
-                isAlertActive={isAlertActive}
-                onOpenAlert={handleOpenAlertModal}
-              />
-            );
-          })}
+          {filteredSchedules.map((item) => (
+            <AnimeCard
+              key={item.id}
+              anime={item.media}
+              watchlistEntry={watchlistMap[item.media.id]}
+              onUpdateStatus={onUpdateWatchlist}
+              onRemoveItem={onRemoveItem}
+              onSelectAnime={onSelectAnime}
+              titleLanguage={titleLanguage}
+              airingInfo={item.airingInfo}
+              isAlertActive={!!activeAlerts[item.media.id]}
+              onOpenAlert={handleOpenAlertModal}
+            />
+          ))}
         </div>
       )}
 

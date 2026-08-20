@@ -1,9 +1,15 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { Download, Sparkles, X, ArrowUpRight, ShieldCheck } from 'lucide-react';
+import { dismissUpdate } from '../../services/updater';
 
 export default function UpdateModal({ updateInfo, onClose }) {
   if (!updateInfo || !updateInfo.hasUpdate) return null;
+
+  const handleDismiss = () => {
+    dismissUpdate(updateInfo.version);
+    onClose();
+  };
 
   const handleInstall = () => {
     if (updateInfo.downloadUrl) {
@@ -13,7 +19,7 @@ export default function UpdateModal({ updateInfo, onClose }) {
         window.location.href = updateInfo.downloadUrl;
       }
     }
-    onClose();
+    handleDismiss();
   };
 
   const modalContent = (
@@ -28,7 +34,7 @@ export default function UpdateModal({ updateInfo, onClose }) {
       >
         {/* Close Button */}
         <button
-          onClick={onClose}
+          onClick={handleDismiss}
           className="absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-sand-50/90 dark:bg-sand-200 border-2 border-stone-900 flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5"
           title="Dismiss"
         >
@@ -82,7 +88,7 @@ export default function UpdateModal({ updateInfo, onClose }) {
           </button>
 
           <button
-            onClick={onClose}
+            onClick={handleDismiss}
             className="btn-manga bg-sand-100 dark:bg-sand-200 hover:bg-sand-200 text-stone-700 dark:text-stone-300 px-3 py-2.5 rounded font-bold text-xs"
           >
             Later

@@ -4,13 +4,14 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 
-export const CURRENT_APP_VERSION = '1.0.0';
+export const CURRENT_APP_VERSION = '1.0.4';
 const GITHUB_REPO = 'asmit260/app';
 const LAST_CHECK_KEY = 'anitrack_last_update_check';
-const CHECK_COOLDOWN_MS = 30 * 60 * 1000; // 30 mins in background
+const DISMISSED_VERSION_KEY = 'anitrack_dismissed_update_version';
+const CHECK_COOLDOWN_MS = 60 * 60 * 1000; // Check at most once every 1 hour in background
 
 /**
- * Compare semantic versions (e.g., '1.0.1' > '1.0.0')
+ * Compare semantic versions (e.g., '1.0.4' > '1.0.0')
  */
 export function isNewerVersion(latest, current) {
   if (!latest || !current) return false;
@@ -27,8 +28,18 @@ export function isNewerVersion(latest, current) {
 }
 
 /**
+ * Saves a dismissed update version so the user isn't spammed
+ */
+export function dismissUpdate(version) {
+  if (!version) return;
+  try {
+    localStorage.setItem(DISMISSED_VERSION_KEY, String(version).replace(/^v/i, '').trim());
+  } catch (_) {}
+}
+
+/**
  * Checks for latest app updates across multiple fast, unmetered endpoints.
- * @param {boolean} force - If true, bypasses the 30-minute background throttle
+ * @param {boolean} force - If true, bypasses the background throttle and dismissed check
  */
 export async function checkForAppUpdate(force = false) {
   try {
@@ -57,7 +68,7 @@ export async function checkForAppUpdate(force = false) {
         if (rawData?.version) {
           latestVersion = String(rawData.version).replace(/^v/i, '').trim();
           releaseName = rawData.name || `Version v${latestVersion}`;
-          releaseNotes = rawData.releaseNotes || 'New features, bug fixes, and performance improvements.';
+          releaseNotes = rawData.releaseNotes || 'New features, performance upgrades, and bug fixes.';
           if (rawData.apkUrl) downloadUrl = rawData.apkUrl;
           if (rawData.publishedAt) publishedAt = rawData.publishedAt;
         }
@@ -83,7 +94,7 @@ export async function checkForAppUpdate(force = false) {
           const rawTag = data.tag_name || '';
           latestVersion = rawTag.replace(/^v/i, '').trim();
           releaseName = data.name || `Version v${latestVersion}`;
-          releaseNotes = data.body || 'New features, bug fixes, and performance improvements.';
+          releaseNotes = data.body || 'New features, performance upgrades, and bug fixes.';
           const apkAsset = (data.assets || []).find(a => (a.name || '').toLowerCase().endsWith('.apk'));
           if (apkAsset?.browser_download_url) {
             downloadUrl = apkAsset.browser_download_url;
@@ -99,8 +110,16 @@ export async function checkForAppUpdate(force = false) {
       }
     }
 
-    // Check if newer than current
+    // Check if newer than current version
     if (latestVersion && isNewerVersion(latestVersion, CURRENT_APP_VERSION)) {
+      // Check if user previously dismissed this exact version (unless force check)
+      if (!force) {
+        const dismissed = localStorage.getItem(DISMISSED_VERSION_KEY);
+        if (dismissed === latestVersion) {
+          return null; // Don't annoy user on launch
+        }
+      }
+
       const updateInfo = {
         hasUpdate: true,
         version: latestVersion,
@@ -111,7 +130,7 @@ export async function checkForAppUpdate(force = false) {
         publishedAt: publishedAt || new Date().toLocaleDateString()
       };
 
-      // Send device notification if on Android
+      // Send device notification if on Android (only if not dismissed)
       triggerUpdateDeviceNotification(updateInfo);
 
       return updateInfo;

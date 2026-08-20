@@ -1,7 +1,7 @@
 {
-  "version": "1.0.3",
-  "name": "AniTrack v1.0.3 - Audio Synthesizer, Confetti & Micro-Animations",
-  "releaseNotes": "• Procedural Web Audio synthesizer (0ms latency, zero extra download size)\n• GPU-accelerated Confetti celebration on anime completion & rewatch\n• Star sparkle & episode counter bounce micro-animations\n• Sound & Haptic FX toggle in Profile settings",
+  "version": "1.0.4",
+  "name": "AniTrack v1.0.4 - Performance & Scroll Optimization",
+  "releaseNotes": "• Fixed false-positive update alert bug\n• 60FPS butter-smooth mobile scrolling optimization\n• Fixed splash screen 100% progress freeze bug\n• Snooze/dismiss update alert support",
   "apkUrl": "https://github.com/asmit260/app/releases/latest/download/app-debug.apk",
   "publishedAt": "2026-08-20"
 }
