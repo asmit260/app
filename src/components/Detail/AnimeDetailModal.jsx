@@ -35,16 +35,27 @@ export default function AnimeDetailModal({
   const [ratingAnimStar, setRatingAnimStar] = useState(null);
 
   useEffect(() => {
+    let isCurrent = true;
+
     if (animeId) {
       document.body.style.overflow = 'hidden';
+      setDetail(null);
+      setLoading(true);
       setLocalScore(null);
       setLocalEps(null);
-      loadDetail(animeId);
+      setShowTrailer(false);
+      setShowAlertModal(false);
+
+      loadDetail(animeId, () => isCurrent);
       loadAlerts();
     } else {
       document.body.style.overflow = '';
+      setDetail(null);
+      setLoading(false);
     }
+
     return () => {
+      isCurrent = false;
       document.body.style.overflow = '';
     };
   }, [animeId]);
@@ -56,17 +67,22 @@ export default function AnimeDetailModal({
     } catch (_) {}
   };
 
-  const loadDetail = async (id) => {
+  const loadDetail = async (id, isCurrentCheck) => {
     setLoading(true);
+    setDetail(null);
     try {
       const res = await anilistQuery(ANIME_DETAIL_QUERY, { id });
-      if (res?.Media) {
-        setDetail(res.Media);
+      if (isCurrentCheck ? isCurrentCheck() : true) {
+        if (res?.Media) {
+          setDetail(res.Media);
+        }
       }
     } catch (e) {
       console.error("Failed to load anime detail:", e);
     } finally {
-      setLoading(false);
+      if (isCurrentCheck ? isCurrentCheck() : true) {
+        setLoading(false);
+      }
     }
   };
 

@@ -71,7 +71,9 @@ const AnimeCard = React.memo(function AnimeCard({
 
   return (
     <article 
-      className={`card-manga-panel group relative flex flex-col min-h-[385px] sm:min-h-[420px] h-full bg-sand-50 dark:bg-sand-200 transition-all duration-200 ${airingInfo?.isAired ? 'opacity-75' : ''}`}
+      className={`card-manga-panel group relative flex flex-col min-h-[385px] sm:min-h-[420px] h-full bg-sand-50 dark:bg-sand-200 transition-all duration-200 ${
+        showDropdown ? 'z-40' : 'z-10'
+      } ${airingInfo?.isAired ? 'opacity-75' : ''}`}
     >
       {/* Poster Image Area */}
       <div 
@@ -203,7 +205,7 @@ const AnimeCard = React.memo(function AnimeCard({
           <button
             ref={btnRef}
             onClick={handleToggleDropdown}
-            className={`w-full py-2 px-3 rounded-md text-xs font-bold text-left border-2 border-stone-900 flex items-center justify-between transition-all hover:scale-[1.01] active:translate-y-0.5 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] ${
+            className={`w-full py-1.5 px-2.5 rounded-md text-xs font-bold text-left border-2 border-stone-900 flex items-center justify-between transition-all hover:scale-[1.01] active:translate-y-0.5 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] ${
               justSaved
                 ? 'bg-emerald-400 text-ink-900 border-emerald-600 scale-[1.03]'
                 : statusConfig 
@@ -211,38 +213,38 @@ const AnimeCard = React.memo(function AnimeCard({
                   : 'bg-sand-100 dark:bg-sand-300 text-ink-900 hover:bg-sand-200'
             }`}
           >
-            <span className="truncate flex items-center gap-1.5">
+            <span className="truncate flex items-center gap-1 font-black">
               {justSaved ? (
                 <>
-                  <Check className="w-3.5 h-3.5" />
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
                   <span>Saved!</span>
                 </>
               ) : currentStatus ? (
                 <>
-                  <Check className="w-3.5 h-3.5" />
-                  <span>{statusConfig.label}</span>
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                  <span className="truncate">{statusConfig.label}</span>
                 </>
               ) : (
                 <>
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Add to Watchlist</span>
+                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                  <span className="truncate">Add to Watchlist</span>
                 </>
               )}
             </span>
-            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
           </button>
 
-          {/* Status Dropdown Menu */}
+          {/* Status Dropdown Menu with 100% Solid Opaque Background */}
           {showDropdown && (
             <>
-              {/* Invisible backdrop click dismiss */}
+              {/* Invisible backdrop to capture outside clicks */}
               <div 
-                className="fixed inset-0 z-40" 
+                className="fixed inset-0 z-40 bg-black/20" 
                 onClick={(e) => { e.stopPropagation(); setShowDropdown(false); }} 
               />
 
               <div 
-                className={`absolute left-0 right-0 z-50 bg-sand-50 dark:bg-sand-100 border-2 border-stone-900 rounded-md shadow-manga-lg py-1 overflow-hidden animate-fade-in ${
+                className={`absolute left-0 right-0 z-50 bg-[#FDFAF5] dark:bg-[#1C1917] border-2 border-stone-900 rounded-md shadow-[4px_4px_0px_0px_rgba(24,19,13,1)] py-1 overflow-hidden animate-fade-in ${
                   dropdownDir === 'down' ? 'top-full mt-1' : 'bottom-full mb-1'
                 }`}
                 onClick={(e) => e.stopPropagation()}
@@ -254,20 +256,20 @@ const AnimeCard = React.memo(function AnimeCard({
                     className={`w-full text-left px-3 py-2 text-xs font-bold flex items-center justify-between transition-colors ${
                       currentStatus === statusKey 
                         ? 'bg-amber-400 text-ink-900 font-black' 
-                        : 'text-ink-900 hover:bg-sand-200 dark:hover:bg-sand-300'
+                        : 'text-ink-900 dark:text-sand-50 hover:bg-sand-200 dark:hover:bg-sand-300'
                     }`}
                   >
                     <span>{cfg.label}</span>
-                    {currentStatus === statusKey && <Check className="w-3.5 h-3.5" />}
+                    {currentStatus === statusKey && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                   </button>
                 ))}
 
                 {currentStatus && (
                   <>
-                    <hr className="border-sand-300 dark:border-sand-400 my-1" />
+                    <hr className="border-stone-900/20 dark:border-stone-100/20 my-1" />
                     <button
                       onClick={(e) => handleStatusSelect(e, 'remove')}
-                      className="w-full text-left px-3 py-2 text-xs font-bold text-status-dropped hover:bg-status-dropped-bg flex items-center gap-1.5"
+                      className="w-full text-left px-3 py-2 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 flex items-center gap-1.5"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>Remove from list</span>

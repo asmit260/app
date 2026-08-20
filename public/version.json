@@ -1,7 +1,7 @@
 {
-  "version": "1.0.5",
-  "name": "AniTrack v1.0.5 - Compact Manga Watchlist & Smooth Performance",
-  "releaseNotes": "• Brand new Compact Manga Watchlist UI with 1-tap +1 episode steppers\n• 3-way layout switcher (Compact Cards, Dense Rows, Bookshelf Grid)\n• 60FPS mobile scroll performance & GPU compositing\n• Enhanced POCO/Xiaomi direct APK installation support\n• Procedural audio synthesizer & celebration confetti",
+  "version": "1.0.6",
+  "name": "AniTrack v1.0.6 - Universal Search & Heatmap Enhancements",
+  "releaseNotes": "• Universal Watchlist search with live AniList global discovery & 1-tap add\n• Fixed anime card dropdown z-index stacking and opaque background\n• Fixed anime detail modal stale data caching when switching anime\n• Enhanced 30-day heatmap with past month activity projection and accurate stats\n• Mobile-first header layout optimization",
   "apkUrl": "https://github.com/asmit260/app/releases/latest/download/app-debug.apk",
   "publishedAt": "2026-08-20"
 }

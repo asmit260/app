@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { Plus, Minus, MoreVertical, Trash2, RotateCcw, Check, Sparkles, Star, Film } from 'lucide-react';
+import { Plus, Minus, Trash2, RotateCcw, Star, Film, Check, ChevronDown } from 'lucide-react';
 import { sound } from '../../services/soundEffects';
 import { burstConfetti } from '../../utils/confetti';
 
 const STATUS_THEMES = {
-  watching: { label: 'Watching', bg: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/40' },
-  completed: { label: 'Completed', bg: 'bg-lime-500/15 text-lime-700 dark:text-lime-400 border-lime-500/40' },
-  plan_to_watch: { label: 'Plan', bg: 'bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/40' },
-  on_hold: { label: 'On Hold', bg: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/40' },
-  dropped: { label: 'Dropped', bg: 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/40' }
+  watching: { label: 'Watching', bg: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/50' },
+  completed: { label: 'Completed', bg: 'bg-lime-500/15 text-lime-700 dark:text-lime-400 border-lime-500/50' },
+  plan_to_watch: { label: 'Plan', bg: 'bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/50' },
+  on_hold: { label: 'On Hold', bg: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/50' },
+  dropped: { label: 'Dropped', bg: 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/50' }
 };
 
 export default function WatchlistCard({
@@ -21,7 +21,6 @@ export default function WatchlistCard({
   onStartRewatch,
   titleLanguage = 'english'
 }) {
-  const [showMenu, setShowMenu] = useState(false);
   const [isBouncing, setIsBouncing] = useState(false);
 
   const animeId = item.anime_id || item.id;
@@ -32,7 +31,7 @@ export default function WatchlistCard({
   const rewatchCount = item.rewatch_count || 0;
   const status = item.status || 'watching';
 
-  const progressPercent = totalEps ? Math.min(100, Math.round((watched / totalEps) * 100)) : 0;
+  const progressPercent = totalEps ? Math.min(100, Math.round((watched / totalEps) * 100)) : (watched > 0 ? 100 : 0);
   const statusTheme = STATUS_THEMES[status] || STATUS_THEMES.watching;
 
   const handleStep = (e, delta) => {
@@ -60,10 +59,10 @@ export default function WatchlistCard({
     return (
       <div 
         onClick={() => onSelectAnime(animeId)}
-        className="card-manga-panel p-2.5 sm:p-3 bg-sand-50 dark:bg-sand-200 cursor-pointer group flex gap-3 relative overflow-hidden transition-all duration-150 active:scale-[0.99]"
+        className="card-manga-panel p-2.5 bg-sand-50 dark:bg-sand-200 cursor-pointer group flex gap-3 relative rounded-lg border-2 border-stone-900 shadow-[2.5px_2.5px_0px_0px_rgba(24,19,13,1)] transition-all duration-150 active:scale-[0.995]"
       >
         {/* Left: 3:4 Crisp Poster Cover */}
-        <div className="relative w-20 sm:w-24 h-28 sm:h-32 shrink-0 rounded overflow-hidden border-2 border-stone-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] bg-sand-200 dark:bg-sand-300">
+        <div className="relative w-[78px] sm:w-[92px] h-[108px] sm:h-[120px] shrink-0 rounded overflow-hidden border-2 border-stone-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] bg-sand-200 dark:bg-sand-300">
           {cover ? (
             <img 
               src={cover} 
@@ -94,36 +93,39 @@ export default function WatchlistCard({
           )}
         </div>
 
-        {/* Right: Manga Info & Episode Stepper */}
+        {/* Right: Manga Info & Controls */}
         <div className="flex flex-col justify-between flex-grow min-w-0 py-0.5">
-          {/* Top Row: Title & Status Chip */}
+          {/* Top Row: Title & Status Selector */}
           <div>
             <div className="flex items-start justify-between gap-1.5">
-              <h3 className="font-display font-black text-xs sm:text-sm text-ink-900 line-clamp-1 leading-tight group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+              <h3 className="font-display font-black text-xs sm:text-sm text-ink-900 line-clamp-1 leading-snug group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
                 {item.anime_title}
               </h3>
 
-              {/* Status Select Chip */}
-              <select
-                value={status}
-                onChange={(e) => {
-                  e.stopPropagation();
-                  onUpdateStatus(animeId, e.target.value);
-                }}
-                onClick={(e) => e.stopPropagation()}
-                className={`text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${statusTheme.bg} cursor-pointer focus:outline-none shrink-0`}
-              >
-                <option value="watching">Watching</option>
-                <option value="completed">Completed</option>
-                <option value="plan_to_watch">Plan</option>
-                <option value="on_hold">On Hold</option>
-                <option value="dropped">Dropped</option>
-              </select>
+              {/* Status Select Dropdown */}
+              <div className="relative shrink-0">
+                <select
+                  value={status}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    onUpdateStatus(animeId, e.target.value);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  className={`text-[9px] font-black uppercase tracking-wider pl-1.5 pr-4 py-0.5 rounded border ${statusTheme.bg} cursor-pointer focus:outline-none appearance-none`}
+                >
+                  <option value="watching">Watching</option>
+                  <option value="completed">Completed</option>
+                  <option value="plan_to_watch">Plan</option>
+                  <option value="on_hold">On Hold</option>
+                  <option value="dropped">Dropped</option>
+                </select>
+                <ChevronDown className="w-2.5 h-2.5 absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none opacity-60" />
+              </div>
             </div>
 
             {/* Subtitle / Genre preview */}
-            <p className="text-[10px] sm:text-[11px] text-stone-500 font-sans mt-0.5 line-clamp-1">
-              {item.genres?.slice(0, 2).join(' · ') || (totalEps ? `${totalEps} Episodes total` : 'TV Series')}
+            <p className="text-[10px] text-stone-500 font-sans mt-0.5 line-clamp-1">
+              {item.genres?.slice(0, 2).join(' · ') || (totalEps ? `${totalEps} Episodes` : 'Anime Series')}
             </p>
           </div>
 
@@ -136,26 +138,26 @@ export default function WatchlistCard({
                   Ep {watched} / {totalEps || '?'}
                 </span>
               </span>
-              {totalEps && <span>{progressPercent}%</span>}
+              <span>{progressPercent}%</span>
             </div>
 
-            {/* Visual Animated Bar */}
+            {/* Visual Animated Progress Bar */}
             <div className="h-2 w-full bg-sand-200 dark:bg-sand-300 rounded-full border border-stone-900/30 overflow-hidden p-0.5">
               <div 
-                className="h-full rounded-full bg-amber-400 transition-all duration-300 ease-out"
-                style={{ width: `${progressPercent}%`, minWidth: watched > 0 ? '4px' : '0' }}
+                className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-500 transition-all duration-300 ease-out"
+                style={{ width: `${progressPercent}%`, minWidth: watched > 0 ? '5px' : '0' }}
               />
             </div>
           </div>
 
-          {/* Bottom Action Deck: Tactile Stepper & Quick Actions */}
-          <div className="flex items-center justify-between pt-1 border-t border-sand-200 dark:border-sand-300">
+          {/* Bottom Action Deck */}
+          <div className="flex items-center justify-between pt-1 border-t border-stone-900/10 dark:border-stone-100/10">
             {/* Quick 1-Tap Episode Stepper Pill */}
             <div className="inline-flex items-center bg-sand-100 dark:bg-sand-300 rounded border-2 border-stone-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] overflow-hidden">
               <button
                 onClick={(e) => handleStep(e, -1)}
                 disabled={watched <= 0}
-                className="px-2 py-1 hover:bg-sand-200 dark:hover:bg-sand-400 text-stone-700 disabled:opacity-30 transition-colors"
+                className="px-2 py-0.5 hover:bg-sand-200 dark:hover:bg-sand-400 text-stone-700 disabled:opacity-30 transition-colors"
                 title="Decrease episode (-1)"
               >
                 <Minus className="w-3 h-3 stroke-[3]" />
@@ -168,7 +170,7 @@ export default function WatchlistCard({
               <button
                 onClick={(e) => handleStep(e, 1)}
                 disabled={totalEps && watched >= totalEps}
-                className="px-2.5 py-1 bg-amber-400 hover:bg-amber-300 text-ink-900 font-black text-[11px] flex items-center gap-0.5 transition-colors disabled:opacity-40"
+                className="px-2.5 py-0.5 bg-amber-400 hover:bg-amber-300 text-ink-900 font-black text-[11px] flex items-center gap-0.5 transition-colors disabled:opacity-40"
                 title="Log +1 Episode Watched"
               >
                 <Plus className="w-3 h-3 stroke-[3]" />
@@ -176,8 +178,8 @@ export default function WatchlistCard({
               </button>
             </div>
 
-            {/* Quick Actions (Delete / Rewatch) */}
-            <div className="flex items-center gap-1">
+            {/* Quick Actions (Rewatch & Delete) */}
+            <div className="flex items-center gap-1.5">
               {status === 'completed' && onStartRewatch && (
                 <button
                   onClick={(e) => {
@@ -194,7 +196,7 @@ export default function WatchlistCard({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (window.confirm(`Remove "${item.anime_title}" from watchlist?`)) {
+                  if (window.confirm(`Remove "${item.anime_title}" from your watchlist?`)) {
                     onRemoveItem(animeId);
                   }
                 }}
@@ -217,7 +219,7 @@ export default function WatchlistCard({
     return (
       <div 
         onClick={() => onSelectAnime(animeId)}
-        className="card-manga-panel p-2 bg-sand-50 dark:bg-sand-200 cursor-pointer group flex items-center justify-between gap-2.5 transition-all active:scale-[0.995]"
+        className="card-manga-panel p-2 bg-sand-50 dark:bg-sand-200 cursor-pointer group flex items-center justify-between gap-2.5 rounded-md border-2 border-stone-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] transition-all active:scale-[0.995]"
       >
         <div className="flex items-center gap-2.5 min-w-0 flex-grow">
           {/* Mini 36px Cover */}
@@ -275,7 +277,7 @@ export default function WatchlistCard({
   return (
     <div 
       onClick={() => onSelectAnime(animeId)}
-      className="card-manga-panel bg-sand-50 dark:bg-sand-200 overflow-hidden cursor-pointer group flex flex-col justify-between transition-all active:scale-[0.98]"
+      className="card-manga-panel bg-sand-50 dark:bg-sand-200 overflow-hidden cursor-pointer group flex flex-col justify-between rounded-md border-2 border-stone-900 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] transition-all active:scale-[0.98]"
     >
       <div className="relative aspect-[3/4] bg-sand-200 dark:bg-sand-300 overflow-hidden">
         {cover ? (
@@ -293,7 +295,7 @@ export default function WatchlistCard({
 
         {/* Score Tag */}
         {score > 0 && (
-          <div className="absolute top-1.5 left-1.5 bg-stone-900/90 text-amber-400 text-[9px] font-mono font-black px-1.5 py-0.5 rounded flex items-center gap-0.5 border border-amber-400/40">
+          <div className="absolute top-1 left-1 bg-stone-900/90 text-amber-400 text-[9px] font-mono font-black px-1.5 py-0.5 rounded flex items-center gap-0.5 border border-amber-400/40">
             <Star className="w-2.5 h-2.5 fill-amber-400 stroke-none" />
             <span>{score}</span>
           </div>
@@ -303,7 +305,7 @@ export default function WatchlistCard({
         <button
           onClick={(e) => handleStep(e, 1)}
           disabled={totalEps && watched >= totalEps}
-          className="absolute bottom-1.5 right-1.5 btn-manga bg-amber-400 hover:bg-amber-300 text-ink-900 text-[10px] font-black px-2 py-1 rounded shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] flex items-center gap-0.5"
+          className="absolute bottom-1.5 right-1.5 btn-manga bg-amber-400 hover:bg-amber-300 text-ink-900 text-[10px] font-black px-2 py-0.5 rounded shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] flex items-center gap-0.5"
           title="Quick +1"
         >
           <Plus className="w-3 h-3 stroke-[3]" />

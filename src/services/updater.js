@@ -4,7 +4,7 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 
-export const CURRENT_APP_VERSION = '1.0.5';
+export const CURRENT_APP_VERSION = '1.0.6';
 const GITHUB_REPO = 'asmit260/app';
 const LAST_CHECK_KEY = 'anitrack_last_update_check';
 const DISMISSED_VERSION_KEY = 'anitrack_dismissed_update_version';
