@@ -1,7 +1,7 @@
 {
-  "version": "1.0.4",
-  "name": "AniTrack v1.0.4 - Performance & Scroll Optimization",
-  "releaseNotes": "• Fixed false-positive update alert bug\n• 60FPS butter-smooth mobile scrolling optimization\n• Fixed splash screen 100% progress freeze bug\n• Snooze/dismiss update alert support",
+  "version": "1.0.5",
+  "name": "AniTrack v1.0.5 - Compact Manga Watchlist & Smooth Performance",
+  "releaseNotes": "• Brand new Compact Manga Watchlist UI with 1-tap +1 episode steppers\n• 3-way layout switcher (Compact Cards, Dense Rows, Bookshelf Grid)\n• 60FPS mobile scroll performance & GPU compositing\n• Enhanced POCO/Xiaomi direct APK installation support\n• Procedural audio synthesizer & celebration confetti",
   "apkUrl": "https://github.com/asmit260/app/releases/latest/download/app-debug.apk",
   "publishedAt": "2026-08-20"
 }

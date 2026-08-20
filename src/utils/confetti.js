@@ -90,3 +90,5 @@ export function fireConfetti(originX = window.innerWidth / 2, originY = window.i
 
   animationFrame = requestAnimationFrame(render);
 }
+
+export const burstConfetti = fireConfetti;
