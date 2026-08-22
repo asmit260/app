@@ -38,7 +38,14 @@ export default function WatchlistCard({
   const handleStep = (e, delta) => {
     e.stopPropagation();
     const nextEp = Math.max(0, watched + delta);
-    if (totalEps && nextEp > totalEps && delta > 0) return;
+
+    // Limit check: For airing anime, cap at latest aired episode; for finished anime, cap at totalEps
+    const maxAired = item.nextAiringEpisode?.episode 
+      ? Math.max(1, item.nextAiringEpisode.episode - 1) 
+      : (item.airing_episode || (item.status === 'RELEASING' ? 1 : null));
+    const effectiveLimit = maxAired || totalEps || null;
+
+    if (effectiveLimit && nextEp > effectiveLimit && delta > 0) return;
 
     sound.playEpisodeStep();
     setIsBouncing(true);

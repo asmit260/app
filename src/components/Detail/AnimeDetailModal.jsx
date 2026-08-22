@@ -112,7 +112,14 @@ export default function AnimeDetailModal({
     if (!detail) return;
     const current = effectiveEps;
     const next = Math.max(0, current + delta);
-    if (totalEps && next > totalEps) return;
+
+    // Limit check: For airing anime, cap at latest aired episode; for finished anime, cap at totalEps
+    const maxAired = detail.nextAiringEpisode?.episode 
+      ? Math.max(1, detail.nextAiringEpisode.episode - 1) 
+      : (detail.status === 'RELEASING' ? 1 : totalEps);
+    const effectiveLimit = (detail.status === 'RELEASING' && maxAired) ? maxAired : (totalEps || null);
+
+    if (effectiveLimit && next > effectiveLimit && delta > 0) return;
 
     setLocalEps(next);
     setSteppingAnim(true);

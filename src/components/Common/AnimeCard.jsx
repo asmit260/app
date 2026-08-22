@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Clock, ChevronDown, Check, Plus, Trash2, Eye, Bell } from 'lucide-react';
+import { sound } from '../../services/soundEffects';
+import { burstConfetti } from '../../utils/confetti';
 
 const STATUS_LABELS = {
   watching: { label: 'Watching', bg: 'bg-status-watching-bg text-status-watching border-status-watching/40' },
@@ -41,8 +43,25 @@ const AnimeCard = React.memo(function AnimeCard({
   const studio = anime.studios?.nodes?.[0]?.name || anime.studio || anime.format || 'TV';
   const genres = anime.genres || [];
   const currentStatus = watchlistEntry?.status;
-  const currentEpWatched = watchlistEntry?.episodes_watched || 0;
+  const currentEpWatched = Number(watchlistEntry?.episodes_watched) || 0;
   const totalEps = anime.totalEpisodes || anime.episodes || null;
+
+  // Determine if anime is currently airing & calculate maximum aired episode
+  const isAiring = !!airingInfo || anime.status === 'RELEASING';
+  const maxAiredEp = airingInfo?.episode 
+    ? (airingInfo.isAired ? airingInfo.episode : Math.max(1, airingInfo.episode - 1))
+    : (anime.nextAiringEpisode?.episode ? Math.max(1, anime.nextAiringEpisode.episode - 1) : 1);
+
+  const isCaughtUp = isAiring && currentStatus === 'watching' && currentEpWatched >= maxAiredEp && maxAiredEp > 0;
+
+  // For airing anime, remove 'completed' option and replace with 'caught_up'
+  const availableStatuses = isAiring ? {
+    watching: { label: 'Watching', bg: 'bg-status-watching-bg text-status-watching border-status-watching/40' },
+    caught_up: { label: `✨ Caught Up (Ep ${maxAiredEp})`, bg: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/40' },
+    plan_to_watch: { label: 'Plan to Watch', bg: 'bg-status-plan-bg text-status-plan border-status-plan/40' },
+    on_hold: { label: 'On Hold', bg: 'bg-status-hold-bg text-status-hold border-status-hold/40' },
+    dropped: { label: 'Dropped', bg: 'bg-status-dropped-bg text-status-dropped border-status-dropped/40' }
+  } : STATUS_LABELS;
 
   const statusConfig = currentStatus ? STATUS_LABELS[currentStatus] : null;
 
@@ -51,9 +70,15 @@ const AnimeCard = React.memo(function AnimeCard({
     setShowDropdown(false);
     if (newStatus === 'remove') {
       onRemoveItem(anime.id);
+    } else if (newStatus === 'caught_up') {
+      onUpdateStatus(anime, 'watching', maxAiredEp);
+      sound.playCelebration();
+      burstConfetti();
+      setJustSaved(true);
+      setTimeout(() => setJustSaved(false), 800);
     } else {
       onUpdateStatus(anime, newStatus);
-      // Flash success feedback
+      sound.playSaveSuccess();
       setJustSaved(true);
       setTimeout(() => setJustSaved(false), 800);
     }
@@ -208,9 +233,11 @@ const AnimeCard = React.memo(function AnimeCard({
             className={`w-full py-1.5 px-2.5 rounded-md text-xs font-bold text-left border-2 border-stone-900 flex items-center justify-between transition-all hover:scale-[1.01] active:translate-y-0.5 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] ${
               justSaved
                 ? 'bg-emerald-400 text-ink-900 border-emerald-600 scale-[1.03]'
-                : statusConfig 
-                  ? statusConfig.bg 
-                  : 'bg-sand-100 dark:bg-sand-300 text-ink-900 hover:bg-sand-200'
+                : isCaughtUp
+                  ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-600'
+                  : statusConfig 
+                    ? statusConfig.bg 
+                    : 'bg-sand-100 dark:bg-sand-300 text-ink-900 hover:bg-sand-200'
             }`}
           >
             <span className="truncate flex items-center gap-1 font-black">
@@ -219,10 +246,17 @@ const AnimeCard = React.memo(function AnimeCard({
                   <Check className="w-3.5 h-3.5 stroke-[3]" />
                   <span>Saved!</span>
                 </>
+              ) : isCaughtUp ? (
+                <>
+                  <Check className="w-3.5 h-3.5 stroke-[3] text-emerald-600 dark:text-emerald-400" />
+                  <span className="truncate text-emerald-700 dark:text-emerald-300">✓ Caught Up (Ep {currentEpWatched})</span>
+                </>
               ) : currentStatus ? (
                 <>
                   <Check className="w-3.5 h-3.5 stroke-[3]" />
-                  <span className="truncate">{statusConfig.label}</span>
+                  <span className="truncate">
+                    {currentStatus === 'watching' ? `Watching (Ep ${currentEpWatched || 1})` : (statusConfig?.label || currentStatus)}
+                  </span>
                 </>
               ) : (
                 <>
@@ -249,18 +283,20 @@ const AnimeCard = React.memo(function AnimeCard({
                 }`}
                 onClick={(e) => e.stopPropagation()}
               >
-                {Object.entries(STATUS_LABELS).map(([statusKey, cfg]) => (
+                {Object.entries(availableStatuses).map(([statusKey, cfg]) => (
                   <button
                     key={statusKey}
                     onClick={(e) => handleStatusSelect(e, statusKey)}
                     className={`w-full text-left px-3 py-2 text-xs font-bold flex items-center justify-between transition-colors ${
-                      currentStatus === statusKey 
+                      (statusKey === 'caught_up' && isCaughtUp) || (currentStatus === statusKey && statusKey !== 'caught_up')
                         ? 'bg-amber-400 text-ink-900 font-black' 
                         : 'text-ink-900 dark:text-sand-50 hover:bg-sand-200 dark:hover:bg-sand-300'
                     }`}
                   >
                     <span>{cfg.label}</span>
-                    {currentStatus === statusKey && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                    {((statusKey === 'caught_up' && isCaughtUp) || (currentStatus === statusKey && statusKey !== 'caught_up')) && (
+                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    )}
                   </button>
                 ))}
 

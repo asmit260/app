@@ -160,7 +160,7 @@ export default function App() {
     };
   };
 
-  const handleUpdateWatchlist = async (anime, status) => {
+  const handleUpdateWatchlist = async (anime, status, eps = null) => {
     // If anime is a full object from AniList (has title object or coverImage), use it directly
     // If anime is a bare {id} (from MyListView), look up the existing watchlist entry to preserve metadata
     let fullAnime = anime;
@@ -174,17 +174,32 @@ export default function App() {
       fullAnime = buildAnimeFromWatchlistItem(animeId, existingItem);
     }
 
-    const updated = await upsertWatchlistEntry(fullAnime, status);
+    const updated = await upsertWatchlistEntry(fullAnime, status, eps);
     if (updated) {
       await loadAllData();
-      showToast(`Saved "${updated.anime_title}" to ${status.replace('_', ' ')}`);
+      if (eps !== null) {
+        showToast(`✨ Caught up on "${updated.anime_title}" (Ep ${eps})`);
+      } else {
+        showToast(`Saved "${updated.anime_title}" to ${status.replace('_', ' ')}`);
+      }
     }
   };
 
   const handleIncrementEpisode = async (animeId) => {
     const item = watchlist.find(i => (i.anime_id == animeId || i.id == animeId));
     if (!item) return;
-    const nextEp = (Number(item.episodes_watched) || 0) + 1;
+    const current = Number(item.episodes_watched) || 0;
+    
+    // Check max episode limit for airing vs completed
+    const maxAired = item.nextAiringEpisode?.episode ? item.nextAiringEpisode.episode - 1 : (item.airing_episode || null);
+    const maxLimit = maxAired || item.total_episodes || null;
+
+    if (maxLimit && current >= maxLimit) {
+      showToast(maxAired ? `Already caught up to Episode ${current}!` : `All ${item.total_episodes} episodes completed!`);
+      return;
+    }
+
+    const nextEp = current + 1;
     const isFinished = item.total_episodes && nextEp >= item.total_episodes;
     const status = isFinished ? 'completed' : item.status;
 
