@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Download, Film, LayoutGrid, List, Columns2, ArrowUpDown } from 'lucide-react';
+import { Film, LayoutGrid, List, Columns2, ArrowUpDown } from 'lucide-react';
 import WatchlistCard from './WatchlistCard';
+import QuickEpisodeModal from '../Common/QuickEpisodeModal';
 import { startRewatch, upsertWatchlistEntry } from '../../services/storage';
 
 const STATUS_CONFIG = [
@@ -23,6 +24,7 @@ export default function MyListView({
   const [activeStatus, setActiveStatus] = useState('all');
   const [sortBy, setSortBy] = useState('updated_at'); // 'updated_at' | 'progress_desc' | 'score' | 'title'
   const [viewMode, setViewMode] = useState('compact'); // 'compact' | 'dense' | 'grid'
+  const [pickerAnime, setPickerAnime] = useState(null);
 
   // Status counts map
   const statusCounts = useMemo(() => {
@@ -84,16 +86,12 @@ export default function MyListView({
     }
   };
 
-  // Backup Export
-  const exportJson = () => {
-    const dataStr = JSON.stringify(watchlist, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `anitrack_backup_${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  const handleConfirmPickerEpisodes = async (selectedEp) => {
+    if (!pickerAnime) return;
+    const animeId = pickerAnime.anime_id || pickerAnime.id;
+    const isFinished = pickerAnime.total_episodes && selectedEp >= pickerAnime.total_episodes;
+    await handleStepEpisode(animeId, selectedEp, isFinished ? 'completed' : pickerAnime.status);
+    setPickerAnime(null);
   };
 
   return (
@@ -137,14 +135,6 @@ export default function MyListView({
                 <LayoutGrid className="w-3.5 h-3.5" />
               </button>
             </div>
-
-            <button 
-              onClick={exportJson}
-              className="p-1.5 bg-sand-100 dark:bg-sand-300 hover:bg-sand-200 text-stone-700 dark:text-stone-300 rounded-md border-2 border-stone-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5"
-              title="Export JSON Backup"
-            >
-              <Download className="w-3.5 h-3.5" />
-            </button>
           </div>
         </div>
 
@@ -207,10 +197,34 @@ export default function MyListView({
               onStepEpisode={handleStepEpisode}
               onRemoveItem={onRemoveItem}
               onStartRewatch={handleStartRewatch}
+              onOpenEpisodePicker={(clickedItem) => setPickerAnime(clickedItem)}
               titleLanguage={titleLanguage}
             />
           ))}
         </div>
+      )}
+
+      {/* Quick Episode Picker Modal for Watchlist */}
+      {pickerAnime && (
+        <QuickEpisodeModal
+          isOpen={!!pickerAnime}
+          onClose={() => setPickerAnime(null)}
+          anime={{
+            id: pickerAnime.anime_id || pickerAnime.id,
+            title: pickerAnime.anime_title,
+            coverImage: pickerAnime.anime_cover,
+            totalEpisodes: pickerAnime.total_episodes,
+            status: pickerAnime.status
+          }}
+          currentEp={Number(pickerAnime.episodes_watched) || 1}
+          maxAiredEp={
+            pickerAnime.nextAiringEpisode?.episode 
+              ? Math.max(1, pickerAnime.nextAiringEpisode.episode - 1)
+              : (pickerAnime.airing_episode || pickerAnime.total_episodes || 24)
+          }
+          onConfirm={handleConfirmPickerEpisodes}
+          titleLanguage={titleLanguage}
+        />
       )}
 
     </div>

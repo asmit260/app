@@ -245,6 +245,7 @@ export default function App() {
       {/* Top Application Bar */}
       <TopBar
         activeTab={activeTab}
+        onSelectTab={setActiveTab}
         darkMode={darkMode}
         onToggleTheme={handleToggleTheme}
         currentUser={currentUser}

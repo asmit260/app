@@ -1,7 +1,7 @@
 {
-  "version": "1.0.9",
-  "name": "AniTrack v1.0.9 - Interactive Episode Picker & Strict Airing Limit Guardrails",
-  "releaseNotes": "• Interactive 'Which episode are you on?' quick modal picker for Airing Schedule cards\n• Direct 1-tap progress update with quick-jump episode grid and steppers\n• Clean, streamlined Watchlist UI with instant filter chips and layout switchers\n• Strict database and frontend guardrails preventing episode logging beyond latest broadcast",
+  "version": "1.1.0",
+  "name": "AniTrack v1.1.0 - Full UI/UX Usability Overhaul & Global Episode Portal",
+  "releaseNotes": "• Global React Portal overlay for Episode Picker modal with full-screen centered responsive dialog\n• Seamless unified manga button design for schedule cards with tactile status selector\n• Interactive episode jump grid directly accessible from My Watchlist cards\n• Streamlined TopBar navigation and enhanced Activity Heatmap legend",
   "apkUrl": "https://github.com/asmit260/app/releases/latest/download/app-debug.apk",
   "publishedAt": "2026-08-22"
 }

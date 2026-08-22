@@ -19,6 +19,7 @@ export default function WatchlistCard({
   onStepEpisode,
   onRemoveItem,
   onStartRewatch,
+  onOpenEpisodePicker,
   titleLanguage = 'english'
 }) {
   const [isBouncing, setIsBouncing] = useState(false);
@@ -141,12 +142,19 @@ export default function WatchlistCard({
           {/* Progress Bar & Numeric Indicator */}
           <div className="space-y-1 my-1">
             <div className="flex items-center justify-between text-[10px] font-mono font-bold text-stone-600 dark:text-stone-400">
-              <span className="flex items-center gap-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onOpenEpisodePicker) onOpenEpisodePicker(item);
+                }}
+                className="flex items-center gap-1 hover:text-amber-600 transition-colors text-left"
+                title="Tap to jump to specific episode"
+              >
                 <span>Progress:</span>
                 <span className={`text-ink-900 dark:text-sand-50 font-black ${isBouncing ? 'animate-bounce-subtle text-amber-500' : ''}`}>
                   Ep {watched} / {totalEps || '?'}
                 </span>
-              </span>
+              </button>
               <span>{progressPercent}%</span>
             </div>
 
@@ -172,9 +180,16 @@ export default function WatchlistCard({
                 <Minus className="w-3 h-3 stroke-[3]" />
               </button>
 
-              <span className="px-2 py-0.5 text-[11px] font-mono font-black text-ink-900 border-x border-stone-900/20 select-none">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onOpenEpisodePicker) onOpenEpisodePicker(item);
+                }}
+                className="px-2 py-0.5 text-[11px] font-mono font-black text-ink-900 border-x border-stone-900/20 select-none hover:bg-amber-400/30 transition-colors"
+                title="Tap to jump to specific episode"
+              >
                 Ep {watched}
-              </span>
+              </button>
 
               <button
                 onClick={(e) => handleStep(e, 1)}

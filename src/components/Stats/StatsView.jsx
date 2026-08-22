@@ -555,13 +555,20 @@ export default function StatsView({ watchlist = [], history = [] }) {
           </div>
         )}
 
-        {/* Legend */}
-        <div className="flex items-center justify-end gap-1.5 text-[9px] font-bold text-stone-500 mt-2">
-          <span>Less</span>
-          {['#E6E0D4','#fde68a','#f59e0b','#d97706','#ea580c'].map(c => (
-            <span key={c} className="w-3 h-3 rounded-xs border border-stone-300" style={{background: c}} />
-          ))}
-          <span>More</span>
+        {/* Enhanced Heatmap Legend */}
+        <div className="flex flex-wrap items-center justify-between gap-2 text-[9px] font-bold text-stone-500 mt-2.5 pt-2 border-t border-stone-900/10">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-xs bg-[#E6E0D4] opacity-40 border border-stone-400" />
+            <span className="font-mono text-stone-500">Upcoming Season (Jul–Dec)</span>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <span>Less</span>
+            {['#E6E0D4','#fde68a','#f59e0b','#d97706','#ea580c'].map(c => (
+              <span key={c} className="w-2.5 h-2.5 rounded-xs border border-stone-300" style={{background: c}} />
+            ))}
+            <span>More Activity</span>
+          </div>
         </div>
       </div>
 

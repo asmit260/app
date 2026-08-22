@@ -136,8 +136,8 @@ const AnimeCard = React.memo(function AnimeCard({
         {/* Dark Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent pointer-events-none" />
 
-        {/* Top Left Airing Alert Bell Button */}
-        {airingInfo && onOpenAlert && (
+        {/* Top Left Airing Alert Bell Button (Only for upcoming un-aired episodes) */}
+        {airingInfo && !airingInfo.isAired && onOpenAlert && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -237,19 +237,19 @@ const AnimeCard = React.memo(function AnimeCard({
 
         {/* Direct Interactive Status Action Button */}
         <div className="mt-3 pt-2 border-t border-sand-300 dark:border-sand-400 relative">
-          <div className="flex items-center w-full">
+          <div className={`flex items-stretch w-full rounded-lg border-2 border-stone-900 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] overflow-hidden transition-all ${
+            justSaved
+              ? 'bg-emerald-400 text-ink-900 border-emerald-600 scale-[1.02]'
+              : statusConfig 
+                ? statusConfig.bg 
+                : 'bg-sand-100 dark:bg-sand-300 text-ink-900'
+          }`}>
             <button
               ref={btnRef}
               onClick={handleMainButtonClick}
-              className={`flex-grow py-1.5 px-2.5 rounded-l-md text-xs font-bold text-left border-2 border-r-0 border-stone-900 flex items-center justify-between transition-all hover:scale-[1.01] active:translate-y-0.5 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] ${
-                justSaved
-                  ? 'bg-emerald-400 text-ink-900 border-emerald-600 scale-[1.03]'
-                  : statusConfig 
-                    ? statusConfig.bg 
-                    : 'bg-sand-100 dark:bg-sand-300 text-ink-900 hover:bg-sand-200'
-              }`}
+              className="flex-grow py-2 px-2.5 text-xs font-bold text-left flex items-center justify-between transition-colors hover:bg-black/5 active:bg-black/10 min-w-0"
             >
-              <span className="truncate flex items-center gap-1 font-black">
+              <span className="truncate flex items-center gap-1.5 font-black">
                 {justSaved ? (
                   <>
                     <Check className="w-3.5 h-3.5 stroke-[3]" />
@@ -257,34 +257,35 @@ const AnimeCard = React.memo(function AnimeCard({
                   </>
                 ) : currentStatus ? (
                   <>
-                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    <Check className="w-3.5 h-3.5 stroke-[3] shrink-0" />
                     <span className="truncate">
                       {currentStatus === 'watching' ? `Watching (Ep ${currentEpWatched || 1})` : (statusConfig?.label || currentStatus)}
                     </span>
                   </>
                 ) : (
                   <>
-                    <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                    <Plus className="w-3.5 h-3.5 stroke-[3] shrink-0" />
                     <span className="truncate">Add to Watchlist</span>
                   </>
                 )}
               </span>
               {currentStatus === 'watching' && (
-                <span className="text-[9px] font-mono uppercase bg-amber-400/30 text-amber-900 dark:text-amber-300 px-1 py-0.5 rounded ml-1">
-                  Change Ep
+                <span className="p-1 rounded bg-amber-400/40 text-amber-950 dark:text-amber-200 ml-1 shrink-0 hover:bg-amber-400/60 transition-colors" title="Change episode">
+                  <Edit3 className="w-3 h-3 stroke-[2.5]" />
                 </span>
               )}
             </button>
 
+            {/* Clean Dividing Line */}
+            <div className="w-[1.5px] bg-stone-900/30 shrink-0" />
+
             {/* Dropdown Menu Toggle Trigger Button */}
             <button
               onClick={handleToggleDropdown}
-              className={`py-1.5 px-1.5 rounded-r-md text-xs font-bold border-2 border-stone-900 flex items-center justify-center transition-all hover:bg-sand-200 dark:hover:bg-sand-400 active:translate-y-0.5 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] ${
-                statusConfig ? statusConfig.bg : 'bg-sand-100 dark:bg-sand-300 text-ink-900'
-              }`}
+              className="px-2.5 flex items-center justify-center transition-colors hover:bg-black/10 active:bg-black/20 shrink-0"
               title="Change status or options"
             >
-              <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${showDropdown ? 'rotate-180' : ''}`} />
             </button>
           </div>
 

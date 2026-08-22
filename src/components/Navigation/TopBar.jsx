@@ -1,40 +1,25 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Sun, Moon, LogIn, LogOut } from 'lucide-react';
-import { signOut } from '../../services/auth';
+import React from 'react';
+import { Sun, Moon, LogIn, User } from 'lucide-react';
+import { sound } from '../../services/soundEffects';
 
 export default function TopBar({ 
   activeTab, 
+  onSelectTab,
   darkMode, 
   onToggleTheme,
   currentUser,
   onOpenLogin
 }) {
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  const menuRef = useRef(null);
-
-  // Close menu on outside click
-  useEffect(() => {
-    const handleClick = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setShowUserMenu(false);
-      }
-    };
-    if (showUserMenu) document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [showUserMenu]);
-
   const titles = {
     schedule: 'Airing Schedule',
     mylist: 'My Watchlist',
-    explore: 'Explore & Discover',
     stats: 'Anime Analytics',
     profile: 'Profile & Settings'
   };
 
-  const handleSignOut = async () => {
-    setShowUserMenu(false);
-    await signOut();
-    window.dispatchEvent(new Event('anitrack-db-changed'));
+  const handleAvatarClick = () => {
+    sound.playTab();
+    if (onSelectTab) onSelectTab('profile');
   };
 
   return (
@@ -64,39 +49,17 @@ export default function TopBar({
 
           {/* Auth Button */}
           {currentUser ? (
-            <div className="relative" ref={menuRef}>
-              <button
-                onClick={() => setShowUserMenu(!showUserMenu)}
-                className="w-8 h-8 rounded-full bg-amber-400 border-2 border-stone-900 flex items-center justify-center text-xs font-black text-ink-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5"
-                title={`Logged in as ${currentUser.email || 'User'}`}
-              >
-                {(currentUser.raw_user_meta_data?.display_name || currentUser.email || 'U').charAt(0).toUpperCase()}
-              </button>
-
-              {/* Account Popover */}
-              {showUserMenu && (
-                <div className="absolute right-0 top-full mt-2 w-56 bg-sand-50 dark:bg-sand-100 border-2 border-stone-900 rounded-md shadow-manga-lg py-2 px-3 z-50 animate-fade-in">
-                  <p className="text-xs font-black text-ink-900 truncate">
-                    {currentUser.raw_user_meta_data?.display_name || 'User'}
-                  </p>
-                  <p className="text-[10px] text-stone-500 font-mono truncate mb-2">
-                    {currentUser.email}
-                  </p>
-                  <hr className="border-sand-300 dark:border-sand-400 mb-2" />
-                  <button
-                    onClick={handleSignOut}
-                    className="w-full text-left text-xs font-bold text-status-dropped hover:bg-status-dropped-bg px-2 py-1.5 rounded flex items-center gap-1.5 transition-colors"
-                  >
-                    <LogOut className="w-3.5 h-3.5" />
-                    Sign Out
-                  </button>
-                </div>
-              )}
-            </div>
+            <button
+              onClick={handleAvatarClick}
+              className="w-8 h-8 rounded-full bg-amber-400 border-2 border-stone-900 flex items-center justify-center text-xs font-black text-ink-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5 transition-transform hover:scale-105"
+              title={`View Profile (${currentUser.raw_user_meta_data?.display_name || currentUser.email || 'User'})`}
+            >
+              {(currentUser.raw_user_meta_data?.display_name || currentUser.email || 'U').charAt(0).toUpperCase()}
+            </button>
           ) : (
             <button
               onClick={onOpenLogin}
-              className="btn-manga bg-sand-50 dark:bg-sand-200 hover:bg-amber-400 text-ink-900 px-3 py-1.5 text-xs font-bold flex items-center gap-1.5"
+              className="btn-manga bg-sand-50 dark:bg-sand-200 hover:bg-amber-400 text-ink-900 px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5"
               title="Sign In"
             >
               <LogIn className="w-3.5 h-3.5" />
