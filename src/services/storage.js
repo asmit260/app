@@ -40,6 +40,19 @@ export async function upsertWatchlistEntry(anime, status, episodesWatched = null
     ? episodesWatched 
     : (existing ? existing.episodes_watched : (status === 'completed' && (anime.episodes || anime.totalEpisodes) ? (anime.episodes || anime.totalEpisodes) : (status === 'watching' ? 1 : 0)));
 
+  // Strict Episode Limit Enforcement:
+  // For airing / releasing shows, cap at the latest aired episode. For finished shows, cap at total episodes.
+  const maxAired = anime.nextAiringEpisode?.episode 
+    ? Math.max(1, anime.nextAiringEpisode.episode - 1)
+    : (anime.airing_episode || (anime.status === 'RELEASING' ? 1 : null));
+  const effectiveMaxEp = (anime.status === 'RELEASING' && maxAired) 
+    ? maxAired 
+    : (maxAired || anime.totalEpisodes || anime.episodes || (existing ? existing.total_episodes : null));
+
+  if (effectiveMaxEp && Number(finalEpisodesWatched) > effectiveMaxEp) {
+    finalEpisodesWatched = effectiveMaxEp;
+  }
+
   // Extract cover safely from any format
   let coverUrl = '';
   if (anime.coverImage) {

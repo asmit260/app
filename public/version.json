@@ -1,7 +1,7 @@
 {
-  "version": "1.0.8",
-  "name": "AniTrack v1.0.8 - Airing Schedule Caught Up & Episode Limit Guardrails",
-  "releaseNotes": "• Replaced 'Completed' with '✨ Caught Up' on Schedule airing anime cards\n• Primary button shows '✓ Caught Up (Ep X)' badge when up-to-date\n• Episode increment (+1) now strictly capped at latest aired episode for airing shows\n• Celebration audio chimes & confetti when catching up on airing shows",
+  "version": "1.0.9",
+  "name": "AniTrack v1.0.9 - Interactive Episode Picker & Strict Airing Limit Guardrails",
+  "releaseNotes": "• Interactive 'Which episode are you on?' quick modal picker for Airing Schedule cards\n• Direct 1-tap progress update with quick-jump episode grid and steppers\n• Clean, streamlined Watchlist UI with instant filter chips and layout switchers\n• Strict database and frontend guardrails preventing episode logging beyond latest broadcast",
   "apkUrl": "https://github.com/asmit260/app/releases/latest/download/app-debug.apk",
   "publishedAt": "2026-08-22"
 }

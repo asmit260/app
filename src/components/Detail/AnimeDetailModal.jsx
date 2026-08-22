@@ -252,7 +252,7 @@ export default function AnimeDetailModal({
 
                 {/* Status Pill Buttons Grid */}
                 <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
-                  {STATUS_LIST.map(st => {
+                  {(detail.status === 'RELEASING' ? STATUS_LIST.filter(s => s.id !== 'completed') : STATUS_LIST).map(st => {
                     const isSelected = currentEntry?.status === st.id;
                     return (
                       <button
@@ -304,7 +304,7 @@ export default function AnimeDetailModal({
                         Episode Progress
                       </span>
                       <p className="text-[11px] text-stone-500 font-mono mt-0.5">
-                        {effectiveEps} of {totalEps || '?'} episodes watched ({progressPercent}%)
+                        {effectiveEps} of {detail.status === 'RELEASING' ? `${(detail.nextAiringEpisode?.episode ? Math.max(1, detail.nextAiringEpisode.episode - 1) : 1)} aired` : (totalEps || '?')} episodes watched ({progressPercent}%)
                       </p>
                     </div>
 
@@ -323,7 +323,11 @@ export default function AnimeDetailModal({
                       </span>
                       <button
                         onClick={() => handleStepEpisode(1)}
-                        disabled={totalEps && effectiveEps >= totalEps}
+                        disabled={
+                          detail.status === 'RELEASING'
+                            ? effectiveEps >= (detail.nextAiringEpisode?.episode ? Math.max(1, detail.nextAiringEpisode.episode - 1) : 1)
+                            : Boolean(totalEps && effectiveEps >= totalEps)
+                        }
                         className="btn-manga bg-amber-400 hover:bg-amber-300 text-ink-900 w-8 h-8 rounded-md font-bold text-sm shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5 disabled:opacity-40"
                         title="Step Forward (+1 Ep)"
                       >

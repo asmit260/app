@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Clock, ChevronDown, Check, Plus, Trash2, Eye, Bell } from 'lucide-react';
+import { Clock, ChevronDown, Check, Plus, Trash2, Eye, Bell, Edit3 } from 'lucide-react';
 import { sound } from '../../services/soundEffects';
 import { burstConfetti } from '../../utils/confetti';
+import QuickEpisodeModal from './QuickEpisodeModal';
 
 const STATUS_LABELS = {
   watching: { label: 'Watching', bg: 'bg-status-watching-bg text-status-watching border-status-watching/40' },
@@ -24,6 +25,7 @@ const AnimeCard = React.memo(function AnimeCard({
   onOpenAlert = null
 }) {
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showEpModal, setShowEpModal] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -52,12 +54,9 @@ const AnimeCard = React.memo(function AnimeCard({
     ? (airingInfo.isAired ? airingInfo.episode : Math.max(1, airingInfo.episode - 1))
     : (anime.nextAiringEpisode?.episode ? Math.max(1, anime.nextAiringEpisode.episode - 1) : 1);
 
-  const isCaughtUp = isAiring && currentStatus === 'watching' && currentEpWatched >= maxAiredEp && maxAiredEp > 0;
-
-  // For airing anime, remove 'completed' option and replace with 'caught_up'
+  // For airing anime, remove 'completed' option; only allow 'watching', 'plan_to_watch', 'on_hold', 'dropped'
   const availableStatuses = isAiring ? {
     watching: { label: 'Watching', bg: 'bg-status-watching-bg text-status-watching border-status-watching/40' },
-    caught_up: { label: `✨ Caught Up (Ep ${maxAiredEp})`, bg: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/40' },
     plan_to_watch: { label: 'Plan to Watch', bg: 'bg-status-plan-bg text-status-plan border-status-plan/40' },
     on_hold: { label: 'On Hold', bg: 'bg-status-hold-bg text-status-hold border-status-hold/40' },
     dropped: { label: 'Dropped', bg: 'bg-status-dropped-bg text-status-dropped border-status-dropped/40' }
@@ -70,12 +69,8 @@ const AnimeCard = React.memo(function AnimeCard({
     setShowDropdown(false);
     if (newStatus === 'remove') {
       onRemoveItem(anime.id);
-    } else if (newStatus === 'caught_up') {
-      onUpdateStatus(anime, 'watching', maxAiredEp);
-      sound.playCelebration();
-      burstConfetti();
-      setJustSaved(true);
-      setTimeout(() => setJustSaved(false), 800);
+    } else if (newStatus === 'watching') {
+      setShowEpModal(true);
     } else {
       onUpdateStatus(anime, newStatus);
       sound.playSaveSuccess();
@@ -84,14 +79,29 @@ const AnimeCard = React.memo(function AnimeCard({
     }
   };
 
+  const handleConfirmEpisodes = (epNumber) => {
+    onUpdateStatus(anime, 'watching', epNumber);
+    setJustSaved(true);
+    setTimeout(() => setJustSaved(false), 800);
+  };
+
   const handleToggleDropdown = (e) => {
     e.stopPropagation();
     if (!showDropdown && btnRef.current) {
       const rect = btnRef.current.getBoundingClientRect();
-      // If button is in the top half of viewport, open downward; else upward
       setDropdownDir(rect.top < window.innerHeight * 0.45 ? 'down' : 'up');
     }
     setShowDropdown(!showDropdown);
+  };
+
+  const handleMainButtonClick = (e) => {
+    e.stopPropagation();
+    if (currentStatus === 'watching') {
+      // Direct 1-tap open episode picker to update progress
+      setShowEpModal(true);
+    } else {
+      handleToggleDropdown(e);
+    }
   };
 
   return (
@@ -227,46 +237,56 @@ const AnimeCard = React.memo(function AnimeCard({
 
         {/* Direct Interactive Status Action Button */}
         <div className="mt-3 pt-2 border-t border-sand-300 dark:border-sand-400 relative">
-          <button
-            ref={btnRef}
-            onClick={handleToggleDropdown}
-            className={`w-full py-1.5 px-2.5 rounded-md text-xs font-bold text-left border-2 border-stone-900 flex items-center justify-between transition-all hover:scale-[1.01] active:translate-y-0.5 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] ${
-              justSaved
-                ? 'bg-emerald-400 text-ink-900 border-emerald-600 scale-[1.03]'
-                : isCaughtUp
-                  ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-600'
+          <div className="flex items-center w-full">
+            <button
+              ref={btnRef}
+              onClick={handleMainButtonClick}
+              className={`flex-grow py-1.5 px-2.5 rounded-l-md text-xs font-bold text-left border-2 border-r-0 border-stone-900 flex items-center justify-between transition-all hover:scale-[1.01] active:translate-y-0.5 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] ${
+                justSaved
+                  ? 'bg-emerald-400 text-ink-900 border-emerald-600 scale-[1.03]'
                   : statusConfig 
                     ? statusConfig.bg 
                     : 'bg-sand-100 dark:bg-sand-300 text-ink-900 hover:bg-sand-200'
-            }`}
-          >
-            <span className="truncate flex items-center gap-1 font-black">
-              {justSaved ? (
-                <>
-                  <Check className="w-3.5 h-3.5 stroke-[3]" />
-                  <span>Saved!</span>
-                </>
-              ) : isCaughtUp ? (
-                <>
-                  <Check className="w-3.5 h-3.5 stroke-[3] text-emerald-600 dark:text-emerald-400" />
-                  <span className="truncate text-emerald-700 dark:text-emerald-300">✓ Caught Up (Ep {currentEpWatched})</span>
-                </>
-              ) : currentStatus ? (
-                <>
-                  <Check className="w-3.5 h-3.5 stroke-[3]" />
-                  <span className="truncate">
-                    {currentStatus === 'watching' ? `Watching (Ep ${currentEpWatched || 1})` : (statusConfig?.label || currentStatus)}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                  <span className="truncate">Add to Watchlist</span>
-                </>
+              }`}
+            >
+              <span className="truncate flex items-center gap-1 font-black">
+                {justSaved ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    <span>Saved!</span>
+                  </>
+                ) : currentStatus ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    <span className="truncate">
+                      {currentStatus === 'watching' ? `Watching (Ep ${currentEpWatched || 1})` : (statusConfig?.label || currentStatus)}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                    <span className="truncate">Add to Watchlist</span>
+                  </>
+                )}
+              </span>
+              {currentStatus === 'watching' && (
+                <span className="text-[9px] font-mono uppercase bg-amber-400/30 text-amber-900 dark:text-amber-300 px-1 py-0.5 rounded ml-1">
+                  Change Ep
+                </span>
               )}
-            </span>
-            <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
-          </button>
+            </button>
+
+            {/* Dropdown Menu Toggle Trigger Button */}
+            <button
+              onClick={handleToggleDropdown}
+              className={`py-1.5 px-1.5 rounded-r-md text-xs font-bold border-2 border-stone-900 flex items-center justify-center transition-all hover:bg-sand-200 dark:hover:bg-sand-400 active:translate-y-0.5 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] ${
+                statusConfig ? statusConfig.bg : 'bg-sand-100 dark:bg-sand-300 text-ink-900'
+              }`}
+              title="Change status or options"
+            >
+              <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
 
           {/* Status Dropdown Menu with 100% Solid Opaque Background */}
           {showDropdown && (
@@ -288,15 +308,13 @@ const AnimeCard = React.memo(function AnimeCard({
                     key={statusKey}
                     onClick={(e) => handleStatusSelect(e, statusKey)}
                     className={`w-full text-left px-3 py-2 text-xs font-bold flex items-center justify-between transition-colors ${
-                      (statusKey === 'caught_up' && isCaughtUp) || (currentStatus === statusKey && statusKey !== 'caught_up')
+                      currentStatus === statusKey 
                         ? 'bg-amber-400 text-ink-900 font-black' 
                         : 'text-ink-900 dark:text-sand-50 hover:bg-sand-200 dark:hover:bg-sand-300'
                     }`}
                   >
                     <span>{cfg.label}</span>
-                    {((statusKey === 'caught_up' && isCaughtUp) || (currentStatus === statusKey && statusKey !== 'caught_up')) && (
-                      <Check className="w-3.5 h-3.5 stroke-[3]" />
-                    )}
+                    {currentStatus === statusKey && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                   </button>
                 ))}
 
@@ -318,6 +336,18 @@ const AnimeCard = React.memo(function AnimeCard({
         </div>
 
       </div>
+
+      {/* Which Episode Are You On? Quick Modal */}
+      <QuickEpisodeModal
+        isOpen={showEpModal}
+        onClose={() => setShowEpModal(false)}
+        anime={anime}
+        currentEp={currentEpWatched || 1}
+        maxAiredEp={maxAiredEp}
+        onConfirm={handleConfirmEpisodes}
+        titleLanguage={titleLanguage}
+      />
+
     </article>
   );
 });
