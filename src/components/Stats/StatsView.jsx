@@ -518,7 +518,7 @@ export default function StatsView({ watchlist = [], history = [] }) {
           </div>
           <p className="font-mono font-black text-2xl text-ink-900 mt-1 flex items-center gap-1.5">
             <span className={streak.current > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-stone-400'}>{streak.current}d</span>
-            {streak.current > 0 && <span className="text-base animate-bounce-subtle select-none">🔥</span>}
+            {streak.current > 0 && <Flame className="w-5 h-5 text-amber-500 fill-amber-500 animate-flame-glow" />}
           </p>
           <span className="text-[10px] text-stone-500 font-mono">Best: {streak.longest}d streak</span>
         </div>
@@ -531,8 +531,9 @@ export default function StatsView({ watchlist = [], history = [] }) {
             <Activity className="w-4 h-4" /> Activity Heatmap
           </h3>
           <div className="flex gap-2 text-[10px] font-bold">
-            <span className="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded border border-amber-300">
-              🔥 Best: {bingeStats.longestBinge} eps ({bingeStats.longestBingeDate})
+            <span className="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded border border-amber-300 flex items-center gap-1">
+              <Flame className="w-3 h-3 text-amber-600 fill-amber-500" />
+              <span>Best: {bingeStats.longestBinge} eps ({bingeStats.longestBingeDate})</span>
             </span>
           </div>
         </div>

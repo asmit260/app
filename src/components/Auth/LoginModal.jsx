@@ -90,7 +90,7 @@ export default function LoginModal({ isOpen, onClose, onAuthSuccess }) {
 
         {/* Brand */}
         <div className="text-center mb-6 relative z-10">
-          <div className="inline-block btn-manga bg-amber-400 text-ink-900 px-5 py-1.5 text-lg font-black uppercase tracking-tight -rotate-1 mb-3 shadow-manga">
+          <div className="inline-block btn-manga bg-amber-400 text-stone-950 px-5 py-1.5 text-lg font-black uppercase tracking-tight -rotate-1 mb-3 shadow-manga">
             AniTrack
           </div>
           <h2 className="font-display font-bold text-xl text-ink-900">
@@ -113,7 +113,7 @@ export default function LoginModal({ isOpen, onClose, onAuthSuccess }) {
           {/* Display Name (signup only) */}
           {mode === 'signup' && (
             <div>
-              <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5 ml-0.5">
+              <label className="block text-[11px] font-bold text-stone-600 dark:text-stone-300 uppercase tracking-wider mb-1.5 ml-0.5">
                 Display Name
               </label>
               <div className="relative">
@@ -131,7 +131,7 @@ export default function LoginModal({ isOpen, onClose, onAuthSuccess }) {
 
           {/* Email */}
           <div>
-            <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5 ml-0.5">
+            <label className="block text-[11px] font-bold text-stone-600 dark:text-stone-300 uppercase tracking-wider mb-1.5 ml-0.5">
               Email Address
             </label>
             <div className="relative">
@@ -149,7 +149,7 @@ export default function LoginModal({ isOpen, onClose, onAuthSuccess }) {
 
           {/* Password */}
           <div>
-            <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5 ml-0.5">
+            <label className="block text-[11px] font-bold text-stone-600 dark:text-stone-300 uppercase tracking-wider mb-1.5 ml-0.5">
               Password
             </label>
             <div className="relative">
@@ -176,7 +176,7 @@ export default function LoginModal({ isOpen, onClose, onAuthSuccess }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full btn-manga bg-navy-700 hover:bg-navy-600 text-sand-50 py-3 rounded-md font-display font-bold text-sm uppercase tracking-wide disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full btn-manga bg-navy-700 hover:bg-navy-600 text-white py-3 rounded-md font-display font-bold text-sm uppercase tracking-wide disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {loading ? (
               <span className="flex items-center gap-2">
@@ -208,7 +208,7 @@ export default function LoginModal({ isOpen, onClose, onAuthSuccess }) {
         <button
           onClick={handleGoogleLogin}
           disabled={loading}
-          className="w-full py-2.5 bg-sand-50 dark:bg-sand-200 border-2 border-stone-900 rounded-md font-bold text-sm text-ink-900 flex items-center justify-center gap-3 hover:bg-sand-100 active:translate-y-0.5 transition-all shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] disabled:opacity-50 relative z-10"
+          className="w-full py-2.5 bg-sand-50 dark:bg-sand-300 border-2 border-stone-900 rounded-md font-bold text-sm text-ink-900 flex items-center justify-center gap-3 hover:bg-sand-100 active:translate-y-0.5 transition-all shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] disabled:opacity-50 relative z-10"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
@@ -224,14 +224,14 @@ export default function LoginModal({ isOpen, onClose, onAuthSuccess }) {
           {mode === 'login' ? (
             <>
               Don't have an account?{' '}
-              <button onClick={() => { setMode('signup'); setError(''); setEmail(''); setPassword(''); }} className="text-navy-700 hover:underline">
+              <button onClick={() => { setMode('signup'); setError(''); setEmail(''); setPassword(''); }} className="text-navy-700 dark:text-navy-700 font-bold hover:underline">
                 Create one
               </button>
             </>
           ) : (
             <>
               Already have an account?{' '}
-              <button onClick={() => { setMode('login'); setError(''); setEmail(''); setPassword(''); setDisplayName(''); }} className="text-navy-700 hover:underline">
+              <button onClick={() => { setMode('login'); setError(''); setEmail(''); setPassword(''); setDisplayName(''); }} className="text-navy-700 dark:text-navy-700 font-bold hover:underline">
                 Sign in
               </button>
             </>

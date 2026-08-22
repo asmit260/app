@@ -96,7 +96,7 @@ export default function WatchlistCard({
 
           {/* Rewatch Pill */}
           {rewatchCount > 0 && (
-            <div className="absolute bottom-1 left-1 bg-amber-400 text-ink-900 text-[8px] font-black uppercase px-1 py-0.2 rounded border border-stone-900 flex items-center gap-0.5 shadow-sm">
+            <div className="absolute bottom-1 left-1 bg-amber-400 text-stone-950 text-[8px] font-black uppercase px-1 py-0.2 rounded border border-stone-900 flex items-center gap-0.5 shadow-sm">
               <RotateCcw className="w-2 h-2" />
               <span>x{rewatchCount}</span>
             </div>
@@ -121,13 +121,13 @@ export default function WatchlistCard({
                     onUpdateStatus(animeId, e.target.value);
                   }}
                   onClick={(e) => e.stopPropagation()}
-                  className={`text-[9px] font-black uppercase tracking-wider pl-1.5 pr-4 py-0.5 rounded border ${statusTheme.bg} cursor-pointer focus:outline-none appearance-none`}
+                  className={`text-[9px] font-black uppercase tracking-wider pl-1.5 pr-4 py-0.5 rounded border ${statusTheme.bg} cursor-pointer focus:outline-none appearance-none dark:bg-stone-900`}
                 >
-                  <option value="watching">Watching</option>
-                  <option value="completed">Completed</option>
-                  <option value="plan_to_watch">Plan</option>
-                  <option value="on_hold">On Hold</option>
-                  <option value="dropped">Dropped</option>
+                  <option value="watching" className="bg-[#FDFAF5] dark:bg-[#1C1917] text-[#18130D] dark:text-[#FAFAF9]">Watching</option>
+                  <option value="completed" className="bg-[#FDFAF5] dark:bg-[#1C1917] text-[#18130D] dark:text-[#FAFAF9]">Completed</option>
+                  <option value="plan_to_watch" className="bg-[#FDFAF5] dark:bg-[#1C1917] text-[#18130D] dark:text-[#FAFAF9]">Plan</option>
+                  <option value="on_hold" className="bg-[#FDFAF5] dark:bg-[#1C1917] text-[#18130D] dark:text-[#FAFAF9]">On Hold</option>
+                  <option value="dropped" className="bg-[#FDFAF5] dark:bg-[#1C1917] text-[#18130D] dark:text-[#FAFAF9]">Dropped</option>
                 </select>
                 <ChevronDown className="w-2.5 h-2.5 absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none opacity-60" />
               </div>
@@ -194,7 +194,7 @@ export default function WatchlistCard({
               <button
                 onClick={(e) => handleStep(e, 1)}
                 disabled={totalEps && watched >= totalEps}
-                className="px-2.5 py-0.5 bg-amber-400 hover:bg-amber-300 text-ink-900 font-black text-[11px] flex items-center gap-0.5 transition-colors disabled:opacity-40"
+                className="px-2.5 py-0.5 bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-[11px] flex items-center gap-0.5 transition-colors disabled:opacity-40"
                 title="Log +1 Episode Watched"
               >
                 <Plus className="w-3 h-3 stroke-[3]" />
@@ -274,7 +274,7 @@ export default function WatchlistCard({
           <button
             onClick={(e) => handleStep(e, 1)}
             disabled={totalEps && watched >= totalEps}
-            className="btn-manga bg-amber-400 hover:bg-amber-300 text-ink-900 text-xs px-2 py-1 rounded font-mono font-black flex items-center gap-0.5 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5"
+            className="btn-manga bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs px-2 py-1 rounded font-mono font-black flex items-center gap-0.5 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5"
             title="Log +1 Episode"
           >
             <Plus className="w-3 h-3 stroke-[3]" />
@@ -329,7 +329,7 @@ export default function WatchlistCard({
         <button
           onClick={(e) => handleStep(e, 1)}
           disabled={totalEps && watched >= totalEps}
-          className="absolute bottom-1.5 right-1.5 btn-manga bg-amber-400 hover:bg-amber-300 text-ink-900 text-[10px] font-black px-2 py-0.5 rounded shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] flex items-center gap-0.5"
+          className="absolute bottom-1.5 right-1.5 btn-manga bg-amber-400 hover:bg-amber-300 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] flex items-center gap-0.5"
           title="Quick +1"
         >
           <Plus className="w-3 h-3 stroke-[3]" />

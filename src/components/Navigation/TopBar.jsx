@@ -12,6 +12,7 @@ export default function TopBar({
 }) {
   const titles = {
     schedule: 'Airing Schedule',
+    explore: 'Explore & Discover',
     mylist: 'My Watchlist',
     stats: 'Anime Analytics',
     profile: 'Profile & Settings'
@@ -28,7 +29,7 @@ export default function TopBar({
         
         {/* Brand Sticker */}
         <div className="flex items-center gap-3">
-          <div className="btn-manga bg-amber-400 text-ink-900 px-3.5 py-1 text-sm font-black uppercase tracking-tight -rotate-1 shadow-manga">
+          <div className="btn-manga bg-amber-400 text-stone-950 px-3.5 py-1 text-sm font-black uppercase tracking-tight -rotate-1 shadow-manga">
             AniTrack
           </div>
           <span className="font-display font-bold text-base text-ink-900 hidden sm:inline">
@@ -41,17 +42,17 @@ export default function TopBar({
           {/* Theme Switcher */}
           <button 
             onClick={onToggleTheme}
-            className="p-2 rounded-md border-2 border-stone-900 bg-sand-50 dark:bg-sand-200 text-ink-900 hover:bg-amber-400 active:translate-y-0.5 transition-all shadow-[2px_2px_0px_0px_rgba(24,19,13,1)]"
+            className="p-2 rounded-md border-2 border-stone-900 bg-sand-50 dark:bg-sand-300 text-ink-900 hover:bg-amber-400 hover:text-stone-950 active:translate-y-0.5 transition-all shadow-[2px_2px_0px_0px_rgba(24,19,13,1)]"
             title="Toggle Dark/Light Mode"
           >
-            {darkMode ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-stone-700" />}
+            {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-stone-700" />}
           </button>
 
           {/* Auth Button */}
           {currentUser ? (
             <button
               onClick={handleAvatarClick}
-              className="w-8 h-8 rounded-full bg-amber-400 border-2 border-stone-900 flex items-center justify-center text-xs font-black text-ink-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5 transition-transform hover:scale-105"
+              className="w-8 h-8 rounded-full bg-amber-400 border-2 border-stone-900 flex items-center justify-center text-xs font-black text-stone-950 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5 transition-transform hover:scale-105"
               title={`View Profile (${currentUser.raw_user_meta_data?.display_name || currentUser.email || 'User'})`}
             >
               {(currentUser.raw_user_meta_data?.display_name || currentUser.email || 'U').charAt(0).toUpperCase()}
@@ -59,7 +60,7 @@ export default function TopBar({
           ) : (
             <button
               onClick={onOpenLogin}
-              className="btn-manga bg-sand-50 dark:bg-sand-200 hover:bg-amber-400 text-ink-900 px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5"
+              className="btn-manga bg-sand-50 dark:bg-sand-300 hover:bg-amber-400 hover:text-stone-950 text-ink-900 px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5"
               title="Sign In"
             >
               <LogIn className="w-3.5 h-3.5" />

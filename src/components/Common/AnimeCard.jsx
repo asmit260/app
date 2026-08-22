@@ -145,19 +145,19 @@ const AnimeCard = React.memo(function AnimeCard({
             }}
             className={`absolute top-2 left-2 z-20 w-8 h-8 rounded-md border-2 border-stone-900 flex items-center justify-center transition-all active:scale-90 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] ${
               isAlertActive
-                ? 'bg-amber-400 text-ink-900 ring-2 ring-amber-300'
-                : 'bg-sand-50 dark:bg-stone-900 text-ink-900 dark:text-sand-50 hover:bg-amber-400 hover:text-ink-900'
+                ? 'bg-amber-400 text-stone-950 ring-2 ring-amber-300'
+                : 'bg-sand-50 dark:bg-stone-900 text-ink-900 dark:text-sand-50 hover:bg-amber-400 hover:text-stone-950'
             }`}
             title={isAlertActive ? 'Airing alert active — tap to manage' : 'Set Airing Notification / Alarm'}
           >
-            <Bell className={`w-4 h-4 ${isAlertActive ? 'fill-current text-ink-900' : 'text-stone-900 dark:text-sand-50'}`} />
+            <Bell className={`w-4 h-4 ${isAlertActive ? 'fill-current text-stone-950' : 'text-stone-900 dark:text-sand-50'}`} />
           </button>
         )}
 
         {/* Top Right Progress Indicator (if tracked) */}
         {watchlistEntry && (
           <div className="absolute top-2 right-2 z-10 pointer-events-none">
-            <span className="px-2 py-0.5 text-[10px] font-mono font-black bg-stone-900/90 text-sand-50 border border-stone-900 rounded shadow-sm flex items-center gap-1">
+            <span className="px-2 py-0.5 text-[10px] font-mono font-black bg-stone-900/90 text-white border border-stone-900 rounded shadow-sm flex items-center gap-1">
               <Eye className="w-3 h-3 text-amber-400" />
               {currentEpWatched}/{totalEps || '?'}
             </span>
@@ -170,13 +170,15 @@ const AnimeCard = React.memo(function AnimeCard({
             {airingInfo ? `Ep ${airingInfo.episode}${totalEps ? ' / ' + totalEps : ''}` : `${totalEps ? totalEps + ' Ep' : 'TBA'}`}
           </span>
           {airingInfo?.isAired && (
-            <span className="bg-emerald-500 text-white px-2 py-0.5 rounded-sm font-black text-[10px] uppercase border border-emerald-700 shadow-sm">
-              ✓ Aired
+            <span className="bg-emerald-500 text-white px-2 py-0.5 rounded-sm font-black text-[10px] uppercase border border-emerald-700 shadow-sm flex items-center gap-0.5">
+              <Check className="w-2.5 h-2.5 stroke-[3]" />
+              <span>Aired</span>
             </span>
           )}
           {score && (
-            <span className="bg-amber-400 text-ink-900 px-2 py-0.5 rounded-sm font-black border border-stone-900 shadow-[1.5px_1.5px_0px_0px_rgba(0,0,0,1)]">
-              ★ {score}%
+            <span className="bg-amber-400 text-stone-950 px-2 py-0.5 rounded-sm font-black border border-stone-900 shadow-[1.5px_1.5px_0px_0px_rgba(0,0,0,1)] flex items-center gap-0.5">
+              <Star className="w-2.5 h-2.5 fill-stone-950 stroke-none" />
+              <span>{score}%</span>
             </span>
           )}
         </div>
@@ -310,7 +312,7 @@ const AnimeCard = React.memo(function AnimeCard({
                     onClick={(e) => handleStatusSelect(e, statusKey)}
                     className={`w-full text-left px-3 py-2 text-xs font-bold flex items-center justify-between transition-colors ${
                       currentStatus === statusKey 
-                        ? 'bg-amber-400 text-ink-900 font-black' 
+                        ? 'bg-amber-400 text-stone-950 font-black' 
                         : 'text-ink-900 dark:text-sand-50 hover:bg-sand-200 dark:hover:bg-sand-300'
                     }`}
                   >

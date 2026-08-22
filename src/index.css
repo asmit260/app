@@ -40,14 +40,17 @@
   --status-plan-bg: #E5EBF2;
   --status-hold-bg: #F5EFE2;
   --status-dropped-bg: #F5E9E9;
+
+  --manga-border: #18130D;
+  --manga-shadow: #18130D;
 }
 
 .dark {
-  --sand-50: #1C1917;
+  --sand-50: #201C19;
   --sand-100: #12100E;
-  --sand-200: #292524;
-  --sand-300: #44403C;
-  --sand-400: #57534E;
+  --sand-200: #26221F;
+  --sand-300: #38332F;
+  --sand-400: #4E4741;
 
   --stone-500: #A8A29E;
   --stone-600: #D6D3D1;
@@ -63,6 +66,9 @@
   --amber-500: #F59E0B;
   --amber-400: #FBBF24;
   --amber-100: #451A03;
+
+  --manga-border: #443E38;
+  --manga-shadow: #0C0A09;
 
   --status-watching: #34D399;
   --status-completed: #A3E635;
@@ -115,11 +121,17 @@ h1, h2, h3, .font-display {
 /* High-Performance Manga Panel (Butter-Smooth 60FPS) */
 .card-manga-panel {
   background-color: var(--sand-50);
-  border: 2px solid #18130d;
-  box-shadow: 3px 3px 0px 0px #18130d;
+  border: 2px solid var(--manga-border);
+  box-shadow: 3px 3px 0px 0px var(--manga-shadow);
   transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
-  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dark .card-manga-panel {
+  background-color: #201C19;
+  border-color: #443E38;
+  box-shadow: 3px 3px 0px 0px #0C0A09;
 }
 
 .card-manga-panel:hover {
@@ -131,13 +143,18 @@ h1, h2, h3, .font-display {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #18130d;
-  box-shadow: 2px 2px 0px 0px #18130d;
+  border: 2px solid var(--manga-border);
+  box-shadow: 2px 2px 0px 0px var(--manga-shadow);
   font-weight: 800;
   transform: translate3d(0, 0, 0);
-  transition: transform 0.1s ease, background-color 0.12s ease;
+  transition: transform 0.1s ease, background-color 0.12s ease, border-color 0.12s ease;
   touch-action: manipulation;
   user-select: none;
+}
+
+.dark .btn-manga {
+  border-color: #443E38;
+  box-shadow: 2px 2px 0px 0px #0C0A09;
 }
 
 .btn-manga:active {
@@ -147,14 +164,34 @@ h1, h2, h3, .font-display {
 /* Optimized Manga Bottom Dock */
 .manga-dock {
   background-color: var(--sand-50);
-  border-top: 2px solid #18130d;
+  border-top: 2px solid var(--manga-border);
   box-shadow: 0 -4px 16px rgba(24, 19, 13, 0.08);
   transform: translate3d(0, 0, 0);
 }
 
 .dark .manga-dock {
-  background-color: var(--sand-50);
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.35);
+  background-color: #1A1715;
+  border-top: 2px solid #38332F;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.55);
+}
+
+/* Global Dark Mode High-Contrast Rules for Amber Buttons & Elements */
+.dark .bg-amber-400,
+.dark .bg-amber-300,
+.dark .bg-amber-500,
+.dark .hover\:bg-amber-400:hover,
+.dark .hover\:bg-amber-300:hover {
+  color: #18130D !important;
+}
+
+.dark .bg-amber-400 *,
+.dark .bg-amber-300 *,
+.dark .bg-amber-500 * {
+  color: inherit;
+}
+
+.dark .border-stone-900 {
+  border-color: #443E38 !important;
 }
 
 /* Ultra Smooth Fade-in Animation */

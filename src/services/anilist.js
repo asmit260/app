@@ -254,6 +254,14 @@ query GetAnimeDetail($id: Int) {
       site
       thumbnail
     }
+    externalLinks {
+      id
+      url
+      site
+      icon
+      color
+      type
+    }
     nextAiringEpisode {
       airingAt
       timeUntilAiring
@@ -279,6 +287,66 @@ query GetAnimeDetail($id: Int) {
           averageScore
         }
       }
+    }
+  }
+}`;
+
+export const EXPLORE_PAGE_QUERY = `
+query GetExploreContent($season: MediaSeason, $seasonYear: Int) {
+  trending: Page(page: 1, perPage: 12) {
+    media(sort: TRENDING_DESC, type: ANIME, isAdult: false) {
+      id
+      title { romaji english native }
+      coverImage { large color }
+      bannerImage
+      format
+      status
+      episodes
+      averageScore
+      popularity
+      genres
+    }
+  }
+  topRated: Page(page: 1, perPage: 12) {
+    media(sort: SCORE_DESC, type: ANIME, isAdult: false) {
+      id
+      title { romaji english native }
+      coverImage { large color }
+      bannerImage
+      format
+      status
+      episodes
+      averageScore
+      popularity
+      genres
+    }
+  }
+  movies: Page(page: 1, perPage: 12) {
+    media(format: MOVIE, sort: SCORE_DESC, type: ANIME, isAdult: false) {
+      id
+      title { romaji english native }
+      coverImage { large color }
+      bannerImage
+      format
+      status
+      episodes
+      averageScore
+      popularity
+      genres
+    }
+  }
+  popularThisSeason: Page(page: 1, perPage: 12) {
+    media(season: $season, seasonYear: $seasonYear, sort: POPULARITY_DESC, type: ANIME, isAdult: false) {
+      id
+      title { romaji english native }
+      coverImage { large color }
+      bannerImage
+      format
+      status
+      episodes
+      averageScore
+      popularity
+      genres
     }
   }
 }`;

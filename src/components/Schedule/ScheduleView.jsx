@@ -169,8 +169,8 @@ export default function ScheduleView({
               onClick={() => setViewMode('grid')}
               className={`p-1.5 rounded transition-all ${
                 viewMode === 'grid' 
-                  ? 'bg-amber-400 text-ink-900 font-black shadow-sm' 
-                  : 'text-stone-600 hover:text-ink-900'
+                  ? 'bg-amber-400 text-stone-950 font-black shadow-sm' 
+                  : 'text-stone-600 dark:text-stone-300 hover:text-ink-900'
               }`}
               title="Grid View"
             >
@@ -180,8 +180,8 @@ export default function ScheduleView({
               onClick={() => setViewMode('list')}
               className={`p-1.5 rounded transition-all ${
                 viewMode === 'list' 
-                  ? 'bg-amber-400 text-ink-900 font-black shadow-sm' 
-                  : 'text-stone-600 hover:text-ink-900'
+                  ? 'bg-amber-400 text-stone-950 font-black shadow-sm' 
+                  : 'text-stone-600 dark:text-stone-300 hover:text-ink-900'
               }`}
               title="List View"
             >
@@ -208,8 +208,8 @@ export default function ScheduleView({
               onClick={() => setFilterMode('all')}
               className={`px-2.5 py-1 text-xs font-bold rounded border-2 border-stone-900 transition-all ${
                 filterMode === 'all'
-                  ? 'bg-amber-400 text-ink-900 font-black shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)]'
-                  : 'bg-sand-100 dark:bg-sand-300 text-stone-700 hover:bg-sand-200'
+                  ? 'bg-amber-400 text-stone-950 font-black shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)]'
+                  : 'bg-sand-100 dark:bg-sand-300 text-stone-700 dark:text-stone-300 hover:bg-sand-200'
               }`}
             >
               All Shows ({schedules.length})
@@ -218,8 +218,8 @@ export default function ScheduleView({
               onClick={() => setFilterMode('tracked')}
               className={`px-2.5 py-1 text-xs font-bold rounded border-2 border-stone-900 transition-all flex items-center gap-1 ${
                 filterMode === 'tracked'
-                  ? 'bg-amber-400 text-ink-900 font-black shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)]'
-                  : 'bg-sand-100 dark:bg-sand-300 text-stone-700 hover:bg-sand-200'
+                  ? 'bg-amber-400 text-stone-950 font-black shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)]'
+                  : 'bg-sand-100 dark:bg-sand-300 text-stone-700 dark:text-stone-300 hover:bg-sand-200'
               }`}
             >
               <span>My Watchlist</span>
@@ -228,8 +228,8 @@ export default function ScheduleView({
               onClick={() => setFilterMode('upcoming')}
               className={`px-2.5 py-1 text-xs font-bold rounded border-2 border-stone-900 transition-all ${
                 filterMode === 'upcoming'
-                  ? 'bg-amber-400 text-ink-900 font-black shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)]'
-                  : 'bg-sand-100 dark:bg-sand-300 text-stone-700 hover:bg-sand-200'
+                  ? 'bg-amber-400 text-stone-950 font-black shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)]'
+                  : 'bg-sand-100 dark:bg-sand-300 text-stone-700 dark:text-stone-300 hover:bg-sand-200'
               }`}
             >
               Upcoming Only
@@ -249,7 +249,7 @@ export default function ScheduleView({
                 onClick={() => setSelectedDay(day.idx)}
                 className={`shrink-0 px-4 py-2 rounded-lg font-sans text-xs font-black transition-all border-2 border-stone-900 relative active:scale-95 select-none ${
                   isSelected
-                    ? 'bg-amber-400 text-ink-900 shadow-[2.5px_2.5px_0px_0px_rgba(24,19,13,1)] scale-[1.03]'
+                    ? 'bg-amber-400 text-stone-950 shadow-[2.5px_2.5px_0px_0px_rgba(24,19,13,1)] scale-[1.03]'
                     : 'bg-sand-100 dark:bg-sand-300 text-stone-700 dark:text-stone-300 hover:bg-sand-200'
                 }`}
               >
@@ -269,7 +269,7 @@ export default function ScheduleView({
           {selectedDay !== (todayIndex === 0 ? 6 : todayIndex - 1) && (
             <button
               onClick={() => setSelectedDay(todayIndex === 0 ? 6 : todayIndex - 1)}
-              className="btn-manga shrink-0 px-3.5 py-2 rounded-lg font-sans text-xs font-black bg-navy-700 text-sand-50 border-2 border-stone-900 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] hover:bg-navy-600 transition-all flex items-center gap-1"
+              className="btn-manga shrink-0 px-3.5 py-2 rounded-lg font-sans text-xs font-black bg-navy-700 text-white border-2 border-stone-900 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] hover:bg-navy-600 transition-all flex items-center gap-1"
             >
               ← Jump to Today
             </button>

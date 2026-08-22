@@ -1,10 +1,11 @@
 import React from 'react';
-import { Calendar, Bookmark, BarChart3, User } from 'lucide-react';
+import { Calendar, Compass, Bookmark, BarChart3, User } from 'lucide-react';
 import { sound } from '../../services/soundEffects';
 
 export default function BottomNav({ activeTab, onSelectTab, watchingCount = 0 }) {
   const tabs = [
     { id: 'schedule', label: 'Schedule', icon: Calendar },
+    { id: 'explore', label: 'Explore', icon: Compass },
     { id: 'mylist', label: 'Watchlist', icon: Bookmark, badge: watchingCount },
     { id: 'stats', label: 'Analytics', icon: BarChart3 },
     { id: 'profile', label: 'Profile', icon: User }
@@ -42,7 +43,7 @@ export default function BottomNav({ activeTab, onSelectTab, watchingCount = 0 })
                 <div className="relative">
                   <Icon className={`w-5 h-5 transition-transform duration-150 ${isActive ? 'scale-110 stroke-[2.5] text-ink-900' : 'stroke-[1.8]'}`} />
                   {tab.badge > 0 && (
-                    <span className="absolute -top-1.5 -right-2.5 min-w-[17px] h-4 px-1 bg-status-watching text-sand-50 text-[9px] font-mono font-black rounded-full flex items-center justify-center border border-stone-900 shadow-sm animate-fade-in">
+                    <span className="absolute -top-1.5 -right-2.5 min-w-[17px] h-4 px-1 bg-status-watching text-white text-[9px] font-mono font-black rounded-full flex items-center justify-center border border-stone-900 shadow-sm animate-fade-in">
                       {tab.badge}
                     </span>
                   )}

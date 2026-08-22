@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import TopBar from './components/Navigation/TopBar';
 import BottomNav from './components/Navigation/BottomNav';
 import ScheduleView from './components/Schedule/ScheduleView';
+import ExploreView from './components/Explore/ExploreView';
 import MyListView from './components/MyList/MyListView';
 import StatsView from './components/Stats/StatsView';
 import ProfileView from './components/Profile/ProfileView';
@@ -178,7 +179,7 @@ export default function App() {
     if (updated) {
       await loadAllData();
       if (eps !== null) {
-        showToast(`✨ Caught up on "${updated.anime_title}" (Ep ${eps})`);
+        showToast(`Caught up on "${updated.anime_title}" (Ep ${eps})`);
       } else {
         showToast(`Saved "${updated.anime_title}" to ${status.replace('_', ' ')}`);
       }
@@ -260,6 +261,15 @@ export default function App() {
             watchlist={watchlist}
             onUpdateWatchlist={handleUpdateWatchlist}
             onRemoveItem={handleRemoveWatchlistItem}
+            onSelectAnime={(id) => setSelectedAnimeId(id)}
+            titleLanguage={profile.titleLanguage}
+          />
+        )}
+
+        {activeTab === 'explore' && (
+          <ExploreView
+            watchlist={watchlist}
+            onUpdateWatchlist={handleUpdateWatchlist}
             onSelectAnime={(id) => setSelectedAnimeId(id)}
             titleLanguage={profile.titleLanguage}
           />

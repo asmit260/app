@@ -157,7 +157,7 @@ async function triggerUpdateDeviceNotification(updateInfo) {
         notifications: [
           {
             id: 999999,
-            title: `🚀 AniTrack v${updateInfo.version} Available!`,
+            title: `AniTrack v${updateInfo.version} Available!`,
             body: `Tap to download and install the latest version.`,
             schedule: { at: new Date(Date.now() + 1000) }
           }

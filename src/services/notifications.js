@@ -147,7 +147,7 @@ export async function scheduleDeviceNotification({ animeId, title, episode, airi
           notifications: [
             {
               id: notificationId,
-              title: `⚔️ Airing Alert: ${title}`,
+              title: `Airing Alert: ${title}`,
               body: `${episodeText} ${leadText}`,
               schedule: { 
                 at: scheduleDate,
@@ -168,14 +168,14 @@ export async function scheduleDeviceNotification({ animeId, title, episode, airi
       const delayMs = (notifyUnix * 1000) - Date.now();
       if (delayMs <= 0) {
         try {
-          new Notification(`⚔️ Airing Alert: ${title}`, {
+          new Notification(`Airing Alert: ${title}`, {
             body: `${episodeText} ${leadText}`
           });
         } catch (_) {}
       } else if (delayMs < 2147483647) {
         setTimeout(() => {
           try {
-            new Notification(`⚔️ Airing Alert: ${title}`, {
+            new Notification(`Airing Alert: ${title}`, {
               body: `${episodeText} ${leadText}`
             });
           } catch (_) {}

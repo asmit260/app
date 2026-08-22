@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Sun, Moon, Globe, Download, Upload, Trash2, LogOut, AlertTriangle, Sparkles, RefreshCw, Loader2, Volume2, VolumeX } from 'lucide-react';
+import { User, Sun, Moon, Globe, Download, Upload, Trash2, LogOut, AlertTriangle, Sparkles, RefreshCw, Loader2, Volume2, VolumeX, Check } from 'lucide-react';
 import { saveProfileSettings, exportWatchlistJSON, importWatchlistJSON, resetAllData } from '../../services/storage';
 import { signOut } from '../../services/auth';
 import { CURRENT_APP_VERSION } from '../../services/updater';
@@ -40,7 +40,7 @@ export default function ProfileView({
       };
       onUpdateProfile(updated);
       await saveProfileSettings(updated);
-      setSavedMessage('✓ Saved');
+      setSavedMessage('Saved');
       setTimeout(() => setSavedMessage(''), 1200);
     }, 600);
     return () => clearTimeout(timer);
@@ -87,7 +87,7 @@ export default function ProfileView({
       if (onCheckForUpdate) {
         const res = await onCheckForUpdate();
         if (!res?.hasUpdate) {
-          setUpdateCheckMsg('✓ You are using the latest version (v' + (res?.version || CURRENT_APP_VERSION) + ')');
+          setUpdateCheckMsg('You are using the latest version (v' + (res?.version || CURRENT_APP_VERSION) + ')');
           setTimeout(() => setUpdateCheckMsg(''), 3000);
         }
       }
@@ -167,9 +167,9 @@ export default function ProfileView({
           </div>
           <button
             onClick={onToggleTheme}
-            className="btn-manga bg-sand-100 dark:bg-sand-300 hover:bg-amber-400 text-ink-900 px-3 py-1.5 text-xs flex items-center gap-1.5"
+            className="btn-manga bg-sand-100 dark:bg-sand-300 hover:bg-amber-400 hover:text-stone-950 text-ink-900 px-3 py-1.5 text-xs flex items-center gap-1.5"
           >
-            {darkMode ? <Sun className="w-3.5 h-3.5 text-amber-500" /> : <Moon className="w-3.5 h-3.5" />}
+            {darkMode ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-stone-700" />}
             <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
           </button>
         </div>
@@ -189,8 +189,8 @@ export default function ProfileView({
             }}
             className={`btn-manga px-3 py-1.5 text-xs flex items-center gap-1.5 ${
               soundEnabled 
-                ? 'bg-amber-400 text-ink-900 font-black' 
-                : 'bg-sand-100 dark:bg-sand-300 text-stone-500'
+                ? 'bg-amber-400 text-stone-950 font-black' 
+                : 'bg-sand-100 dark:bg-sand-300 text-stone-500 dark:text-stone-300'
             }`}
           >
             {soundEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
@@ -200,8 +200,9 @@ export default function ProfileView({
 
         {/* Auto-save confirmation */}
         {savedMessage && (
-          <div className="text-xs font-bold text-status-watching text-center py-1 animate-fade-in">
-            {savedMessage}
+          <div className="text-xs font-bold text-status-watching text-center py-1 animate-fade-in flex items-center justify-center gap-1">
+            <Check className="w-3.5 h-3.5 stroke-[3]" />
+            <span>{savedMessage}</span>
           </div>
         )}
       </div>
@@ -222,7 +223,7 @@ export default function ProfileView({
           <button
             onClick={handleCheckUpdate}
             disabled={checkingUpdate}
-            className="btn-manga bg-sand-100 dark:bg-sand-300 hover:bg-amber-400 text-ink-900 text-xs px-3 py-2 rounded flex items-center gap-1.5 font-bold disabled:opacity-50"
+            className="btn-manga bg-sand-100 dark:bg-sand-300 hover:bg-amber-400 hover:text-stone-950 text-ink-900 text-xs px-3 py-2 rounded flex items-center gap-1.5 font-bold disabled:opacity-50"
           >
             {checkingUpdate ? (
               <>
@@ -255,14 +256,14 @@ export default function ProfileView({
           {/* Export JSON */}
           <button
             onClick={handleExport}
-            className="flex-1 btn-manga bg-sand-100 dark:bg-sand-300 hover:bg-amber-400 text-ink-900 text-xs py-2 px-3 flex items-center justify-center gap-1.5"
+            className="flex-1 btn-manga bg-sand-100 dark:bg-sand-300 hover:bg-amber-400 hover:text-stone-950 text-ink-900 text-xs py-2 px-3 flex items-center justify-center gap-1.5"
           >
             <Download className="w-4 h-4" />
             <span>Export JSON</span>
           </button>
 
           {/* Import JSON */}
-          <label className="flex-1 btn-manga bg-sand-100 dark:bg-sand-300 hover:bg-amber-400 text-ink-900 text-xs py-2 px-3 flex items-center justify-center gap-1.5 cursor-pointer">
+          <label className="flex-1 btn-manga bg-sand-100 dark:bg-sand-300 hover:bg-amber-400 hover:text-stone-950 text-ink-900 text-xs py-2 px-3 flex items-center justify-center gap-1.5 cursor-pointer">
             <Upload className="w-4 h-4" />
             <span>Restore JSON</span>
             <input type="file" accept=".json" onChange={handleImportJson} className="hidden" />
@@ -288,13 +289,13 @@ export default function ProfileView({
               <div className="flex gap-2">
                 <button
                   onClick={handleResetData}
-                  className="btn-manga bg-status-dropped text-sand-50 text-xs px-3 py-1 font-bold"
+                  className="btn-manga bg-status-dropped text-white text-xs px-3 py-1 font-bold"
                 >
                   Yes, Reset Everything
                 </button>
                 <button
                   onClick={() => setShowConfirmReset(false)}
-                  className="text-xs text-stone-600 px-2 py-1 hover:underline"
+                  className="text-xs text-stone-600 dark:text-stone-300 px-2 py-1 hover:underline"
                 >
                   Cancel
                 </button>
@@ -309,7 +310,7 @@ export default function ProfileView({
         <div className="card-manga-panel p-4 bg-sand-50 dark:bg-sand-200">
           <button
             onClick={handleSignOut}
-            className="w-full btn-manga bg-status-dropped hover:bg-red-600 text-sand-50 py-2.5 rounded font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2"
+            className="w-full btn-manga bg-status-dropped hover:bg-red-600 text-white py-2.5 rounded font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2"
           >
             <LogOut className="w-4 h-4" />
             Sign Out

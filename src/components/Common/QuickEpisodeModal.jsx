@@ -104,8 +104,9 @@ export default function QuickEpisodeModal({
                 {getTitle()}
               </h3>
               <div className="flex items-center gap-1.5 mt-1">
-                <span className="text-[10px] font-mono font-black text-amber-900 dark:text-amber-300 bg-amber-400/30 px-2 py-0.5 rounded border border-amber-500/40">
-                  ✨ Latest Aired: Ep {effectiveMax}
+                <span className="text-[10px] font-mono font-black text-amber-900 dark:text-amber-300 bg-amber-400/30 px-2 py-0.5 rounded border border-amber-500/40 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                  <span>Latest Aired: Ep {effectiveMax}</span>
                 </span>
               </div>
             </div>
@@ -146,10 +147,10 @@ export default function QuickEpisodeModal({
             </button>
 
             <div className="min-w-[130px] px-4 py-2 bg-amber-400 dark:bg-amber-500 border-2 border-stone-900 rounded-lg shadow-[2.5px_2.5px_0px_0px_rgba(24,19,13,1)] text-center">
-              <span className="text-[9px] font-mono uppercase font-black tracking-wider block text-ink-900/70">
+              <span className="text-[9px] font-mono uppercase font-black tracking-wider block text-stone-950/70">
                 CURRENT EPISODE
               </span>
-              <span className="font-display font-black text-2xl text-ink-900 leading-tight">
+              <span className="font-display font-black text-2xl text-stone-950 leading-tight">
                 {selectedEp} <span className="text-xs font-mono font-bold opacity-75">/ {effectiveMax}</span>
               </span>
             </div>
@@ -170,7 +171,7 @@ export default function QuickEpisodeModal({
               onClick={() => handleSelectPill(1)}
               className={`px-3 py-1.5 text-xs font-bold rounded-md border-2 border-stone-900 transition-all ${
                 selectedEp === 1 
-                  ? 'bg-amber-400 text-ink-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] font-black' 
+                  ? 'bg-amber-400 text-stone-950 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] font-black' 
                   : 'bg-sand-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-sand-200'
               }`}
             >
@@ -181,11 +182,11 @@ export default function QuickEpisodeModal({
               onClick={handleSetLatest}
               className={`px-3 py-1.5 text-xs font-bold rounded-md border-2 border-stone-900 flex items-center gap-1.5 transition-all ${
                 selectedEp === effectiveMax 
-                  ? 'bg-emerald-400 text-ink-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] font-black' 
+                  ? 'bg-emerald-400 text-stone-950 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] font-black' 
                   : 'bg-sand-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-sand-200'
               }`}
             >
-              <Zap className="w-3.5 h-3.5 fill-amber-500 text-amber-600" />
+              <Zap className="w-3.5 h-3.5 fill-stone-950 text-stone-950" />
               <span>Latest (Ep {effectiveMax})</span>
             </button>
           </div>
@@ -207,7 +208,7 @@ export default function QuickEpisodeModal({
                       onClick={() => handleSelectPill(ep)}
                       className={`py-1.5 text-xs font-bold rounded border-2 border-stone-900 transition-all active:scale-95 ${
                         isSelected 
-                          ? 'bg-amber-400 text-ink-900 font-black shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] scale-105' 
+                          ? 'bg-amber-400 text-stone-950 font-black shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] scale-105' 
                           : isLatest
                             ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 font-bold hover:bg-emerald-500/30'
                             : 'bg-sand-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-sand-200 dark:hover:bg-stone-700'
@@ -234,7 +235,7 @@ export default function QuickEpisodeModal({
 
           <button
             onClick={handleSave}
-            className="flex-2 py-2 px-4 rounded-lg border-2 border-stone-900 bg-amber-400 hover:bg-amber-300 text-ink-900 font-black text-xs flex items-center justify-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] transition-all active:translate-y-0.5"
+            className="flex-2 py-2 px-4 rounded-lg border-2 border-stone-900 bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] transition-all active:translate-y-0.5"
           >
             <Check className="w-4 h-4 stroke-[3]" />
             <span>Save Progress (Ep {selectedEp})</span>

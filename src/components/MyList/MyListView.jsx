@@ -1,16 +1,16 @@
 import React, { useState, useMemo } from 'react';
-import { Film, LayoutGrid, List, Columns2, ArrowUpDown } from 'lucide-react';
+import { Film, LayoutGrid, List, Columns2, Sparkles, Flame, Trophy, Bookmark, PauseCircle, XCircle } from 'lucide-react';
 import WatchlistCard from './WatchlistCard';
 import QuickEpisodeModal from '../Common/QuickEpisodeModal';
 import { startRewatch, upsertWatchlistEntry } from '../../services/storage';
 
 const STATUS_CONFIG = [
-  { id: 'all', label: 'All', icon: '✨' },
-  { id: 'watching', label: 'Watching', icon: '🔥' },
-  { id: 'completed', label: 'Completed', icon: '🏆' },
-  { id: 'plan_to_watch', label: 'Plan', icon: '📌' },
-  { id: 'on_hold', label: 'On Hold', icon: '⏸️' },
-  { id: 'dropped', label: 'Dropped', icon: '🛑' }
+  { id: 'all', label: 'All', icon: Sparkles },
+  { id: 'watching', label: 'Watching', icon: Flame },
+  { id: 'completed', label: 'Completed', icon: Trophy },
+  { id: 'plan_to_watch', label: 'Plan', icon: Bookmark },
+  { id: 'on_hold', label: 'On Hold', icon: PauseCircle },
+  { id: 'dropped', label: 'Dropped', icon: XCircle }
 ];
 
 export default function MyListView({ 
@@ -22,7 +22,6 @@ export default function MyListView({
   titleLanguage = 'english'
 }) {
   const [activeStatus, setActiveStatus] = useState('all');
-  const [sortBy, setSortBy] = useState('updated_at'); // 'updated_at' | 'progress_desc' | 'score' | 'title'
   const [viewMode, setViewMode] = useState('compact'); // 'compact' | 'dense' | 'grid'
   const [pickerAnime, setPickerAnime] = useState(null);
 
@@ -37,25 +36,12 @@ export default function MyListView({
     return counts;
   }, [watchlist]);
 
-  // Filtered & Sorted Watchlist Items
+  // Filtered Watchlist Items (Naturally ordered by recently updated/active)
   const filteredList = useMemo(() => {
-    return watchlist.filter(item => {
-      return activeStatus === 'all' || item.status === activeStatus;
-    }).sort((a, b) => {
-      if (sortBy === 'title') {
-        return (a.anime_title || '').localeCompare(b.anime_title || '');
-      }
-      if (sortBy === 'score') {
-        return (b.score || 0) - (a.score || 0);
-      }
-      if (sortBy === 'progress_desc') {
-        const aPct = a.total_episodes ? (a.episodes_watched || 0) / a.total_episodes : 0;
-        const bPct = b.total_episodes ? (b.episodes_watched || 0) / b.total_episodes : 0;
-        return bPct - aPct;
-      }
-      return new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0);
-    });
-  }, [watchlist, activeStatus, sortBy]);
+    return watchlist
+      .filter(item => activeStatus === 'all' || item.status === activeStatus)
+      .sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0));
+  }, [watchlist, activeStatus]);
 
   // Direct episode stepper handler
   const handleStepEpisode = async (animeId, nextEp, nextStatus) => {
@@ -106,7 +92,7 @@ export default function MyListView({
             <h1 className="font-display font-black text-lg sm:text-xl text-ink-900 uppercase tracking-tight truncate">
               My Watchlist
             </h1>
-            <span className="bg-stone-900 text-amber-400 dark:bg-sand-300 dark:text-stone-900 text-[10px] font-mono font-black px-2 py-0.5 rounded-full border border-stone-900 shrink-0">
+            <span className="bg-amber-400 text-stone-950 dark:bg-amber-400 dark:text-stone-950 text-[10px] font-mono font-black px-2 py-0.5 rounded-full border border-stone-900 shrink-0">
               {watchlist.length}
             </span>
           </div>
@@ -115,21 +101,21 @@ export default function MyListView({
             <div className="flex items-center bg-sand-100 dark:bg-sand-300 p-0.5 rounded-md border-2 border-stone-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)]">
               <button
                 onClick={() => setViewMode('compact')}
-                className={`p-1.5 rounded transition-all ${viewMode === 'compact' ? 'bg-amber-400 text-ink-900 font-black shadow-sm' : 'text-stone-500 hover:text-ink-900'}`}
+                className={`p-1.5 rounded transition-all ${viewMode === 'compact' ? 'bg-amber-400 text-stone-950 font-black shadow-sm' : 'text-stone-500 hover:text-ink-900'}`}
                 title="Compact Card View"
               >
                 <Columns2 className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => setViewMode('dense')}
-                className={`p-1.5 rounded transition-all ${viewMode === 'dense' ? 'bg-amber-400 text-ink-900 font-black shadow-sm' : 'text-stone-500 hover:text-ink-900'}`}
+                className={`p-1.5 rounded transition-all ${viewMode === 'dense' ? 'bg-amber-400 text-stone-950 font-black shadow-sm' : 'text-stone-500 hover:text-ink-900'}`}
                 title="Dense List Rows"
               >
                 <List className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-1.5 rounded transition-all ${viewMode === 'grid' ? 'bg-amber-400 text-ink-900 font-black shadow-sm' : 'text-stone-500 hover:text-ink-900'}`}
+                className={`p-1.5 rounded transition-all ${viewMode === 'grid' ? 'bg-amber-400 text-stone-950 font-black shadow-sm' : 'text-stone-500 hover:text-ink-900'}`}
                 title="Poster Bookshelf Grid"
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
@@ -138,38 +124,35 @@ export default function MyListView({
           </div>
         </div>
 
-        {/* Row 2: Horizontally Scrollable Status Chips & Sort Controls */}
-        <div className="flex items-center justify-between gap-2 pt-1 border-t border-stone-900/10 dark:border-stone-100/10">
-          <div className="flex gap-1.5 overflow-x-auto hide-scrollbar flex-grow py-0.5">
+        {/* Row 2: Full-Width Horizontally Scrollable Status Chips (Zero Clipping / Overlapping) */}
+        <div className="pt-2 border-t border-stone-900/10 dark:border-stone-100/10">
+          <div className="flex gap-2 overflow-x-auto hide-scrollbar py-0.5 scroll-smooth -mx-1 px-1">
             {STATUS_CONFIG.map(tab => {
               const count = statusCounts[tab.id] || 0;
               const isSelected = activeStatus === tab.id;
+              const TabIcon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveStatus(tab.id)}
-                  className={`shrink-0 px-2.5 py-1 rounded-md text-[11px] font-black transition-all border-2 border-stone-900 flex items-center gap-1 select-none ${isSelected ? 'bg-amber-400 text-ink-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] scale-[1.02]' : 'bg-sand-100 dark:bg-sand-300 text-stone-700 hover:bg-sand-200'}`}
+                  className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-black transition-all border-2 border-stone-900 flex items-center gap-1.5 select-none active:translate-y-0.5 ${
+                    isSelected 
+                      ? 'bg-amber-400 text-stone-950 font-black shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] scale-[1.02]' 
+                      : 'bg-sand-100 dark:bg-sand-300 text-stone-700 dark:text-stone-300 hover:bg-sand-200 shadow-sm'
+                  }`}
                 >
-                  <span className="text-xs">{tab.icon}</span>
+                  <TabIcon className={`w-3.5 h-3.5 ${isSelected ? 'stroke-[2.5]' : ''}`} />
                   <span>{tab.label}</span>
-                  <span className="font-mono text-[9px] opacity-80">({count})</span>
+                  <span className={`font-mono text-[10px] px-1.5 py-0.2 rounded-full ${
+                    isSelected 
+                      ? 'bg-stone-900 text-amber-400 font-black' 
+                      : 'bg-stone-900/10 dark:bg-stone-700/60 text-stone-700 dark:text-stone-300'
+                  }`}>
+                    {count}
+                  </span>
                 </button>
               );
             })}
-          </div>
-
-          <div className="relative shrink-0 flex items-center bg-sand-100 dark:bg-sand-300 border-2 border-stone-900 rounded-md px-1.5 py-1 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)]">
-            <ArrowUpDown className="w-3 h-3 text-stone-500 mr-1 shrink-0" />
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="bg-transparent text-[11px] font-bold text-ink-900 focus:outline-none cursor-pointer pr-1"
-            >
-              <option value="updated_at">Updated</option>
-              <option value="progress_desc">Progress</option>
-              <option value="score">Score</option>
-              <option value="title">A–Z</option>
-            </select>
           </div>
         </div>
       </div>

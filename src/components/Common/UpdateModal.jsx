@@ -97,7 +97,7 @@ export default function UpdateModal({ updateInfo, onClose }) {
             <span>POCO / Xiaomi Installation Guide</span>
           </div>
           <p className="text-[10px] text-stone-600 dark:text-stone-400 leading-normal">
-            Once download reaches 100%, swipe down your notification bar to tap <b>"Download Complete"</b> or open <b>File Manager ➔ Downloads ➔ app-debug.apk</b> to install.
+            Once download reaches 100%, swipe down your notification bar to tap <b>"Download Complete"</b> or open <b>File Manager &gt; Downloads &gt; app-debug.apk</b> to install.
           </p>
         </div>
 
