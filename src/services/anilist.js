@@ -221,6 +221,7 @@ export const ANIME_DETAIL_QUERY = `
 query GetAnimeDetail($id: Int) {
   Media(id: $id, type: ANIME) {
     id
+    idMal
     title {
       romaji
       english

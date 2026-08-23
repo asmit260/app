@@ -1,15 +1,7 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { TrendingUp, Star, Award, ChevronLeft, ChevronRight, Check, Eye } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { TrendingUp, Star, Award, ChevronLeft, ChevronRight, Check, Eye, ShieldCheck } from 'lucide-react';
 import { sound } from '../../services/soundEffects';
-
-/**
- * Deterministic pseudo-random number generator seeded by animeId & epNum
- * ensures identical, consistent episodic score curves across app launches
- */
-function seededRandom(seed) {
-  const x = Math.sin(seed++) * 10000;
-  return x - Math.floor(x);
-}
+import { getAccurateEpisodeRatings } from '../../services/imdbRatingsService';
 
 export default function EpisodeRatingGraph({
   anime,
@@ -19,61 +11,30 @@ export default function EpisodeRatingGraph({
 }) {
   const [selectedEp, setSelectedEp] = useState(null);
   const [pageRange, setPageRange] = useState(0); // 0 = 1-12, 1 = 13-24, etc.
+  const [ratingData, setRatingData] = useState({ episodes: [], source: 'Loading...' });
   const containerRef = useRef(null);
 
-  const baseScore = useMemo(() => {
-    if (!anime?.averageScore) return 8.2;
-    return Math.min(9.4, Math.max(6.5, (anime.averageScore / 10)));
-  }, [anime?.averageScore]);
+  const episodesWatched = Number(watchlistEntry?.episodes_watched) || 0;
 
-  const totalEpisodes = useMemo(() => {
-    const eps = anime?.episodes || anime?.totalEpisodes || (anime?.status === 'RELEASING' ? (anime?.nextAiringEpisode?.episode || 12) : 12);
-    return Math.max(1, Math.min(eps, 72)); // Bound to reasonable view count
+  useEffect(() => {
+    let isCurrent = true;
+    async function loadRatings() {
+      if (!anime) return;
+      const res = await getAccurateEpisodeRatings(anime);
+      if (isCurrent) {
+        setRatingData(res);
+      }
+    }
+    loadRatings();
+    return () => { isCurrent = false; };
   }, [anime]);
 
-  const episodesWatched = Number(watchlistEntry?.episodes_watched) || 0;
-  const currentAiredLimit = anime?.nextAiringEpisode?.episode 
-    ? (anime.nextAiringEpisode.episode - 1)
-    : (anime?.status === 'RELEASING' ? 1 : totalEpisodes);
-
-  // Generate deterministic episodic rating trajectory anchored to baseScore
   const episodeData = useMemo(() => {
-    const animeId = anime?.id || 1;
-    const isMasterpiece = baseScore >= 8.5;
-
-    const data = [];
-    for (let i = 1; i <= totalEpisodes; i++) {
-      const seed = animeId * 100 + i;
-      const noise = (seededRandom(seed) - 0.48) * 0.55;
-      
-      // Narrative arc simulation:
-      // Ep 1: Premiere hook boost
-      // Mid-point (e.g. ep 4, 8, 11): Climax boost
-      // Penultimate / Finale: Grand finale boost
-      let arcBoost = 0;
-      if (i === 1) arcBoost += 0.45;
-      if (i === Math.floor(totalEpisodes * 0.5) || i === Math.floor(totalEpisodes * 0.75)) arcBoost += 0.55;
-      if (i === totalEpisodes - 1 || i === totalEpisodes) arcBoost += 0.7;
-      if (isMasterpiece && (i === 8 || i === 11 || i === totalEpisodes)) arcBoost += 0.4;
-
-      let score = Number((baseScore + noise + arcBoost).toFixed(1));
-      score = Math.min(9.9, Math.max(6.8, score));
-
-      const isAired = anime?.status !== 'RELEASING' || i <= currentAiredLimit;
-      const isWatched = i <= episodesWatched;
-
-      data.push({
-        episode: i,
-        epLabel: `E${i.toString().padStart(2, '0')}`,
-        score,
-        isAired,
-        isWatched,
-        title: `Episode ${i}`
-      });
-    }
-
-    return data;
-  }, [anime, baseScore, totalEpisodes, currentAiredLimit, episodesWatched]);
+    return (ratingData.episodes || []).map(ep => ({
+      ...ep,
+      isWatched: ep.episode <= episodesWatched
+    }));
+  }, [ratingData.episodes, episodesWatched]);
 
   // Find peak episode in the dataset
   const peakEpisode = useMemo(() => {
@@ -162,8 +123,8 @@ export default function EpisodeRatingGraph({
           <div>
             <h3 className="font-display font-black text-xs sm:text-sm uppercase tracking-tight text-ink-900 flex items-center gap-1.5">
               <span>Episode Rating Trend</span>
-              <span className="text-[9px] font-mono font-bold bg-sand-200 dark:bg-sand-300 text-stone-600 dark:text-stone-300 px-1.5 py-0.5 rounded border border-stone-900/20">
-                IMDb / Community
+              <span className="text-[9px] font-mono font-black bg-amber-400 text-stone-950 px-1.5 py-0.5 rounded border border-stone-900 shadow-xs uppercase">
+                {ratingData.source || 'IMDb Verified'}
               </span>
             </h3>
           </div>
@@ -363,7 +324,7 @@ export default function EpisodeRatingGraph({
               </div>
               <div>
                 <p className="text-xs font-black text-ink-900">
-                  Episode {selectedEp.episode}
+                  Episode {selectedEp.episode}{selectedEp.title && selectedEp.title !== `Episode ${selectedEp.episode}` ? `: ${selectedEp.title}` : ''}
                   {peakEpisode?.episode === selectedEp.episode && (
                     <span className="ml-1.5 px-1.5 py-0.2 bg-amber-400 text-stone-950 text-[9px] font-black uppercase rounded">
                       Season Peak
