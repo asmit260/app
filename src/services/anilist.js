@@ -274,6 +274,12 @@ query GetAnimeDetail($id: Int) {
         name
       }
     }
+    streamingEpisodes {
+      title
+      thumbnail
+      url
+      site
+    }
     recommendations(page: 1, perPage: 6, sort: RATING_DESC) {
       nodes {
         mediaRecommendation {
