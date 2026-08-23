@@ -7,7 +7,6 @@ import { updateWatchlistRating, upsertWatchlistEntry, startRewatch } from '../..
 import { sound } from '../../services/soundEffects';
 import { fireConfetti } from '../../utils/confetti';
 import AiringAlertModal from '../Schedule/AiringAlertModal';
-import EpisodeRatingGraph from './EpisodeRatingGraph';
 
 const STATUS_LIST = [
   { id: 'watching', label: 'Watching', color: 'bg-status-watching text-white' },
@@ -437,16 +436,6 @@ export default function AnimeDetailModal({
                   {detail.status}
                 </span>
               </div>
-
-              {/* Episodic Rating & Trend Graph (IMDb/Community Style) */}
-              <EpisodeRatingGraph
-                anime={detail}
-                watchlistEntry={currentEntry}
-                onStepToEpisode={(epNum) => {
-                  handleStepEpisode(epNum - effectiveEps);
-                }}
-                titleLanguage={titleLanguage}
-              />
 
               {/* Synopsis */}
               <div className="space-y-1">
