@@ -55,13 +55,19 @@ export default function ProfileView({
   const handleImportJson = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const count = await importWatchlistJSON(file);
-    if (count > 0) {
-      onReloadWatchlist();
-      setSavedMessage(`Imported ${count} anime into watchlist!`);
-      setTimeout(() => setSavedMessage(''), 3000);
-    } else {
-      setSavedMessage('Import failed or file was empty.');
+    try {
+      const text = await file.text();
+      const res = await importWatchlistJSON(text);
+      if (res && res.success && res.count > 0) {
+        onReloadWatchlist();
+        setSavedMessage(`Imported ${res.count} anime into watchlist!`);
+      } else {
+        setSavedMessage(res?.error || 'Import failed or file was empty.');
+      }
+    } catch (err) {
+      setSavedMessage('Failed to read file: ' + err.message);
+    } finally {
+      e.target.value = '';
       setTimeout(() => setSavedMessage(''), 3000);
     }
   };

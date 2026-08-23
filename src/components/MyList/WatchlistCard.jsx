@@ -40,10 +40,10 @@ export default function WatchlistCard({
     e.stopPropagation();
     const nextEp = Math.max(0, watched + delta);
 
-    // Limit check: For airing anime, cap at latest aired episode; for finished anime, cap at totalEps
+    // Limit check: For airing anime with known schedule, cap at latest aired episode; otherwise cap at totalEps
     const maxAired = item.nextAiringEpisode?.episode 
       ? Math.max(1, item.nextAiringEpisode.episode - 1) 
-      : (item.airing_episode || (item.status === 'RELEASING' ? 1 : null));
+      : (item.airing_episode || null);
     const effectiveLimit = maxAired || totalEps || null;
 
     if (effectiveLimit && nextEp > effectiveLimit && delta > 0) return;

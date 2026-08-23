@@ -113,11 +113,11 @@ export default function AnimeDetailModal({
     const current = effectiveEps;
     const next = Math.max(0, current + delta);
 
-    // Limit check: For airing anime, cap at latest aired episode; for finished anime, cap at totalEps
+    // Limit check: For airing anime with known schedule, cap at latest aired episode; otherwise cap at totalEps
     const maxAired = detail.nextAiringEpisode?.episode 
       ? Math.max(1, detail.nextAiringEpisode.episode - 1) 
-      : (detail.status === 'RELEASING' ? 1 : totalEps);
-    const effectiveLimit = (detail.status === 'RELEASING' && maxAired) ? maxAired : (totalEps || null);
+      : (detail.airing_episode || null);
+    const effectiveLimit = maxAired || totalEps || null;
 
     if (effectiveLimit && next > effectiveLimit && delta > 0) return;
 
@@ -340,7 +340,7 @@ export default function AnimeDetailModal({
                         Episode Progress
                       </span>
                       <p className="text-[11px] text-stone-500 font-mono mt-0.5">
-                        {effectiveEps} of {detail.status === 'RELEASING' ? `${(detail.nextAiringEpisode?.episode ? Math.max(1, detail.nextAiringEpisode.episode - 1) : 1)} aired` : (totalEps || '?')} episodes watched ({progressPercent}%)
+                        {effectiveEps} of {detail.nextAiringEpisode?.episode ? `${Math.max(1, detail.nextAiringEpisode.episode - 1)} aired` : (totalEps ? `${totalEps} eps` : 'airing')} watched ({progressPercent}%)
                       </p>
                     </div>
 

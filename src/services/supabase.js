@@ -310,12 +310,14 @@ class LocalStorageMockDb {
       },
       upsert: async (row) => {
         let primaryKey;
-        if (row.anime_id && row.episode_number !== undefined && row.episode_number !== null) {
+        if (row.id) {
+          primaryKey = row.id;
+        } else if (row.anime_id && row.episode_number !== undefined && row.episode_number !== null) {
           primaryKey = `${userId}_${row.anime_id}_${row.episode_number}`;
         } else if (row.anime_id) {
           primaryKey = `${userId}_${row.anime_id}`;
         } else {
-          primaryKey = row.id || userId;
+          primaryKey = userId;
         }
         
         const existingRow = tableData[primaryKey] || {};
@@ -325,6 +327,7 @@ class LocalStorageMockDb {
           ...defaultFields,
           ...existingRow,
           ...row,
+          id: primaryKey,
           user_id: userId,
           updated_at: new Date().toISOString()
         };
@@ -371,6 +374,20 @@ class LocalStorageMockDb {
         const filters = [];
         const self = this;
         const deleteBuilder = {
+          match: async (matchFields) => {
+            let deletedCount = 0;
+            Object.entries(tableData).forEach(([key, row]) => {
+              const matchesAll = Object.entries(matchFields).every(([k, v]) => (row[k] == v || String(row[k]) === String(v)));
+              const ownerMatch = !row.user_id || row.user_id === userId || matchFields.user_id;
+              if (matchesAll && ownerMatch) {
+                delete tableData[key];
+                deletedCount++;
+              }
+            });
+            db[tableName] = tableData;
+            self.saveDb(db);
+            return { data: { count: deletedCount }, error: null };
+          },
           eq: (field, val) => {
             filters.push({ field, val });
             return deleteBuilder;

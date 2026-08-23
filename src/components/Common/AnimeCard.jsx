@@ -54,7 +54,7 @@ const AnimeCard = React.memo(function AnimeCard({
   const isAiring = !!airingInfo || anime.status === 'RELEASING';
   const maxAiredEp = airingInfo?.episode 
     ? (airingInfo.isAired ? airingInfo.episode : Math.max(1, airingInfo.episode - 1))
-    : (anime.nextAiringEpisode?.episode ? Math.max(1, anime.nextAiringEpisode.episode - 1) : 1);
+    : (anime.nextAiringEpisode?.episode ? Math.max(1, anime.nextAiringEpisode.episode - 1) : (totalEps || (isAiring ? 12 : 24)));
 
   // For airing anime, remove 'completed' option; only allow 'watching', 'plan_to_watch', 'on_hold', 'dropped'
   const availableStatuses = isAiring ? {

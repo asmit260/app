@@ -19,8 +19,9 @@ export default function QuickEpisodeModal({
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
-      // Initialize with current watched episode (or 1 if 0) capped at maxAiredEp
-      const initial = Math.max(1, Math.min(Number(currentEp) || 1, maxAiredEp || 1));
+      const fallback = anime?.totalEpisodes || anime?.total_episodes || anime?.episodes || Math.max(Number(currentEp) || 1, 24);
+      const safeMax = Math.max(1, maxAiredEp || fallback);
+      const initial = Math.max(1, Math.min(Number(currentEp) || 1, safeMax));
       setSelectedEp(initial);
     } else {
       document.body.style.overflow = '';
@@ -28,7 +29,7 @@ export default function QuickEpisodeModal({
     return () => {
       document.body.style.overflow = '';
     };
-  }, [isOpen, currentEp, maxAiredEp]);
+  }, [isOpen, currentEp, maxAiredEp, anime]);
 
   if (!isOpen || !anime) return null;
 
@@ -41,7 +42,8 @@ export default function QuickEpisodeModal({
   };
 
   const cover = anime.coverImage?.large || anime.coverImage?.medium || anime.coverImage || anime.anime_cover || anime.image || '';
-  const effectiveMax = Math.max(1, maxAiredEp || 1);
+  const fallbackMax = anime?.totalEpisodes || anime?.total_episodes || anime?.episodes || Math.max(Number(currentEp) || 1, 24);
+  const effectiveMax = Math.max(1, maxAiredEp || fallbackMax);
 
   const handleStep = (delta) => {
     const next = Math.max(1, Math.min(effectiveMax, selectedEp + delta));

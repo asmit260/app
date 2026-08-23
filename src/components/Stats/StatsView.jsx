@@ -88,21 +88,25 @@ export default function StatsView({ watchlist = [], history = [] }) {
     if (uniqueDays[0] === today || uniqueDays[0] === yesterday) {
       current = 1;
       for (let i = 1; i < uniqueDays.length; i++) {
-        const diffDays = Math.round((new Date(uniqueDays[i-1]) - new Date(uniqueDays[i])) / 86400000);
+        const prev = new Date(uniqueDays[i-1] + 'T00:00:00');
+        const curr = new Date(uniqueDays[i] + 'T00:00:00');
+        const diffDays = Math.round((prev - curr) / 86400000);
         if (diffDays === 1) current++; else break;
       }
     }
 
     const asc = [...uniqueDays].sort();
-    let longest = 1, run = 1;
+    let longest = asc.length > 0 ? 1 : 0, run = 1;
     for (let i = 1; i < asc.length; i++) {
-      const diffDays = Math.round((new Date(asc[i]) - new Date(asc[i-1])) / 86400000);
+      const prev = new Date(asc[i-1] + 'T00:00:00');
+      const curr = new Date(asc[i] + 'T00:00:00');
+      const diffDays = Math.round((curr - prev) / 86400000);
       if (diffDays === 1) { run++; longest = Math.max(longest, run); }
       else run = 1;
     }
     return { 
-      current: Math.max(current, uniqueDays.length > 0 ? 1 : 0), 
-      longest: Math.max(longest, current, uniqueDays.length > 0 ? 1 : 0) 
+      current, 
+      longest: Math.max(longest, current) 
     };
   }, [dayCounts]);
 
@@ -162,8 +166,8 @@ export default function StatsView({ watchlist = [], history = [] }) {
     });
     const dropRate = droppedShows.length > 0 ? Math.round((droppedAt3 / droppedShows.length) * 100) : 0;
     return {
-      longestBinge: maxCount || 1,
-      longestBingeDate: maxDay ? new Date(maxDay + 'T00:00:00').toLocaleDateString(undefined, {month:'short', day:'numeric'}) : 'Today',
+      longestBinge: maxCount || 0,
+      longestBingeDate: maxDay ? new Date(maxDay + 'T00:00:00').toLocaleDateString(undefined, {month:'short', day:'numeric'}) : 'No activity',
       droppedAt3Rate: dropRate,
     };
   }, [dayCounts, watchlist]);
