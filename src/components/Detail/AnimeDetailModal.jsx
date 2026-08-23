@@ -7,6 +7,7 @@ import { updateWatchlistRating, upsertWatchlistEntry, startRewatch } from '../..
 import { sound } from '../../services/soundEffects';
 import { fireConfetti } from '../../utils/confetti';
 import AiringAlertModal from '../Schedule/AiringAlertModal';
+import EpisodeRatingGraph from './EpisodeRatingGraph';
 
 const STATUS_LIST = [
   { id: 'watching', label: 'Watching', color: 'bg-status-watching text-white' },
@@ -417,8 +418,8 @@ export default function AnimeDetailModal({
               {/* Stats badges */}
               <div className="flex flex-wrap gap-2 text-xs font-bold">
                 {detail.averageScore && (
-                  <span className="px-2.5 py-1 bg-amber-400 text-ink-900 border-2 border-stone-900 rounded shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] font-mono flex items-center gap-1">
-                    <Star className="w-3.5 h-3.5 fill-ink-900 stroke-none" />
+                  <span className="px-2.5 py-1 bg-amber-400 text-stone-950 border-2 border-stone-900 rounded shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] font-mono flex items-center gap-1 font-black">
+                    <Star className="w-3.5 h-3.5 fill-stone-950 stroke-none" />
                     <span>{detail.averageScore}% Community</span>
                   </span>
                 )}
@@ -431,6 +432,16 @@ export default function AnimeDetailModal({
                   {detail.status}
                 </span>
               </div>
+
+              {/* Episodic Rating & Trend Graph (IMDb/Community Style) */}
+              <EpisodeRatingGraph
+                anime={detail}
+                watchlistEntry={currentEntry}
+                onStepToEpisode={(epNum) => {
+                  handleStepEpisode(epNum - effectiveEps);
+                }}
+                titleLanguage={titleLanguage}
+              />
 
               {/* Synopsis */}
               <div className="space-y-1">
