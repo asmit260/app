@@ -209,7 +209,7 @@ export default function StatsView({ watchlist = [], history = [] }) {
     let acc = 0;
     return (
       <svg viewBox="0 0 200 200" className="w-full max-w-[170px] mx-auto block overflow-visible">
-        <circle cx="100" cy="100" r={r} fill="none" stroke="#E6E0D4" strokeWidth="20" />
+        <circle cx="100" cy="100" r={r} fill="none" stroke="var(--sand-300)" strokeWidth="20" />
         {entries.map(([k, v]) => {
           const len = (v / total) * circ;
           const o = acc; acc += len;
@@ -229,8 +229,8 @@ export default function StatsView({ watchlist = [], history = [] }) {
             />
           );
         })}
-        <text x="100" y="96" textAnchor="middle" fill="#18130D" style={{font: "900 28px 'Lora',serif"}}>{total}</text>
-        <text x="100" y="114" textAnchor="middle" fill="#6E5E4E" style={{font: "900 9px 'DM Sans',sans-serif", letterSpacing: '0.1em'}}>SHOWS</text>
+        <text x="100" y="96" textAnchor="middle" fill="var(--ink-900)" style={{font: "900 28px 'Lora',serif"}}>{total}</text>
+        <text x="100" y="114" textAnchor="middle" fill="var(--stone-600)" style={{font: "900 9px 'DM Sans',sans-serif", letterSpacing: '0.1em'}}>SHOWS</text>
       </svg>
     );
   };
@@ -270,12 +270,12 @@ export default function StatsView({ watchlist = [], history = [] }) {
             const theta = i * (2 * Math.PI) / N - Math.PI / 2;
             return `${(cx + r * level * Math.cos(theta)).toFixed(1)},${(cy + r * level * Math.sin(theta)).toFixed(1)}`;
           }).join(' ');
-          return <polygon key={idx} points={pts} fill={idx === levels.length - 1 ? 'rgba(0,0,0,0.03)' : 'none'} stroke="#18130D" strokeWidth="1" strokeDasharray="2 3" strokeOpacity="0.3" />;
+          return <polygon key={idx} points={pts} fill={idx === levels.length - 1 ? 'rgba(128,128,128,0.06)' : 'none'} stroke="var(--stone-500)" strokeWidth="1" strokeDasharray="2 3" strokeOpacity="0.3" />;
         })}
         {/* Axes */}
         {top.map((_, i) => {
           const theta = i * (2 * Math.PI) / N - Math.PI / 2;
-          return <line key={i} x1={cx} y1={cy} x2={cx + r * Math.cos(theta)} y2={cy + r * Math.sin(theta)} stroke="#18130D" strokeWidth="1" strokeOpacity="0.4" />;
+          return <line key={i} x1={cx} y1={cy} x2={cx + r * Math.cos(theta)} y2={cy + r * Math.sin(theta)} stroke="var(--stone-500)" strokeWidth="1" strokeOpacity="0.4" />;
         })}
         {/* Data polygon */}
         <polygon
@@ -299,7 +299,7 @@ export default function StatsView({ watchlist = [], history = [] }) {
           const ly = cy + (r + 16) * Math.sin(theta);
           const anchor = lx < cx - 10 ? 'end' : (lx > cx + 10 ? 'start' : 'middle');
           const shortName = name.length > 10 ? name.slice(0, 9) + '…' : name;
-          return <text key={name} x={lx} y={ly + 3} textAnchor={anchor} fill="#332D27" style={{font: "800 9px 'DM Sans',sans-serif"}}>{shortName}</text>;
+          return <text key={name} x={lx} y={ly + 3} textAnchor={anchor} fill="var(--ink-900)" style={{font: "800 9px 'DM Sans',sans-serif"}}>{shortName}</text>;
         })}
       </svg>
     );
@@ -325,8 +325,8 @@ export default function StatsView({ watchlist = [], history = [] }) {
           const y = padT + cH - f * cH;
           return (
             <g key={f}>
-              <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="#18130D" strokeOpacity="0.06" strokeDasharray="3 3" />
-              <text x={padL - 4} y={y + 3} textAnchor="end" fill="#8C7D6D" style={{font: "700 8px 'DM Sans',sans-serif"}}>{Math.round(f * maxVal)}</text>
+              <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--stone-500)" strokeOpacity="0.15" strokeDasharray="3 3" />
+              <text x={padL - 4} y={y + 3} textAnchor="end" fill="var(--stone-500)" style={{font: "700 8px 'DM Sans',sans-serif"}}>{Math.round(f * maxVal)}</text>
             </g>
           );
         })}
@@ -338,8 +338,8 @@ export default function StatsView({ watchlist = [], history = [] }) {
             cx={p.x} 
             cy={p.y} 
             r={p.count > 0 ? 4 : 2} 
-            fill={p.count > 0 ? '#7c3aed' : '#E6E0D4'} 
-            stroke={p.count > 0 ? '#fff' : '#C7BFB3'} 
+            fill={p.count > 0 ? '#7c3aed' : 'var(--sand-300)'} 
+            stroke={p.count > 0 ? 'var(--sand-50)' : 'var(--sand-400)'} 
             strokeWidth="1.5"
             className="cursor-pointer hover:scale-150 transition-transform"
             onMouseEnter={() => setActiveTooltip(`${p.count} episodes on ${p.fullDate}`)}
@@ -347,7 +347,7 @@ export default function StatsView({ watchlist = [], history = [] }) {
           />
         ))}
         {pts.filter((_, i) => i % 5 === 0 || i === 29).map(p => (
-          <text key={p.key} x={p.x} y={H - 6} textAnchor="middle" fill="#8C7D6D" style={{font: "700 8px 'DM Sans',sans-serif"}}>{p.label}</text>
+          <text key={p.key} x={p.x} y={H - 6} textAnchor="middle" fill="var(--stone-500)" style={{font: "700 8px 'DM Sans',sans-serif"}}>{p.label}</text>
         ))}
       </svg>
     );
@@ -396,7 +396,7 @@ export default function StatsView({ watchlist = [], history = [] }) {
             key={`m_${w}`} 
             x={x} 
             y={12} 
-            fill="#6E5E4E" 
+            fill="var(--stone-600)" 
             style={{ font: "700 9px 'DM Sans',sans-serif" }}
           >
             {weekDate.toLocaleString('default', { month: 'short' })}
@@ -412,13 +412,13 @@ export default function StatsView({ watchlist = [], history = [] }) {
         {monthHeaders}
 
         {/* Day of week labels */}
-        <text x="22" y={20 + 1 * (cellSize + cellGap) + 8} textAnchor="end" fill="#6E5E4E" style={{font: "700 8.5px 'DM Sans',sans-serif"}}>M</text>
-        <text x="22" y={20 + 3 * (cellSize + cellGap) + 8} textAnchor="end" fill="#6E5E4E" style={{font: "700 8.5px 'DM Sans',sans-serif"}}>W</text>
-        <text x="22" y={20 + 5 * (cellSize + cellGap) + 8} textAnchor="end" fill="#6E5E4E" style={{font: "700 8.5px 'DM Sans',sans-serif"}}>F</text>
+        <text x="22" y={20 + 1 * (cellSize + cellGap) + 8} textAnchor="end" fill="var(--stone-600)" style={{font: "700 8.5px 'DM Sans',sans-serif"}}>M</text>
+        <text x="22" y={20 + 3 * (cellSize + cellGap) + 8} textAnchor="end" fill="var(--stone-600)" style={{font: "700 8.5px 'DM Sans',sans-serif"}}>W</text>
+        <text x="22" y={20 + 5 * (cellSize + cellGap) + 8} textAnchor="end" fill="var(--stone-600)" style={{font: "700 8.5px 'DM Sans',sans-serif"}}>F</text>
 
         {/* Heatmap Rectangles */}
         {dailyData.map(({ w, d, dateStr, count, isFuture, cellDate }) => {
-          let fill = '#E6E0D4';
+          let fill = 'var(--sand-300)';
           if (!isFuture && count > 0) {
             if (count <= 2) fill = '#fde68a';
             else if (count <= 5) fill = '#f59e0b';
@@ -441,7 +441,7 @@ export default function StatsView({ watchlist = [], history = [] }) {
               rx="2.5" 
               fill={fill}
               opacity={isFuture ? 0.35 : 1}
-              stroke={isToday ? '#18130D' : 'none'}
+              stroke={isToday ? 'var(--ink-900)' : 'none'}
               strokeWidth={isToday ? 1.5 : 0}
               className="cursor-pointer hover:stroke-ink-900 hover:stroke-[2] transition-all"
               onMouseEnter={() => { if (!pinnedTooltip) setActiveTooltip(tooltipText); }}
@@ -632,14 +632,14 @@ export default function StatsView({ watchlist = [], history = [] }) {
       <div className="card-manga-panel p-4 bg-sand-50 dark:bg-sand-200">
         <h3 className="font-display font-black text-sm uppercase text-ink-900 border-b-2 border-stone-900 pb-2 mb-4">Episode Progress Stream</h3>
         {paginatedHistory.length > 0 ? (
-          <div className="relative pl-5 border-l-[3px] border-stone-900 space-y-4 ml-1.5">
+          <div className="relative pl-5 border-l-[3px] border-stone-900/40 dark:border-stone-700/40 space-y-4 ml-1.5">
             {paginatedHistory.map((log, idx) => (
               <div key={log.id || idx} className="relative">
                 <div className="absolute -left-[23px] top-1 w-3 h-3 bg-amber-500 border-[2.5px] border-stone-900" />
                 <time className="block font-mono text-[9px] font-bold text-stone-500 mb-0.5">
                   {new Date(log.watched_at).toLocaleString()}
                 </time>
-                <div className="font-sans text-xs font-bold text-stone-600">
+                <div className="font-sans text-xs font-bold text-stone-600 dark:text-stone-400">
                   Updated <span className="font-black text-ink-900">
                     {watchlist.find(i => (i.anime_id == log.anime_id || i.id == log.anime_id))?.anime_title || 'Show'}
                   </span> to <span className="font-black text-cyan-600 font-mono">Ep {log.episode_number}</span>

@@ -12,9 +12,16 @@
   --sand-300: #D8CEB8;
   --sand-400: #C0B49A;
 
+  --stone-100: #F5F5F4;
+  --stone-200: #E7E5E3;
+  --stone-300: #D6D3D0;
+  --stone-400: #A8A29E;
   --stone-500: #857460;
   --stone-600: #6E5E4E;
   --stone-700: #4A3C2E;
+  --stone-800: #292524;
+  --stone-900: #1C1917;
+  --stone-950: #0C0A09;
 
   --ink-900: #18130D;
   --ink-800: #2C2318;
@@ -52,9 +59,16 @@
   --sand-300: #38332F;
   --sand-400: #4E4741;
 
+  --stone-100: #292524;
+  --stone-200: #3B3735;
+  --stone-300: #57534E;
+  --stone-400: #78716C;
   --stone-500: #A8A29E;
   --stone-600: #D6D3D1;
   --stone-700: #E7E5E4;
+  --stone-800: #F5F5F4;
+  --stone-900: #FAFAF9;
+  --stone-950: #FFFFFF;
 
   --ink-900: #FAFAF9;
   --ink-800: #F5F5F4;
@@ -190,8 +204,31 @@ h1, h2, h3, .font-display {
   color: inherit;
 }
 
+/* In dark mode, border-stone-900 should remain a subtle separator, not bright white */
 .dark .border-stone-900 {
   border-color: #443E38 !important;
+}
+
+/* text-stone-950 on amber backgrounds must stay dark for contrast */
+.dark .bg-amber-400 .text-stone-950,
+.dark .bg-amber-300 .text-stone-950,
+.dark .text-stone-950[class*="bg-amber"] {
+  color: #0C0A09 !important;
+}
+
+/* SVG fill/stroke-stone-950 on amber must stay dark */
+.dark .bg-amber-400 .fill-stone-950,
+.dark .bg-amber-300 .fill-stone-950 {
+  fill: #0C0A09 !important;
+}
+.dark .bg-amber-400 .stroke-stone-950,
+.dark .bg-amber-300 .stroke-stone-950 {
+  stroke: #0C0A09 !important;
+}
+
+/* Shadows should stay dark in dark mode */
+.dark [class*="shadow-\["] {
+  --tw-shadow-color: rgba(0, 0, 0, 0.6);
 }
 
 /* Ultra Smooth Fade-in Animation */
