@@ -11,7 +11,7 @@ export default function EpisodeRatingGraph({
 }) {
   const [selectedEp, setSelectedEp] = useState(null);
   const [pageRange, setPageRange] = useState(0); // 0 = 1-12, 1 = 13-24, etc.
-  const [ratingData, setRatingData] = useState({ episodes: [], source: 'Loading...' });
+  const [ratingData, setRatingData] = useState({ episodes: [], source: 'MAL Rating', hasData: false });
   const containerRef = useRef(null);
 
   const episodesWatched = Number(watchlistEntry?.episodes_watched) || 0;
@@ -20,9 +20,12 @@ export default function EpisodeRatingGraph({
     let isCurrent = true;
     async function loadRatings() {
       if (!anime) return;
-      const res = await getAccurateEpisodeRatings(anime);
-      if (isCurrent) {
-        setRatingData(res);
+      try {
+        const res = await getAccurateEpisodeRatings(anime);
+        if (isCurrent) setRatingData(res);
+      } catch (err) {
+        console.warn('MAL rating fetch error:', err);
+        if (isCurrent) setRatingData({ episodes: [], source: 'MAL Rating', hasData: false });
       }
     }
     loadRatings();
@@ -126,6 +129,31 @@ export default function EpisodeRatingGraph({
     setSelectedEp(selectedEp?.episode === ep.episode ? null : ep);
   };
 
+  // No MAL data: show a clean empty state instead of fake graph
+  if (!ratingData.hasData && ratingData.source !== 'Loading...') {
+    return (
+      <div className="card-manga-panel p-4 bg-sand-50 dark:bg-sand-200 border-2 border-stone-900 shadow-manga space-y-2">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded bg-amber-400 border border-stone-900 shadow-[1px_1px_0px_0px_rgba(24,19,13,1)]">
+            <TrendingUp className="w-3.5 h-3.5 text-stone-950 stroke-[2.5]" />
+          </div>
+          <h3 className="font-display font-black text-xs sm:text-sm uppercase tracking-tight text-ink-900 flex items-center gap-1.5">
+            <span>Episode Rating Trend</span>
+            <span className="text-[9px] font-mono font-black bg-amber-400 text-stone-950 px-1.5 py-0.5 rounded border border-stone-900 shadow-xs uppercase">MAL Rating</span>
+          </h3>
+        </div>
+        <div className="p-4 rounded-lg border-2 border-dashed border-stone-300 dark:border-stone-700 text-center">
+          <p className="text-xs font-mono text-stone-500 dark:text-stone-400">
+            No MAL episode ratings available yet for this anime.
+          </p>
+          <p className="text-[10px] font-mono text-stone-400 dark:text-stone-500 mt-1">
+            Episode scores appear once the MAL community submits ratings.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="card-manga-panel p-4 bg-sand-50 dark:bg-sand-200 border-2 border-stone-900 shadow-manga space-y-3">
       
@@ -137,10 +165,8 @@ export default function EpisodeRatingGraph({
           </div>
           <div>
             <h3 className="font-display font-black text-xs sm:text-sm uppercase tracking-tight text-ink-900 flex items-center gap-1.5">
-              <span>IMDb Episode Ratings</span>
-              <span className="text-[9px] font-mono font-black bg-amber-400 text-stone-950 px-1.5 py-0.5 rounded border border-stone-900 shadow-xs uppercase">
-                {ratingData.source || 'IMDb Rating'}
-              </span>
+              <span>Episode Rating Trend</span>
+              <span className="text-[9px] font-mono font-black bg-amber-400 text-stone-950 px-1.5 py-0.5 rounded border border-stone-900 shadow-xs uppercase">MAL Rating</span>
             </h3>
           </div>
         </div>
@@ -150,11 +176,11 @@ export default function EpisodeRatingGraph({
           {peakEpisode ? (
             <span className="px-2 py-0.5 rounded bg-amber-400 text-stone-950 font-black border border-stone-900 shadow-sm flex items-center gap-1">
               <Award className="w-3 h-3 text-stone-950 fill-current" />
-              <span>IMDb Peak: {peakEpisode.epLabel} ({peakEpisode.score})</span>
+              <span>Peak: {peakEpisode.epLabel} ({peakEpisode.score})</span>
             </span>
           ) : null}
           <span className="px-2 py-0.5 rounded bg-sand-200 dark:bg-sand-300 text-stone-700 dark:text-stone-300 font-bold border border-stone-900/30">
-            {ratingData.isAiring ? `Aired ${ratingData.airedCount || 0}/${ratingData.totalCount || 12} Eps · ` : ''}IMDb Avg {avgEpScore}/10
+            {ratingData.isAiring ? `Aired ${ratingData.airedCount || 0}/${ratingData.totalCount || '?'} Eps · ` : ''}{avgEpScore !== '0.0' ? `Avg ${avgEpScore}/10` : 'No Scores Yet'}
           </span>
         </div>
       </div>
@@ -385,12 +411,14 @@ export default function EpisodeRatingGraph({
                   {selectedEp.isAired && selectedEp.score ? (
                     <>
                       <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                      <span>IMDb Score: {selectedEp.score}/10</span>
+                      <span>MAL Score: {selectedEp.score}/10</span>
                       <span className="mx-1">•</span>
                       <span>{selectedEp.isWatched ? 'Watched' : 'Not watched yet'}</span>
                     </>
+                  ) : !selectedEp.isAired ? (
+                    <span>This episode has not aired yet.</span>
                   ) : (
-                    <span>This episode has not aired yet. Airing in upcoming schedule.</span>
+                    <span>No MAL score submitted for this episode yet.</span>
                   )}
                 </p>
               </div>
