@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Clock, ChevronDown, Check, Plus, Trash2, Eye, Bell, Edit3 } from 'lucide-react';
+import { Clock, ChevronDown, Check, Plus, Trash2, Eye, Bell, Edit3, Star } from 'lucide-react';
 import { sound } from '../../services/soundEffects';
 import { burstConfetti } from '../../utils/confetti';
 import QuickEpisodeModal from './QuickEpisodeModal';
