@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Bell, BellOff, Calendar, Clock, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { X, Bell, BellOff, Clock, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { 
-  openPhoneCalendar, 
   requestNotificationPermission, 
   scheduleDeviceNotification, 
   saveAnimeAlert, 
@@ -117,22 +116,6 @@ export default function AiringAlertModal({
       setPermissionError('Could not schedule reminder. Please try again.');
       setLoading(false);
     }
-  };
-
-  const handleAddToCalendar = () => {
-    openPhoneCalendar({
-      title: getTitle(),
-      startUnix: airingAt,
-      durationMinutes: anime.duration || 25,
-      episode,
-      leadMinutes
-    });
-
-    setSuccessMessage('Opening calendar event...');
-    setTimeout(() => {
-      setSuccessMessage('');
-      onClose();
-    }, 1000);
   };
 
   const handleRemoveAlert = async () => {
@@ -254,16 +237,6 @@ export default function AiringAlertModal({
                 <span>{existingAlert ? 'Update Airing Alert' : 'Set Airing Notification'}</span>
               </>
             )}
-          </button>
-
-          {/* Phone Calendar Sync */}
-          <button
-            onClick={handleAddToCalendar}
-            disabled={loading}
-            className="w-full btn-manga bg-sand-100 dark:bg-sand-200 hover:bg-amber-100 text-ink-900 py-2 rounded font-bold text-xs flex items-center justify-center gap-2"
-          >
-            <Calendar className="w-4 h-4 text-navy-700 dark:text-amber-400" />
-            <span>Add to Phone Calendar</span>
           </button>
 
           {/* Remove Alert (if already active) */}
