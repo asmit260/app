@@ -23,13 +23,16 @@ export default function ScheduleView({
   const [selectedAlertAnime, setSelectedAlertAnime] = useState(null);
   const [selectedAlertInfo, setSelectedAlertInfo] = useState(null);
 
+  const [fetchError, setFetchError] = useState(null);
+
   const userTimezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', []);
 
   // Fast hash map for watchlist lookups
   const watchlistMap = useMemo(() => {
     const map = {};
     (watchlist || []).forEach(item => {
-      map[item.anime_id || item.id] = item;
+      const id = item?.anime_id || item?.id;
+      if (id) map[id] = item;
     });
     return map;
   }, [watchlist]);
@@ -38,7 +41,7 @@ export default function ScheduleView({
   const loadAlerts = useCallback(async () => {
     try {
       const alerts = await getActiveAnimeAlerts();
-      setActiveAlerts(alerts);
+      setActiveAlerts(alerts || {});
     } catch (e) {
       console.error("Failed to load alerts:", e);
     }
@@ -57,6 +60,7 @@ export default function ScheduleView({
 
   const fetchDaySchedule = async (dayMonIndex) => {
     setLoading(true);
+    setFetchError(null);
     try {
       const now = new Date();
       const currentDay = now.getDay();
@@ -74,10 +78,13 @@ export default function ScheduleView({
 
       const res = await anilistQuery(WEEKLY_AIRING_SCHEDULE_QUERY, variables);
       if (res?.Page?.airingSchedules) {
-        setSchedules(res.Page.airingSchedules);
+        setSchedules((res.Page.airingSchedules || []).filter(s => !!s?.media));
+      } else {
+        setSchedules([]);
       }
     } catch (err) {
       console.error("Failed to load schedule:", err);
+      setFetchError(err?.message || 'Could not connect to AniList API. Please check your connection.');
     } finally {
       setLoading(false);
     }
@@ -94,11 +101,13 @@ export default function ScheduleView({
   ];
 
   const formatAiringTime = (unixSeconds) => {
+    if (!unixSeconds) return '--:--';
     const d = new Date(unixSeconds * 1000);
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   const formatCountdown = (unixSeconds) => {
+    if (!unixSeconds) return 'TBA';
     const now = Math.floor(Date.now() / 1000);
     const diff = unixSeconds - now;
     if (diff <= 0) return 'Aired';
@@ -112,6 +121,7 @@ export default function ScheduleView({
   };
 
   const handleOpenAlertModal = (anime, airingInfo) => {
+    if (!anime) return;
     setSelectedAlertAnime(anime);
     setSelectedAlertInfo(airingInfo);
   };
@@ -119,8 +129,9 @@ export default function ScheduleView({
   // Filter schedules based on search and selected mode
   const filteredSchedules = useMemo(() => {
     const now = Math.floor(Date.now() / 1000);
-    return schedules
+    return (schedules || [])
       .filter(item => {
+        if (!item || !item.media) return false;
         const media = item.media;
         const title = (media?.title?.english || media?.title?.romaji || media?.title?.native || '').toLowerCase();
         const matchesSearch = !searchQuery.trim() || title.includes(searchQuery.trim().toLowerCase());
@@ -131,7 +142,7 @@ export default function ScheduleView({
           return !!watchlistMap[media?.id];
         }
         if (filterMode === 'upcoming') {
-          return item.airingAt > now;
+          return (item.airingAt || 0) > now;
         }
         return true;
       })
@@ -142,7 +153,7 @@ export default function ScheduleView({
           time: formatAiringTime(item.airingAt),
           countdown: formatCountdown(item.airingAt),
           airingAt: item.airingAt,
-          isAired: item.airingAt <= now
+          isAired: (item.airingAt || 0) <= now
         }
       }));
   }, [schedules, searchQuery, filterMode, watchlistMap]);
@@ -278,7 +289,23 @@ export default function ScheduleView({
       </div>
 
       {/* Schedulers View */}
-      {loading ? (
+      {fetchError && schedules.length === 0 ? (
+        <div className="card-manga-panel p-8 text-center bg-sand-50 dark:bg-sand-200 rounded-lg space-y-3">
+          <CalendarIcon className="w-10 h-10 text-rose-500 mx-auto" />
+          <h3 className="font-display font-black text-base text-ink-900">
+            Couldn't load schedule
+          </h3>
+          <p className="text-xs text-stone-600 dark:text-stone-300 font-sans max-w-md mx-auto">
+            {fetchError}
+          </p>
+          <button
+            onClick={() => fetchDaySchedule(selectedDay)}
+            className="btn-manga bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs px-4 py-2 font-black shadow-[2px_2px_0px_0px_rgba(24,19,13,1)]"
+          >
+            Retry Loading Schedule
+          </button>
+        </div>
+      ) : loading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-5">
           {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
             <div key={i} className="card-manga-panel h-[385px] shimmer-skeleton rounded-md" />
@@ -300,20 +327,23 @@ export default function ScheduleView({
             ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-5"
             : "space-y-3"
         }>
-          {filteredSchedules.map((item) => (
-            <AnimeCard
-              key={item.id}
-              anime={item.media}
-              watchlistEntry={watchlistMap[item.media.id]}
-              onUpdateStatus={onUpdateWatchlist}
-              onRemoveItem={onRemoveItem}
-              onSelectAnime={onSelectAnime}
-              titleLanguage={titleLanguage}
-              airingInfo={item.airingInfo}
-              isAlertActive={!!activeAlerts[item.media.id]}
-              onOpenAlert={handleOpenAlertModal}
-            />
-          ))}
+          {filteredSchedules.map((item) => {
+            if (!item?.media) return null;
+            return (
+              <AnimeCard
+                key={item.id || item.media.id}
+                anime={item.media}
+                watchlistEntry={watchlistMap[item.media.id]}
+                onUpdateStatus={onUpdateWatchlist}
+                onRemoveItem={onRemoveItem}
+                onSelectAnime={onSelectAnime}
+                titleLanguage={titleLanguage}
+                airingInfo={item.airingInfo}
+                isAlertActive={!!activeAlerts[item.media.id]}
+                onOpenAlert={handleOpenAlertModal}
+              />
+            );
+          })}
         </div>
       )}
 

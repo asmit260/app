@@ -32,11 +32,13 @@ const AnimeCard = React.memo(function AnimeCard({
   const btnRef = useRef(null);
   const [dropdownDir, setDropdownDir] = useState('up'); // 'up' or 'down'
 
+  if (!anime) return null;
+
   const getTitle = () => {
     if (!anime) return 'Unknown Title';
     if (typeof anime.title === 'string') return anime.title;
-    if (titleLanguage === 'romaji') return anime.title?.romaji || anime.title?.english || anime.title?.native;
-    if (titleLanguage === 'native') return anime.title?.native || anime.title?.romaji || anime.title?.english;
+    if (titleLanguage === 'romaji') return anime.title?.romaji || anime.title?.english || anime.title?.native || 'Unknown Title';
+    if (titleLanguage === 'native') return anime.title?.native || anime.title?.romaji || anime.title?.english || 'Unknown Title';
     return anime.title?.english || anime.title?.romaji || anime.title?.native || 'Unknown Title';
   };
 
