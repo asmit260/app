@@ -10,7 +10,7 @@ const JIKAN_BASE = 'https://api.jikan.moe/v4';
  */
 async function fetchAllJikanEpisodes(idMal) {
   if (!idMal) return null;
-  const cacheKey = `anitrack_mal_eps_v2_${idMal}`;
+  const cacheKey = `anitrack_mal_eps_v4_${idMal}`;
 
   try {
     const cached = sessionStorage.getItem(cacheKey);
@@ -27,7 +27,7 @@ async function fetchAllJikanEpisodes(idMal) {
   while (hasMore && page <= 5) {
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 5000);
+      const timer = setTimeout(() => controller.abort(), 6000);
       const res = await fetch(`${JIKAN_BASE}/anime/${idMal}/episodes?page=${page}`, {
         signal: controller.signal
       });
@@ -39,9 +39,15 @@ async function fetchAllJikanEpisodes(idMal) {
       if (!json?.data || !Array.isArray(json.data) || json.data.length === 0) break;
 
       for (const item of json.data) {
+        // MAL episode poll scores use a 1-5 star scale → convert to standard 10-point scale
+        const rawScore = item.score != null && item.score > 0 ? item.score : null;
+        const score10 = rawScore !== null 
+          ? Number((rawScore <= 5 ? rawScore * 2 : rawScore).toFixed(1)) 
+          : null;
+
         allEpisodes.push({
           episode: item.mal_id,
-          score: item.score != null && item.score > 0 ? Number(item.score.toFixed(1)) : null,
+          score: score10,
           title: item.title || item.title_japanese || `Episode ${item.mal_id}`,
           titleJapanese: item.title_japanese || null,
           titleRomanji: item.title_romanji || null,
@@ -54,10 +60,10 @@ async function fetchAllJikanEpisodes(idMal) {
       hasMore = json.pagination?.has_next_page === true;
       page++;
 
-      // Jikan rate limit: 3 req/sec for free tier — wait 400ms between pages
-      if (hasMore) await new Promise(r => setTimeout(r, 400));
+      // Jikan rate limit: 3 req/sec for free tier — wait 350ms between pages
+      if (hasMore) await new Promise(r => setTimeout(r, 350));
     } catch (err) {
-      console.warn('MAL episode fetch page error:', err);
+      console.warn('MAL episode fetch notice:', err);
       break;
     }
   }
@@ -78,12 +84,12 @@ export async function getAccurateEpisodeRatings(anime) {
 
   const isAiring = anime.status === 'RELEASING' || !!anime.nextAiringEpisode;
 
-  // Determine currently aired episode count
+  // Determine currently aired episode count with exact precision
   let airedCount;
   if (anime.nextAiringEpisode?.episode) {
     airedCount = Math.max(1, anime.nextAiringEpisode.episode - 1);
   } else if (isAiring) {
-    airedCount = anime.episodes || 1;
+    airedCount = anime.episodes_watched ? Math.max(1, anime.episodes_watched) : (anime.episodes || 1);
   } else {
     airedCount = anime.episodes || anime.totalEpisodes || 0;
   }
@@ -107,6 +113,7 @@ export async function getAccurateEpisodeRatings(anime) {
       totalCount: totalPlanned,
       isAiring,
       hasData: false,
+      hasScores: false,
       source: 'MAL Rating'
     };
   }
@@ -119,7 +126,9 @@ export async function getAccurateEpisodeRatings(anime) {
     const epNum = ep.episode;
     const isEpAired = !isAiring || epNum <= airedCount;
 
-    if (ep.score !== null && ep.score > 0) hasAnyScore = true;
+    if (ep.score !== null && ep.score > 0) {
+      hasAnyScore = true;
+    }
 
     episodes.push({
       episode: epNum,
@@ -133,17 +142,18 @@ export async function getAccurateEpisodeRatings(anime) {
     });
   }
 
-  // Add placeholder entries for announced but not-yet-listed upcoming episodes
+  // Add placeholder entries for announced but not-yet-listed upcoming/unindexed episodes
   const maxListedEp = episodes.length > 0 ? Math.max(...episodes.map(e => e.episode)) : 0;
-  if (isAiring && totalPlanned > maxListedEp) {
+  if (totalPlanned > maxListedEp) {
     for (let i = maxListedEp + 1; i <= totalPlanned; i++) {
+      const isEpAired = !isAiring || i <= airedCount;
       episodes.push({
         episode: i,
         epLabel: `E${i.toString().padStart(2, '0')}`,
         score: null,
         title: `Episode ${i}`,
         titleJapanese: null,
-        isAired: false,
+        isAired: isEpAired,
         filler: false,
         recap: false
       });
@@ -155,7 +165,7 @@ export async function getAccurateEpisodeRatings(anime) {
     airedCount,
     totalCount: Math.max(totalPlanned, episodes.length),
     isAiring,
-    hasData: true,
+    hasData: hasAnyScore,
     hasScores: hasAnyScore,
     source: 'MAL Rating'
   };
