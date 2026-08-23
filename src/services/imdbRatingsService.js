@@ -1,5 +1,5 @@
 // Dynamic Episodic Ratings Service (100% Dynamic - Zero Hardcoded Anime Data)
-// Integrates live AniList metadata, streaming episode titles, and Jikan (MyAnimeList) API
+// Correctly isolates currently aired episodes vs unreleased future episodes
 
 /**
  * Fetch real episode metadata and ratings from Jikan MyAnimeList API
@@ -57,22 +57,31 @@ function hashRandom(seed) {
 
 /**
  * Dynamically computes per-episode rating progression from real anime statistics
- * (AniList averageScore, meanScore, popularity, genres, streaming episodes & Jikan metadata)
- * 100% Dynamic — No hardcoded anime titles or lists
+ * Strictly isolates aired episodes from unreleased upcoming episodes
  */
 export async function getAccurateEpisodeRatings(anime) {
   if (!anime) return { episodes: [], source: 'No Data' };
 
   const animeId = anime.id || 1;
-  const rawTotal = anime.episodes || anime.totalEpisodes || (anime.streamingEpisodes?.length || 12);
-  const totalEpisodes = Math.max(rawTotal > 0 ? rawTotal : 12, 12);
-  const baseScore = anime.averageScore ? Number((anime.averageScore / 10).toFixed(1)) : (anime.meanScore ? Number((anime.meanScore / 10).toFixed(1)) : 8.0);
-
-  // 1. Check live Jikan (MyAnimeList) API for real episode ratings
-  let jikanEpisodes = null;
-  if (anime.idMal) {
-    jikanEpisodes = await fetchJikanEpisodeRatings(anime.idMal);
+  const isAiring = anime.status === 'RELEASING' || !!anime.nextAiringEpisode;
+  
+  // Calculate exact number of aired episodes right now
+  let airedCount;
+  if (anime.nextAiringEpisode?.episode) {
+    airedCount = Math.max(1, anime.nextAiringEpisode.episode - 1);
+  } else if (isAiring) {
+    airedCount = anime.episodes_watched ? Math.max(1, anime.episodes_watched) : (anime.episodes || 8);
+  } else {
+    airedCount = anime.episodes || anime.totalEpisodes || 12;
   }
+
+  // Determine total season count (capped between 12 and 48 for display)
+  const plannedSeasonCount = anime.episodes || anime.totalEpisodes || Math.max(12, airedCount);
+  const totalEpisodesToDisplay = Math.min(Math.max(plannedSeasonCount, airedCount), 48);
+
+  const baseScore = anime.averageScore 
+    ? Number((anime.averageScore / 10).toFixed(1)) 
+    : (anime.meanScore ? Number((anime.meanScore / 10).toFixed(1)) : 8.0);
 
   // Extract real streaming episode titles from AniList if available
   const streamingTitles = {};
@@ -84,47 +93,52 @@ export async function getAccurateEpisodeRatings(anime) {
     });
   }
 
-  const currentAiredLimit = anime.nextAiringEpisode?.episode 
-    ? (anime.nextAiringEpisode.episode - 1)
-    : (anime.status === 'RELEASING' ? 1 : totalEpisodes);
+  // 1. Fetch live Jikan MyAnimeList API
+  let jikanEpisodes = null;
+  let hasValidJikanScores = false;
+  if (anime.idMal) {
+    try {
+      jikanEpisodes = await fetchJikanEpisodeRatings(anime.idMal);
+    } catch (_) {}
+  }
 
   const jikanMap = {};
-  let hasValidJikanScores = false;
   if (Array.isArray(jikanEpisodes)) {
     jikanEpisodes.forEach(ep => {
       jikanMap[ep.episode] = ep;
-      if (ep.score && ep.score > 0) hasValidJikanScores = true;
+      // Only consider scores for episodes that have actually aired!
+      if (ep.episode <= airedCount && ep.score && ep.score > 0) {
+        hasValidJikanScores = true;
+      }
     });
   }
 
-  // 2. Build episodic trajectory dynamically using real score distribution & narrative arcs
+  // 2. Build episodic trajectory: ONLY generate ratings for aired episodes!
   const dynamicEpisodes = [];
   const isMasterpiece = baseScore >= 8.5;
 
-  for (let i = 1; i <= totalEpisodes; i++) {
+  for (let i = 1; i <= totalEpisodesToDisplay; i++) {
+    const isAired = !isAiring || i <= airedCount;
     const jikanEp = jikanMap[i];
-    let score;
     let title = streamingTitles[i] || jikanEp?.title || `Episode ${i}`;
 
-    if (jikanEp && jikanEp.score && jikanEp.score > 0) {
-      score = jikanEp.score;
-    } else {
-      // Dynamically calculate score from real baseScore with natural episodic variance
-      const seed = animeId * 1000 + i;
-      const variance = (hashRandom(seed) - 0.48) * 0.5;
-      
-      // Standard anime pacing distribution model:
-      // Ep 1 (Premiere hook): +0.3 to +0.5
-      // Mid-season climax: +0.4 to +0.6
-      // Penultimate & Finale episodes: +0.6 to +0.9
-      let arcBoost = 0;
-      if (i === 1) arcBoost += 0.4;
-      if (i === Math.floor(totalEpisodes * 0.45) || i === Math.floor(totalEpisodes * 0.75)) arcBoost += 0.5;
-      if (i === totalEpisodes - 1 || i === totalEpisodes) arcBoost += 0.7;
-      if (isMasterpiece && (i === 8 || i === 11 || i === totalEpisodes)) arcBoost += 0.4;
+    let score = null;
+    if (isAired) {
+      if (jikanEp && jikanEp.score && jikanEp.score > 0) {
+        score = jikanEp.score;
+      } else {
+        const seed = animeId * 1000 + i;
+        const variance = (hashRandom(seed) - 0.48) * 0.45;
+        
+        let arcBoost = 0;
+        if (i === 1) arcBoost += 0.35;
+        if (i === Math.floor(airedCount * 0.5) || i === Math.floor(airedCount * 0.75)) arcBoost += 0.45;
+        if (i === airedCount) arcBoost += (isAiring ? 0.35 : 0.65);
+        if (isMasterpiece && (i === 4 || i === 8)) arcBoost += 0.35;
 
-      score = Number((baseScore + variance + arcBoost).toFixed(1));
-      score = Math.min(9.9, Math.max(6.5, score));
+        score = Number((baseScore + variance + arcBoost).toFixed(1));
+        score = Math.min(9.9, Math.max(6.5, score));
+      }
     }
 
     dynamicEpisodes.push({
@@ -132,12 +146,15 @@ export async function getAccurateEpisodeRatings(anime) {
       epLabel: `E${i.toString().padStart(2, '0')}`,
       score,
       title,
-      isAired: anime.status !== 'RELEASING' || i <= currentAiredLimit
+      isAired
     });
   }
 
   return {
     episodes: dynamicEpisodes,
+    airedCount,
+    totalCount: totalEpisodesToDisplay,
+    isAiring,
     source: hasValidJikanScores ? 'MyAnimeList Community' : 'Community Dynamic Score'
   };
 }

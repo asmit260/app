@@ -423,11 +423,16 @@ export default function AnimeDetailModal({
                     <span>{detail.averageScore}% Community</span>
                   </span>
                 )}
-                {detail.episodes && (
+                {detail.status === 'RELEASING' ? (
+                  <span className="px-2.5 py-1 bg-sand-200 dark:bg-sand-300 text-ink-900 border-2 border-stone-900 rounded font-mono">
+                    {detail.nextAiringEpisode ? `Ep ${Math.max(1, detail.nextAiringEpisode.episode - 1)} Aired` : 'Airing'}
+                    {detail.episodes ? ` of ${detail.episodes}` : ''}
+                  </span>
+                ) : detail.episodes ? (
                   <span className="px-2.5 py-1 bg-sand-200 dark:bg-sand-300 text-ink-900 border-2 border-stone-900 rounded font-mono">
                     {detail.episodes} Episodes
                   </span>
-                )}
+                ) : null}
                 <span className="px-2.5 py-1 bg-sand-200 dark:bg-sand-300 text-ink-900 border-2 border-stone-900 rounded uppercase font-mono">
                   {detail.status}
                 </span>

@@ -36,21 +36,23 @@ export default function EpisodeRatingGraph({
     }));
   }, [ratingData.episodes, episodesWatched]);
 
-  // Find peak episode in the dataset
+  // Find peak episode strictly from aired episodes with scores
   const peakEpisode = useMemo(() => {
-    if (!episodeData.length) return null;
-    let max = episodeData[0];
-    for (const ep of episodeData) {
+    const airedWithScores = episodeData.filter(ep => ep.isAired && ep.score !== null && ep.score > 0);
+    if (!airedWithScores.length) return null;
+    let max = airedWithScores[0];
+    for (const ep of airedWithScores) {
       if (ep.score > max.score) max = ep;
     }
     return max;
   }, [episodeData]);
 
-  // Average episodic rating
+  // Average episodic rating strictly across aired episodes
   const avgEpScore = useMemo(() => {
-    if (!episodeData.length) return '0.0';
-    const sum = episodeData.reduce((acc, ep) => acc + ep.score, 0);
-    return (sum / episodeData.length).toFixed(1);
+    const airedWithScores = episodeData.filter(ep => ep.isAired && ep.score !== null && ep.score > 0);
+    if (!airedWithScores.length) return '0.0';
+    const sum = airedWithScores.reduce((acc, ep) => acc + ep.score, 0);
+    return (sum / airedWithScores.length).toFixed(1);
   }, [episodeData]);
 
   // Pagination for shows with > 12 episodes (12 episodes per window)
@@ -77,20 +79,23 @@ export default function EpisodeRatingGraph({
   };
 
   const getY = (score) => {
-    const ratio = (score - minRating) / (maxRating - minRating);
+    const safeScore = score || 7.5;
+    const ratio = (safeScore - minRating) / (maxRating - minRating);
     return (svgHeight - paddingBottom) - ratio * (svgHeight - paddingTop - paddingBottom);
   };
 
-  // Generate SVG Path
+  // Generate SVG Points
   const points = currentEpisodes.map((ep, idx) => ({
     x: getX(idx, currentEpisodes.length),
-    y: getY(ep.score),
+    y: ep.score ? getY(ep.score) : getY(7.6),
     ...ep
   }));
 
-  const linePath = points.reduce((acc, pt, idx, arr) => {
+  const airedPoints = points.filter(p => p.isAired && p.score !== null);
+  const upcomingPoints = points.filter(p => !p.isAired || p.score === null);
+
+  const airedLinePath = airedPoints.reduce((acc, pt, idx, arr) => {
     if (idx === 0) return `M ${pt.x} ${pt.y}`;
-    // Smooth Catmull-Rom / Bezier curve
     const prev = arr[idx - 1];
     const cpX1 = prev.x + (pt.x - prev.x) / 2;
     const cpY1 = prev.y;
@@ -99,12 +104,22 @@ export default function EpisodeRatingGraph({
     return `${acc} C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${pt.x} ${pt.y}`;
   }, '');
 
-  const areaPath = points.length > 0 ? `
-    ${linePath}
-    L ${points[points.length - 1].x} ${svgHeight - paddingBottom}
-    L ${points[0].x} ${svgHeight - paddingBottom}
+  const airedAreaPath = airedPoints.length > 0 ? `
+    ${airedLinePath}
+    L ${airedPoints[airedPoints.length - 1].x} ${svgHeight - paddingBottom}
+    L ${airedPoints[0].x} ${svgHeight - paddingBottom}
     Z
   ` : '';
+
+  // Connecting dashed line to unreleased upcoming episodes
+  let dashedLinePath = '';
+  if (airedPoints.length > 0 && upcomingPoints.length > 0) {
+    const lastAired = airedPoints[airedPoints.length - 1];
+    dashedLinePath = `M ${lastAired.x} ${lastAired.y}`;
+    upcomingPoints.forEach(pt => {
+      dashedLinePath += ` L ${pt.x} ${pt.y}`;
+    });
+  }
 
   const handleNodeClick = (ep) => {
     sound.playTab();
@@ -124,7 +139,7 @@ export default function EpisodeRatingGraph({
             <h3 className="font-display font-black text-xs sm:text-sm uppercase tracking-tight text-ink-900 flex items-center gap-1.5">
               <span>Episode Rating Trend</span>
               <span className="text-[9px] font-mono font-black bg-amber-400 text-stone-950 px-1.5 py-0.5 rounded border border-stone-900 shadow-xs uppercase">
-                {ratingData.source || 'IMDb Verified'}
+                {ratingData.source || 'Community Trend'}
               </span>
             </h3>
           </div>
@@ -132,14 +147,14 @@ export default function EpisodeRatingGraph({
 
         {/* Highlight Pills */}
         <div className="flex items-center gap-1.5 font-mono text-[10px]">
-          {peakEpisode && (
+          {peakEpisode ? (
             <span className="px-2 py-0.5 rounded bg-amber-400 text-stone-950 font-black border border-stone-900 shadow-sm flex items-center gap-1">
               <Award className="w-3 h-3 text-stone-950 fill-current" />
               <span>Peak: {peakEpisode.epLabel} ({peakEpisode.score})</span>
             </span>
-          )}
+          ) : null}
           <span className="px-2 py-0.5 rounded bg-sand-200 dark:bg-sand-300 text-stone-700 dark:text-stone-300 font-bold border border-stone-900/30">
-            Avg {avgEpScore}/10
+            {ratingData.isAiring ? `Aired ${ratingData.airedCount || 0}/${ratingData.totalCount || 12} Eps · ` : ''}Avg {avgEpScore}/10
           </span>
         </div>
       </div>
@@ -160,12 +175,6 @@ export default function EpisodeRatingGraph({
               <stop offset="0%" stopColor="#D4974A" stopOpacity="0.32" />
               <stop offset="100%" stopColor="#D4974A" stopOpacity="0.0" />
             </linearGradient>
-            
-            {/* Peak Glow Filter */}
-            <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="3" result="blur" />
-              <feComposite in="SourceGraphic" in2="blur" operator="over" />
-            </filter>
           </defs>
 
           {/* Reference Horizontal Gridlines */}
@@ -195,27 +204,45 @@ export default function EpisodeRatingGraph({
             );
           })}
 
-          {/* Area Fill */}
-          <path
-            d={areaPath}
-            fill="url(#trendGradient)"
-          />
+          {/* Area Fill for Aired section */}
+          {airedAreaPath && (
+            <path
+              d={airedAreaPath}
+              fill="url(#trendGradient)"
+            />
+          )}
 
-          {/* Main Curve Line */}
-          <path
-            d={linePath}
-            fill="none"
-            stroke="#D4974A"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="filter drop-shadow-[0_2px_4px_rgba(212,151,74,0.3)]"
-          />
+          {/* Aired Curve Line */}
+          {airedLinePath && (
+            <path
+              d={airedLinePath}
+              fill="none"
+              stroke="#D4974A"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="filter drop-shadow-[0_2px_4px_rgba(212,151,74,0.3)]"
+            />
+          )}
+
+          {/* Upcoming Unreleased Dashed Line */}
+          {dashedLinePath && (
+            <path
+              d={dashedLinePath}
+              fill="none"
+              stroke="#857460"
+              strokeWidth="1.8"
+              strokeDasharray="4 4"
+              strokeLinecap="round"
+              opacity="0.6"
+            />
+          )}
 
           {/* Interactive Episode Nodes */}
           {points.map((pt) => {
-            const isPeak = peakEpisode && pt.episode === peakEpisode.episode;
+            const isPeak = peakEpisode && pt.episode === peakEpisode.episode && pt.isAired;
             const isSelected = selectedEp?.episode === pt.episode;
+            const isUpcoming = !pt.isAired || pt.score === null;
 
             return (
               <g 
@@ -234,7 +261,7 @@ export default function EpisodeRatingGraph({
                   strokeDasharray="2 2"
                 />
 
-                {/* Score Pill Banner Above Node */}
+                {/* Score / Status Pill Banner Above Node */}
                 <g transform={`translate(${pt.x}, ${pt.y - 12})`}>
                   <rect
                     x="-13"
@@ -243,27 +270,32 @@ export default function EpisodeRatingGraph({
                     height="14"
                     rx="3"
                     className={
-                      isPeak
-                        ? "fill-amber-400 stroke-stone-900"
-                        : isSelected
-                          ? "fill-stone-900 stroke-stone-900"
-                          : "fill-sand-50 dark:fill-stone-800 stroke-stone-900/60 dark:stroke-stone-600"
+                      isUpcoming
+                        ? "fill-sand-200/50 dark:fill-stone-800/40 stroke-stone-400 dark:stroke-stone-700"
+                        : isPeak
+                          ? "fill-amber-400 stroke-stone-900"
+                          : isSelected
+                            ? "fill-stone-900 stroke-stone-900"
+                            : "fill-sand-50 dark:fill-stone-800 stroke-stone-900/60 dark:stroke-stone-600"
                     }
                     strokeWidth="1.2"
+                    strokeDasharray={isUpcoming ? "2 2" : "none"}
                   />
                   <text
                     x="0"
                     y="-3"
                     textAnchor="middle"
                     className={`text-[9px] font-mono font-black ${
-                      isPeak
-                        ? "fill-stone-950"
-                        : isSelected
-                          ? "fill-white"
-                          : "fill-ink-900 dark:fill-sand-100"
+                      isUpcoming
+                        ? "fill-stone-400 dark:fill-stone-500"
+                        : isPeak
+                          ? "fill-stone-950"
+                          : isSelected
+                            ? "fill-white"
+                            : "fill-ink-900 dark:fill-sand-100"
                     }`}
                   >
-                    {pt.score.toFixed(1)}
+                    {isUpcoming ? "TBA" : pt.score.toFixed(1)}
                   </text>
                 </g>
 
@@ -287,14 +319,17 @@ export default function EpisodeRatingGraph({
                   cy={pt.y}
                   r={isPeak || isSelected ? "5.5" : "4"}
                   className={`transition-all ${
-                    isPeak
-                      ? "fill-amber-400 stroke-stone-950 stroke-[2.5]"
-                      : isSelected
-                        ? "fill-stone-950 dark:fill-amber-400 stroke-amber-400 stroke-2"
-                        : pt.isWatched
-                          ? "fill-emerald-500 stroke-stone-900 stroke-2"
-                          : "fill-sand-50 dark:fill-stone-100 stroke-stone-900 stroke-2 group-hover:fill-amber-400"
+                    isUpcoming
+                      ? "fill-sand-100 dark:fill-stone-900 stroke-stone-400 dark:stroke-stone-600 stroke-[1.5]"
+                      : isPeak
+                        ? "fill-amber-400 stroke-stone-950 stroke-[2.5]"
+                        : isSelected
+                          ? "fill-stone-950 dark:fill-amber-400 stroke-amber-400 stroke-2"
+                          : pt.isWatched
+                            ? "fill-emerald-500 stroke-stone-900 stroke-2"
+                            : "fill-sand-50 dark:fill-stone-100 stroke-stone-900 stroke-2 group-hover:fill-amber-400"
                   }`}
+                  strokeDasharray={isUpcoming ? "2 2" : "none"}
                 />
 
                 {/* X-Axis Episode Label */}
@@ -303,13 +338,15 @@ export default function EpisodeRatingGraph({
                   y={svgHeight - 12}
                   textAnchor="middle"
                   className={`text-[10px] font-mono font-black uppercase transition-colors ${
-                    isSelected
-                      ? "fill-amber-500"
-                      : isPeak
-                        ? "fill-amber-600 dark:fill-amber-400"
-                        : pt.isWatched
-                          ? "fill-emerald-600 dark:fill-emerald-400"
-                          : "fill-stone-500 dark:fill-stone-400"
+                    isUpcoming
+                      ? "fill-stone-400 dark:fill-stone-600"
+                      : isSelected
+                        ? "fill-amber-500"
+                        : isPeak
+                          ? "fill-amber-600 dark:fill-amber-400"
+                          : pt.isWatched
+                            ? "fill-emerald-600 dark:fill-emerald-400"
+                            : "fill-stone-500 dark:fill-stone-400"
                   }`}
                 >
                   {pt.epLabel}
@@ -323,29 +360,44 @@ export default function EpisodeRatingGraph({
         {selectedEp && (
           <div className="mt-2 p-2.5 bg-sand-50 dark:bg-stone-800 rounded border-2 border-stone-900 flex items-center justify-between animate-fade-in shadow-sm">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded bg-amber-400 text-stone-950 border border-stone-900 flex items-center justify-center font-mono font-black text-xs shrink-0">
+              <div className={`w-7 h-7 rounded border border-stone-900 flex items-center justify-center font-mono font-black text-xs shrink-0 ${
+                !selectedEp.isAired
+                  ? 'bg-sand-200 dark:bg-stone-700 text-stone-500'
+                  : 'bg-amber-400 text-stone-950'
+              }`}>
                 {selectedEp.epLabel}
               </div>
               <div>
                 <p className="text-xs font-black text-ink-900">
                   Episode {selectedEp.episode}{selectedEp.title && selectedEp.title !== `Episode ${selectedEp.episode}` ? `: ${selectedEp.title}` : ''}
-                  {peakEpisode?.episode === selectedEp.episode && (
+                  {peakEpisode?.episode === selectedEp.episode && selectedEp.isAired && (
                     <span className="ml-1.5 px-1.5 py-0.2 bg-amber-400 text-stone-950 text-[9px] font-black uppercase rounded">
                       Season Peak
                     </span>
                   )}
+                  {!selectedEp.isAired && (
+                    <span className="ml-1.5 px-1.5 py-0.2 bg-sand-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 text-[9px] font-black uppercase rounded">
+                      Unreleased (Airing Soon)
+                    </span>
+                  )}
                 </p>
                 <p className="text-[10px] text-stone-500 font-mono flex items-center gap-1">
-                  <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                  <span>Rating: {selectedEp.score}/10</span>
-                  <span className="mx-1">•</span>
-                  <span>{selectedEp.isWatched ? 'Watched' : 'Not watched yet'}</span>
+                  {selectedEp.isAired && selectedEp.score ? (
+                    <>
+                      <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                      <span>Rating: {selectedEp.score}/10</span>
+                      <span className="mx-1">•</span>
+                      <span>{selectedEp.isWatched ? 'Watched' : 'Not watched yet'}</span>
+                    </>
+                  ) : (
+                    <span>This episode has not aired yet. Airing in upcoming schedule.</span>
+                  )}
                 </p>
               </div>
             </div>
 
             {/* Quick Step Button */}
-            {onStepToEpisode && (
+            {onStepToEpisode && selectedEp.isAired && (
               <button
                 onClick={() => {
                   onStepToEpisode(selectedEp.episode);
