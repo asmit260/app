@@ -1,5 +1,5 @@
-import React from 'react';
-import { Sun, Moon, LogIn, User } from 'lucide-react';
+import React, { useState } from 'react';
+import { Sun, Moon, LogIn, User, RotateCw } from 'lucide-react';
 import { sound } from '../../services/soundEffects';
 
 export default function TopBar({ 
@@ -8,8 +8,10 @@ export default function TopBar({
   darkMode, 
   onToggleTheme,
   currentUser,
-  onOpenLogin
+  onOpenLogin,
+  onRefresh
 }) {
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const titles = {
     schedule: 'Airing Schedule',
     explore: 'Explore & Discover',
@@ -21,6 +23,16 @@ export default function TopBar({
   const handleAvatarClick = () => {
     sound.playTab();
     if (onSelectTab) onSelectTab('profile');
+  };
+
+  const handleManualRefresh = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    sound.playTab();
+    try {
+      if (onRefresh) await onRefresh();
+    } catch (_) {}
+    setTimeout(() => setIsRefreshing(false), 500);
   };
 
   return (
@@ -38,7 +50,17 @@ export default function TopBar({
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
+          {/* Quick Reload / Sync Button */}
+          <button
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
+            className="p-2 rounded-md border-2 border-stone-900 bg-sand-50 dark:bg-sand-300 text-ink-900 hover:bg-amber-400 hover:text-stone-950 active:translate-y-0.5 transition-all shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] disabled:opacity-60"
+            title="Refresh App & Watchlist Data"
+          >
+            <RotateCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-amber-500' : ''}`} />
+          </button>
+
           {/* Theme Switcher */}
           <button 
             onClick={onToggleTheme}

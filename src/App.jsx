@@ -17,9 +17,56 @@ import {
   upsertWatchlistEntry, 
   removeWatchlistEntry, 
   getProfileSettings,
-  getWatchHistory
+  getWatchHistory,
+  saveProfileSettings
 } from './services/storage';
 import { getUser, onAuthChange } from './services/auth';
+
+class ViewErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("View Render Error:", error, errorInfo);
+  }
+
+  componentDidUpdate(prevProps) {
+    if (prevProps.tabKey !== this.props.tabKey && this.state.hasError) {
+      this.setState({ hasError: false, error: null });
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="card-manga-panel p-6 bg-sand-50 dark:bg-sand-200 text-center space-y-3 my-4">
+          <div className="inline-block bg-amber-400 text-stone-950 font-black text-xs px-3 py-1 uppercase rounded border border-stone-900 shadow-sm">
+            View Error Notice
+          </div>
+          <h3 className="font-display font-black text-base text-ink-900">
+            Couldn't load this screen
+          </h3>
+          <p className="text-xs text-stone-600 dark:text-stone-300 font-sans max-w-sm mx-auto">
+            {this.state.error?.message || 'A temporary glitch occurred while displaying this section.'}
+          </p>
+          <button
+            onClick={() => this.setState({ hasError: false, error: null })}
+            className="btn-manga bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs px-4 py-2 font-black shadow-[2px_2px_0px_0px_rgba(24,19,13,1)]"
+          >
+            Reload This View
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -251,66 +298,69 @@ export default function App() {
         onToggleTheme={handleToggleTheme}
         currentUser={currentUser}
         onOpenLogin={() => setShowLogin(true)}
+        onRefresh={loadAllData}
       />
 
       {/* Main Screen Content View */}
       <main className="flex-grow max-w-5xl w-full mx-auto p-3 sm:p-6 pb-24 sm:pb-28">
-        <div key={activeTab} className="animate-fade-in">
-        {activeTab === 'schedule' && (
-          <ScheduleView
-            watchlist={watchlist}
-            onUpdateWatchlist={handleUpdateWatchlist}
-            onRemoveItem={handleRemoveWatchlistItem}
-            onSelectAnime={(id) => setSelectedAnimeId(id)}
-            titleLanguage={profile.titleLanguage}
-          />
-        )}
+        <ViewErrorBoundary tabKey={activeTab}>
+          <div key={activeTab} className="animate-fade-in">
+          {activeTab === 'schedule' && (
+            <ScheduleView
+              watchlist={watchlist}
+              onUpdateWatchlist={handleUpdateWatchlist}
+              onRemoveItem={handleRemoveWatchlistItem}
+              onSelectAnime={(id) => setSelectedAnimeId(id)}
+              titleLanguage={profile.titleLanguage}
+            />
+          )}
 
-        {activeTab === 'explore' && (
-          <ExploreView
-            watchlist={watchlist}
-            onUpdateWatchlist={handleUpdateWatchlist}
-            onSelectAnime={(id) => setSelectedAnimeId(id)}
-            titleLanguage={profile.titleLanguage}
-          />
-        )}
+          {activeTab === 'explore' && (
+            <ExploreView
+              watchlist={watchlist}
+              onUpdateWatchlist={handleUpdateWatchlist}
+              onSelectAnime={(id) => setSelectedAnimeId(id)}
+              titleLanguage={profile.titleLanguage}
+            />
+          )}
 
-        {activeTab === 'mylist' && (
-          <MyListView
-            watchlist={watchlist}
-            onUpdateStatus={(id, status, existingItem) => {
-              // Build full anime from the watchlist item to preserve metadata
-              const item = existingItem || watchlist.find(i => (i.anime_id == id || i.id == id));
-              const fullAnime = buildAnimeFromWatchlistItem(id, item);
-              handleUpdateWatchlist(fullAnime, status);
-            }}
-            onIncrementEpisode={handleIncrementEpisode}
-            onRemoveItem={handleRemoveWatchlistItem}
-            onSelectAnime={(id) => setSelectedAnimeId(id)}
-            titleLanguage={profile.titleLanguage}
-          />
-        )}
+          {activeTab === 'mylist' && (
+            <MyListView
+              watchlist={watchlist}
+              onUpdateStatus={(id, status, existingItem) => {
+                // Build full anime from the watchlist item to preserve metadata
+                const item = existingItem || watchlist.find(i => (i.anime_id == id || i.id == id));
+                const fullAnime = buildAnimeFromWatchlistItem(id, item);
+                handleUpdateWatchlist(fullAnime, status);
+              }}
+              onIncrementEpisode={handleIncrementEpisode}
+              onRemoveItem={handleRemoveWatchlistItem}
+              onSelectAnime={(id) => setSelectedAnimeId(id)}
+              titleLanguage={profile.titleLanguage}
+            />
+          )}
 
-        {activeTab === 'stats' && (
-          <StatsView
-            watchlist={watchlist}
-            history={history}
-          />
-        )}
+          {activeTab === 'stats' && (
+            <StatsView
+              watchlist={watchlist}
+              history={history}
+            />
+          )}
 
-        {activeTab === 'profile' && (
-          <ProfileView
-            profile={profile}
-            onUpdateProfile={(p) => setProfile(p)}
-            darkMode={darkMode}
-            onToggleTheme={handleToggleTheme}
-            watchlist={watchlist}
-            onReloadWatchlist={loadAllData}
-            currentUser={currentUser}
-            onCheckForUpdate={handleManualUpdateCheck}
-          />
-        )}
-        </div>
+          {activeTab === 'profile' && (
+            <ProfileView
+              profile={profile}
+              onUpdateProfile={(p) => setProfile(p)}
+              darkMode={darkMode}
+              onToggleTheme={handleToggleTheme}
+              watchlist={watchlist}
+              onReloadWatchlist={loadAllData}
+              currentUser={currentUser}
+              onCheckForUpdate={handleManualUpdateCheck}
+            />
+          )}
+          </div>
+        </ViewErrorBoundary>
       </main>
 
       {/* Bottom Tab Bar */}
