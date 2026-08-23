@@ -137,9 +137,9 @@ export default function EpisodeRatingGraph({
           </div>
           <div>
             <h3 className="font-display font-black text-xs sm:text-sm uppercase tracking-tight text-ink-900 flex items-center gap-1.5">
-              <span>Episode Rating Trend</span>
+              <span>IMDb Episode Ratings</span>
               <span className="text-[9px] font-mono font-black bg-amber-400 text-stone-950 px-1.5 py-0.5 rounded border border-stone-900 shadow-xs uppercase">
-                {ratingData.source || 'Community Trend'}
+                {ratingData.source || 'IMDb Rating'}
               </span>
             </h3>
           </div>
@@ -150,11 +150,11 @@ export default function EpisodeRatingGraph({
           {peakEpisode ? (
             <span className="px-2 py-0.5 rounded bg-amber-400 text-stone-950 font-black border border-stone-900 shadow-sm flex items-center gap-1">
               <Award className="w-3 h-3 text-stone-950 fill-current" />
-              <span>Peak: {peakEpisode.epLabel} ({peakEpisode.score})</span>
+              <span>IMDb Peak: {peakEpisode.epLabel} ({peakEpisode.score})</span>
             </span>
           ) : null}
           <span className="px-2 py-0.5 rounded bg-sand-200 dark:bg-sand-300 text-stone-700 dark:text-stone-300 font-bold border border-stone-900/30">
-            {ratingData.isAiring ? `Aired ${ratingData.airedCount || 0}/${ratingData.totalCount || 12} Eps · ` : ''}Avg {avgEpScore}/10
+            {ratingData.isAiring ? `Aired ${ratingData.airedCount || 0}/${ratingData.totalCount || 12} Eps · ` : ''}IMDb Avg {avgEpScore}/10
           </span>
         </div>
       </div>
@@ -385,7 +385,7 @@ export default function EpisodeRatingGraph({
                   {selectedEp.isAired && selectedEp.score ? (
                     <>
                       <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                      <span>Rating: {selectedEp.score}/10</span>
+                      <span>IMDb Score: {selectedEp.score}/10</span>
                       <span className="mx-1">•</span>
                       <span>{selectedEp.isWatched ? 'Watched' : 'Not watched yet'}</span>
                     </>
