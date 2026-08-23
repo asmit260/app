@@ -3,6 +3,7 @@ import { Clock, Calendar as CalendarIcon, Globe, LayoutGrid, List, Search, Filte
 import { anilistQuery, WEEKLY_AIRING_SCHEDULE_QUERY } from '../../services/anilist';
 import { getActiveAnimeAlerts } from '../../services/notifications';
 import AnimeCard from '../Common/AnimeCard';
+import AnimeCardSkeleton from '../Common/AnimeCardSkeleton';
 import AiringAlertModal from './AiringAlertModal';
 
 export default function ScheduleView({ 
@@ -316,9 +317,7 @@ export default function ScheduleView({
         </div>
       ) : loading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-5">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
-            <div key={i} className="card-manga-panel h-[385px] shimmer-skeleton rounded-md" />
-          ))}
+          <AnimeCardSkeleton count={10} />
         </div>
       ) : filteredSchedules.length === 0 ? (
         <div className="card-manga-panel p-8 text-center bg-sand-50 dark:bg-sand-200">

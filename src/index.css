@@ -284,21 +284,60 @@ h1, h2, h3, .font-display {
   animation: flame-glow 2s ease-in-out infinite;
 }
 
-/* Shimmer Skeleton Loader */
-@keyframes shimmer {
-  0% { background-position: -400px 0; }
-  100% { background-position: 400px 0; }
+/* Enhanced Shimmer Skeleton Loader (Butter-Smooth 60FPS Manga Aesthetics) */
+@keyframes shimmer-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 .shimmer-skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--sand-200);
+}
+
+.dark .shimmer-skeleton {
+  background-color: #292522;
+}
+
+.shimmer-skeleton::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
   background: linear-gradient(
     90deg,
-    var(--sand-300) 25%,
-    var(--sand-200) 50%,
-    var(--sand-300) 75%
+    transparent 0%,
+    rgba(255, 255, 255, 0.55) 45%,
+    rgba(255, 255, 255, 0.7) 50%,
+    rgba(255, 255, 255, 0.55) 55%,
+    transparent 100%
   );
-  background-size: 800px 100%;
-  animation: shimmer 1.2s infinite linear;
+  animation: shimmer-sweep 1.6s infinite cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.dark .shimmer-skeleton::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(251, 191, 36, 0.08) 40%,
+    rgba(251, 191, 36, 0.18) 50%,
+    rgba(251, 191, 36, 0.08) 60%,
+    transparent 100%
+  );
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.75; }
+}
+
+.animate-skeleton-pulse {
+  animation: skeleton-pulse 2s ease-in-out infinite;
 }
 
 /* Star Glow & Status Pulse */

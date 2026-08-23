@@ -178,10 +178,44 @@ export default function AnimeDetailModal({
         </button>
 
         {loading ? (
-          <div className="p-8 text-center space-y-4">
-            <div className="h-44 w-full shimmer-skeleton rounded" />
-            <div className="h-6 w-3/4 shimmer-skeleton rounded mx-auto" />
-            <div className="h-20 w-full shimmer-skeleton rounded" />
+          <div className="space-y-4 pb-6 animate-skeleton-pulse select-none">
+            {/* Banner Skeleton */}
+            <div className="relative h-44 sm:h-52 w-full bg-sand-200 dark:bg-sand-300 shimmer-skeleton border-b-2 border-stone-900 overflow-hidden">
+              <div className="absolute bottom-3 left-4 right-4 flex gap-3 items-end">
+                {/* Cover Cutout Skeleton */}
+                <div className="w-20 h-28 sm:w-24 sm:h-36 rounded-md bg-sand-300 dark:bg-sand-400 border-2 border-stone-900 shrink-0 shadow-manga shimmer-skeleton" />
+                <div className="space-y-2 flex-grow pb-1">
+                  <div className="h-5 w-3/4 rounded bg-stone-300 dark:bg-stone-600 shimmer-skeleton" />
+                  <div className="h-3.5 w-1/2 rounded bg-stone-300 dark:bg-stone-600 shimmer-skeleton" />
+                </div>
+              </div>
+            </div>
+
+            {/* Content Body Skeletons */}
+            <div className="px-4 sm:px-6 space-y-4">
+              {/* Badges Skeleton */}
+              <div className="flex gap-2">
+                <div className="h-7 w-28 rounded bg-sand-200 dark:bg-sand-300 border-2 border-stone-900/30 shimmer-skeleton" />
+                <div className="h-7 w-24 rounded bg-sand-200 dark:bg-sand-300 border-2 border-stone-900/30 shimmer-skeleton" />
+                <div className="h-7 w-20 rounded bg-sand-200 dark:bg-sand-300 border-2 border-stone-900/30 shimmer-skeleton" />
+              </div>
+
+              {/* Status Action Bar Skeleton */}
+              <div className="p-3 rounded-lg border-2 border-stone-900 bg-sand-100 dark:bg-sand-300 flex items-center justify-between">
+                <div className="h-8 w-32 rounded bg-stone-300 dark:bg-stone-600 shimmer-skeleton" />
+                <div className="h-8 w-24 rounded bg-amber-400/60 shimmer-skeleton" />
+              </div>
+
+              {/* Synopsis Skeleton */}
+              <div className="space-y-2 pt-1">
+                <div className="h-4 w-24 rounded bg-stone-300 dark:bg-stone-600" />
+                <div className="space-y-1.5">
+                  <div className="h-3 w-full rounded bg-sand-200 dark:bg-sand-300 shimmer-skeleton" />
+                  <div className="h-3 w-[92%] rounded bg-sand-200 dark:bg-sand-300 shimmer-skeleton" />
+                  <div className="h-3 w-[78%] rounded bg-sand-200 dark:bg-sand-300 shimmer-skeleton" />
+                </div>
+              </div>
+            </div>
           </div>
         ) : detail ? (
           <div className="space-y-4 pb-6">

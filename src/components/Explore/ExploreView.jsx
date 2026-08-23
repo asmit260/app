@@ -342,7 +342,21 @@ export default function ExploreView({
             )}
           </div>
 
-          {searchResults.length === 0 && !searching ? (
+          {searching && searchResults.length === 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 animate-skeleton-pulse">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((idx) => (
+                <div key={idx} className="card-manga-panel bg-sand-50 dark:bg-sand-200 overflow-hidden border-2 border-stone-900 shadow-sm">
+                  <div className="h-[165px] sm:h-[185px] w-full bg-sand-200 dark:bg-sand-300 shimmer-skeleton border-b-2 border-stone-900 relative">
+                    <div className="absolute bottom-2 left-2 w-10 h-4 rounded-xs bg-sand-100 dark:bg-sand-400" />
+                  </div>
+                  <div className="p-2 space-y-1.5">
+                    <div className="h-3.5 w-full rounded bg-stone-300 dark:bg-stone-600 shimmer-skeleton" />
+                    <div className="h-3 w-2/3 rounded bg-stone-300 dark:bg-stone-600 shimmer-skeleton" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : searchResults.length === 0 && !searching ? (
             <div className="card-manga-panel p-8 text-center bg-sand-50 dark:bg-sand-200 rounded-lg border-2 border-stone-900 shadow-manga space-y-2">
               <Film className="w-10 h-10 text-stone-400 mx-auto" />
               <p className="font-display font-bold text-base text-ink-900">
@@ -368,9 +382,34 @@ export default function ExploreView({
         /* ═══ DEFAULT CURATED DISCOVERY DASHBOARD ═══ */
         <div className="space-y-6">
           {loadingCurated ? (
-            <div className="card-manga-panel p-12 text-center bg-sand-50 dark:bg-sand-200 border-2 border-stone-900 rounded-lg flex flex-col items-center justify-center gap-2 shadow-manga">
-              <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
-              <span className="font-mono text-xs font-bold text-stone-500">Curating top anime from AniList...</span>
+            <div className="space-y-6 animate-skeleton-pulse select-none">
+              {[1, 2, 3].map((carouselIdx) => (
+                <div key={carouselIdx} className="space-y-2.5">
+                  {/* Carousel Header Skeleton */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded bg-amber-400/60 shimmer-skeleton" />
+                      <div className="h-4 w-36 rounded bg-stone-300 dark:bg-stone-600 shimmer-skeleton" />
+                    </div>
+                    <div className="h-3 w-14 rounded bg-sand-200 dark:bg-sand-300 shimmer-skeleton" />
+                  </div>
+
+                  {/* Horizontal Scroll Row of Card Skeletons */}
+                  <div className="flex gap-3 overflow-hidden py-1 -mx-1 px-1">
+                    {[1, 2, 3, 4, 5, 6].map((cardIdx) => (
+                      <div key={cardIdx} className="w-[125px] sm:w-[145px] shrink-0 card-manga-panel bg-sand-50 dark:bg-sand-200 overflow-hidden border-2 border-stone-900 shadow-sm">
+                        <div className="h-[165px] sm:h-[185px] w-full bg-sand-200 dark:bg-sand-300 shimmer-skeleton border-b-2 border-stone-900 relative">
+                          <div className="absolute bottom-2 left-2 w-10 h-4 rounded-xs bg-sand-100 dark:bg-sand-400" />
+                        </div>
+                        <div className="p-2 space-y-1.5">
+                          <div className="h-3.5 w-full rounded bg-stone-300 dark:bg-stone-600 shimmer-skeleton" />
+                          <div className="h-3 w-2/3 rounded bg-stone-300 dark:bg-stone-600 shimmer-skeleton" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <>
