@@ -1,9 +1,10 @@
-// AniList GraphQL API Service with Instant 0ms Cache
+// AniList GraphQL API Service with Instant 0ms Cache & Resilient Retries
 const ANILIST_URL = 'https://graphql.anilist.co';
 const memoryCache = new Map();
 const CACHE_TTL_MS = 1000 * 60 * 15; // 15 mins
+const REQUEST_TIMEOUT_MS = 12000; // 12s generous timeout for mobile / high latency connections
 
-export async function anilistQuery(query, variables = {}) {
+export async function anilistQuery(query, variables = {}, retries = 2) {
   // Generate a distinct, collision-free cache key including all variable parameters
   const qName = (query.match(/(?:query|mutation)\s+(\w+)/) || [])[1] || 'query';
   const cacheKey = `anitrack_v2_${qName}_${JSON.stringify(variables)}`;
@@ -26,57 +27,84 @@ export async function anilistQuery(query, variables = {}) {
     }
   } catch (_) {}
 
-  // 3. Network fetch
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 6000);
+  // 3. Network fetch with auto-retry on timeout / transient network errors
+  let lastError = null;
 
-  try {
-    const response = await fetch(ANILIST_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({ query, variables }),
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        // Rate limited: wait 800ms and try once more
-        await new Promise(r => setTimeout(r, 800));
-        const retryRes = await fetch(ANILIST_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify({ query, variables })
-        });
-        if (retryRes.ok) {
-          const { data } = await retryRes.json();
-          const entry = { data, timestamp: Date.now() };
-          memoryCache.set(cacheKey, entry);
-          return data;
-        }
-      }
-      throw new Error(`AniList API returned ${response.status}`);
-    }
-
-    const { data } = await response.json();
-    const entry = { data, timestamp: Date.now() };
-    memoryCache.set(cacheKey, entry);
-    try { sessionStorage.setItem(cacheKey, JSON.stringify(entry)); } catch (_) {}
-    return data;
-  } catch (err) {
-    clearTimeout(timeoutId);
-    // If network fails, fallback to stale cache if available
-    if (mem?.data) return mem.data;
     try {
-      const fallback = sessionStorage.getItem(cacheKey);
-      if (fallback) return JSON.parse(fallback).data;
-    } catch (_) {}
-    console.warn("AniList network request failed:", err);
-    throw err;
+      if (attempt > 0) {
+        // Backoff delay before retry
+        await new Promise(r => setTimeout(r, 600 * attempt));
+      }
+
+      const response = await fetch(ANILIST_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ query, variables }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          // Rate limited: wait 1000ms and retry
+          await new Promise(r => setTimeout(r, 1000));
+          continue;
+        }
+        throw new Error(`AniList API returned status ${response.status}`);
+      }
+
+      const { data, errors } = await response.json();
+      if (errors && errors.length > 0 && !data) {
+        throw new Error(errors[0]?.message || 'GraphQL query error');
+      }
+
+      const entry = { data, timestamp: Date.now() };
+      memoryCache.set(cacheKey, entry);
+      try { sessionStorage.setItem(cacheKey, JSON.stringify(entry)); } catch (_) {}
+      return data;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      lastError = err;
+
+      // If aborted by timeout, continue to retry
+      const isAbort = err.name === 'AbortError' || err.message?.includes('aborted');
+      if (attempt < retries) {
+        console.warn(`AniList query attempt ${attempt + 1} failed (${isAbort ? 'Timeout' : err.message}). Retrying...`);
+        continue;
+      }
+    }
   }
+
+  // 4. Fallback to stale cache if available before throwing
+  if (mem?.data) {
+    console.warn("Using stale in-memory cache for AniList query:", cacheKey);
+    return mem.data;
+  }
+  try {
+    const fallback = sessionStorage.getItem(cacheKey);
+    if (fallback) {
+      const parsed = JSON.parse(fallback);
+      if (parsed?.data) {
+        console.warn("Using stale sessionStorage cache for AniList query:", cacheKey);
+        return parsed.data;
+      }
+    }
+  } catch (_) {}
+
+  // Format a friendly error message
+  if (lastError?.name === 'AbortError' || lastError?.message?.includes('aborted')) {
+    throw new Error('Connection timed out while reaching AniList. Please check your internet connection.');
+  }
+
+  console.warn("AniList network request failed:", lastError);
+  throw lastError || new Error('Failed to reach AniList servers.');
 }
 
 export const WEEKLY_AIRING_SCHEDULE_QUERY = `

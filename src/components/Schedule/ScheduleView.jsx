@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Clock, Calendar as CalendarIcon, Globe, LayoutGrid, List, Search, Filter, Sparkles, Check } from 'lucide-react';
 import { anilistQuery, WEEKLY_AIRING_SCHEDULE_QUERY } from '../../services/anilist';
 import { getActiveAnimeAlerts } from '../../services/notifications';
@@ -58,7 +58,10 @@ export default function ScheduleView({
     fetchDaySchedule(selectedDay);
   }, [selectedDay]);
 
+  const currentReqRef = useRef(0);
+
   const fetchDaySchedule = async (dayMonIndex) => {
+    const reqId = ++currentReqRef.current;
     setLoading(true);
     setFetchError(null);
     try {
@@ -77,16 +80,22 @@ export default function ScheduleView({
       };
 
       const res = await anilistQuery(WEEKLY_AIRING_SCHEDULE_QUERY, variables);
-      if (res?.Page?.airingSchedules) {
-        setSchedules((res.Page.airingSchedules || []).filter(s => !!s?.media));
-      } else {
-        setSchedules([]);
+      if (reqId === currentReqRef.current) {
+        if (res?.Page?.airingSchedules) {
+          setSchedules((res.Page.airingSchedules || []).filter(s => !!s?.media));
+        } else {
+          setSchedules([]);
+        }
       }
     } catch (err) {
-      console.error("Failed to load schedule:", err);
-      setFetchError(err?.message || 'Could not connect to AniList API. Please check your connection.');
+      if (reqId === currentReqRef.current) {
+        console.error("Failed to load schedule:", err);
+        setFetchError(err?.message || 'Could not connect to AniList API. Please check your connection.');
+      }
     } finally {
-      setLoading(false);
+      if (reqId === currentReqRef.current) {
+        setLoading(false);
+      }
     }
   };
 
