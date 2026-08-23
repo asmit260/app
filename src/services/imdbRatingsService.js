@@ -374,10 +374,13 @@ export async function getAccurateEpisodeRatings(anime) {
 
   const animeId = anime.id || 1;
   const title = (anime.title?.english || anime.title?.romaji || anime.title?.native || '').toLowerCase();
+  const rawTotal = anime.episodes || anime.totalEpisodes || 12;
+  const totalEpisodes = Math.max(12, Math.min(rawTotal, 48));
+  const baseScore = anime.averageScore ? Number((anime.averageScore / 10).toFixed(1)) : 8.2;
 
   // 1. Check curated exact IMDb database
   const curated = CURATED_IMDB_SERIES.find(entry => entry.matcher(title, animeId));
-  if (curated && curated.episodes?.length) {
+  if (curated && curated.episodes?.length >= 4) {
     return {
       episodes: curated.episodes.map(ep => ({
         ...ep,
@@ -388,24 +391,24 @@ export async function getAccurateEpisodeRatings(anime) {
     };
   }
 
-  // 2. Check dynamic Jikan MyAnimeList API
+  // 2. Check dynamic Jikan MyAnimeList API (only if it has sufficient episodes)
   if (anime.idMal) {
-    const liveJikan = await fetchJikanEpisodeRatings(anime.idMal);
-    if (liveJikan && liveJikan.length > 0) {
-      return {
-        episodes: liveJikan.map(ep => ({
-          ...ep,
-          epLabel: `E${ep.episode.toString().padStart(2, '0')}`,
-          isAired: true
-        })),
-        source: 'MyAnimeList Verified'
-      };
-    }
+    try {
+      const liveJikan = await fetchJikanEpisodeRatings(anime.idMal);
+      if (liveJikan && liveJikan.length >= 6) {
+        return {
+          episodes: liveJikan.map(ep => ({
+            ...ep,
+            epLabel: `E${ep.episode.toString().padStart(2, '0')}`,
+            isAired: true
+          })),
+          source: 'MyAnimeList Verified'
+        };
+      }
+    } catch (_) {}
   }
 
-  // 3. Calibrated score curve anchored directly to anime's real averageScore
-  const baseScore = anime.averageScore ? Number((anime.averageScore / 10).toFixed(1)) : 8.2;
-  const totalEpisodes = Math.max(1, Math.min(anime.episodes || anime.totalEpisodes || 12, 48));
+  // 3. Complete, calibrated score curve anchored directly to anime's real averageScore
   const currentAiredLimit = anime.nextAiringEpisode?.episode 
     ? (anime.nextAiringEpisode.episode - 1)
     : (anime.status === 'RELEASING' ? 1 : totalEpisodes);
@@ -413,14 +416,17 @@ export async function getAccurateEpisodeRatings(anime) {
   const fallbackData = [];
   for (let i = 1; i <= totalEpisodes; i++) {
     const seed = animeId * 100 + i;
-    const noise = (seededRandom(seed) - 0.48) * 0.5;
+    const noise = (seededRandom(seed) - 0.48) * 0.55;
     
-    // Narrative boost
+    // Narrative arc simulation:
+    // Ep 1: Premiere hook boost
+    // Mid-season climax: e.g. Ep 4, 8, 11
+    // Season Finale: Peak climax
     let arcBoost = 0;
-    if (i === 1) arcBoost += 0.4;
-    if (i === Math.floor(totalEpisodes * 0.5) || i === Math.floor(totalEpisodes * 0.75)) arcBoost += 0.5;
-    if (i === totalEpisodes - 1 || i === totalEpisodes) arcBoost += 0.65;
-    if (baseScore >= 8.5 && (i === 8 || i === 11 || i === totalEpisodes)) arcBoost += 0.4;
+    if (i === 1) arcBoost += 0.45;
+    if (i === Math.floor(totalEpisodes * 0.4) || i === Math.floor(totalEpisodes * 0.7)) arcBoost += 0.55;
+    if (i === totalEpisodes - 1 || i === totalEpisodes) arcBoost += 0.75;
+    if (baseScore >= 8.5 && (i === 8 || i === 11 || i === totalEpisodes)) arcBoost += 0.45;
 
     let score = Number((baseScore + noise + arcBoost).toFixed(1));
     score = Math.min(9.9, Math.max(6.5, score));

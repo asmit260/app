@@ -272,8 +272,12 @@ export default function EpisodeRatingGraph({
                   <circle
                     cx={pt.x}
                     cy={pt.y}
-                    r="8"
-                    className="fill-amber-400/40 animate-ping"
+                    r="9"
+                    fill="none"
+                    stroke="#D4974A"
+                    strokeWidth="2"
+                    strokeDasharray="2 2"
+                    opacity="0.85"
                   />
                 )}
 
