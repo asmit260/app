@@ -7,6 +7,7 @@ import {
   Trash2, 
   Pin, 
   Eye, 
+  EyeOff,
   Check, 
   Lock, 
   Unlock, 
@@ -57,6 +58,7 @@ const PRESET_COVERS = [
 export default function ModeratorNewsStudio({ isOpen, onClose, onArticlesUpdated }) {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [enteredPin, setEnteredPin] = useState('');
+  const [showPin, setShowPin] = useState(false);
   const [pinError, setPinError] = useState(false);
   
   const [activeTab, setActiveTab] = useState('publish'); // 'publish' | 'manage' | 'settings'
@@ -99,26 +101,40 @@ export default function ModeratorNewsStudio({ isOpen, onClose, onArticlesUpdated
     }
   }, [isUnlocked]);
 
-  // Handle PIN entry
-  const handlePinDigit = (digit) => {
+  // Check PIN logic
+  const checkPin = (pinToCheck) => {
+    if (verifyModeratorPin(pinToCheck)) {
+      sound.playCelebration();
+      setIsUnlocked(true);
+      setPinError(false);
+      return true;
+    } else {
+      sound.playError();
+      setPinError(true);
+      setTimeout(() => {
+        setEnteredPin('');
+        setPinError(false);
+      }, 800);
+      return false;
+    }
+  };
+
+  // Handle PIN input from keyboard or input field
+  const handlePinInput = (value) => {
+    const cleaned = value.replace(/\D/g, '').slice(0, 4);
+    setEnteredPin(cleaned);
     sound.playTap();
+
+    if (cleaned.length === 4) {
+      checkPin(cleaned);
+    }
+  };
+
+  // Handle PIN button click
+  const handlePinDigit = (digit) => {
     if (enteredPin.length < 4) {
       const next = enteredPin + digit;
-      setEnteredPin(next);
-      if (next.length === 4) {
-        if (verifyModeratorPin(next)) {
-          sound.playCelebration();
-          setIsUnlocked(true);
-          setPinError(false);
-        } else {
-          sound.playError();
-          setPinError(true);
-          setTimeout(() => {
-            setEnteredPin('');
-            setPinError(false);
-          }, 800);
-        }
-      }
+      handlePinInput(next);
     }
   };
 
@@ -126,6 +142,29 @@ export default function ModeratorNewsStudio({ isOpen, onClose, onArticlesUpdated
     sound.playTap();
     setEnteredPin(prev => prev.slice(0, -1));
   };
+
+  // Physical keyboard listener
+  useEffect(() => {
+    if (!isOpen || isUnlocked) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key >= '0' && e.key <= '9') {
+        e.preventDefault();
+        handlePinDigit(e.key);
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        handlePinBackspace();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (enteredPin.length > 0) {
+          checkPin(enteredPin);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isUnlocked, enteredPin]);
 
   // Insert markdown tag in editor
   const insertMarkdown = (prefix, suffix = '') => {
@@ -293,61 +332,111 @@ export default function ModeratorNewsStudio({ isOpen, onClose, onArticlesUpdated
                 <KeyRound className="w-6 h-6" />
               </div>
               <h3 className="font-display font-black text-base text-ink-900">
-                Enter Moderator PIN
+                Enter Moderator Passcode
               </h3>
               <p className="text-xs text-stone-500 font-sans">
-                Enter your 4-digit master passcode to access the publishing studio.
+                Type with keyboard or tap the keypad below to unlock the studio.
               </p>
             </div>
 
-            {/* PIN Dots Display */}
-            <div className={`flex items-center justify-center gap-3 py-2 ${pinError ? 'animate-shake' : ''}`}>
-              {[0, 1, 2, 3].map(idx => (
-                <div 
-                  key={idx}
-                  className={`w-4 h-4 rounded-full border-2 border-stone-900 transition-all ${
-                    enteredPin.length > idx 
-                      ? 'bg-amber-400 scale-110 shadow-sm' 
-                      : 'bg-sand-200 dark:bg-sand-400'
+            {/* Direct Input & Visual PIN Display */}
+            <div className="max-w-[260px] mx-auto space-y-2">
+              <div className="relative">
+                <input
+                  type={showPin ? "text" : "password"}
+                  maxLength={4}
+                  autoFocus
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={enteredPin}
+                  onChange={(e) => handlePinInput(e.target.value)}
+                  placeholder="••••"
+                  className={`w-full py-2.5 px-4 bg-sand-100 dark:bg-sand-300 rounded-xl border-2 border-stone-900 text-center font-mono font-black text-2xl tracking-[0.5em] text-ink-900 focus:outline-none focus:bg-amber-400/10 shadow-inner ${
+                    pinError ? 'border-rose-500 bg-rose-500/10 animate-shake' : ''
                   }`}
                 />
-              ))}
-            </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPin(!showPin)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-ink-900 p-1"
+                  title={showPin ? "Hide PIN" : "Show PIN"}
+                >
+                  {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
 
-            {pinError && (
-              <p className="text-xs font-mono font-bold text-rose-500 animate-fade-in">
-                Incorrect PIN. Please try again.
-              </p>
-            )}
+              {/* 4 Digit Status Indicators */}
+              <div className="flex items-center justify-center gap-3 py-1">
+                {[0, 1, 2, 3].map(idx => {
+                  const hasChar = enteredPin.length > idx;
+                  const char = enteredPin[idx];
+                  return (
+                    <div 
+                      key={idx}
+                      className={`w-10 h-10 rounded-lg border-2 border-stone-900 flex items-center justify-center font-mono font-black text-lg transition-all ${
+                        hasChar 
+                          ? 'bg-amber-400 text-stone-950 scale-105 shadow-2xs' 
+                          : 'bg-sand-100 dark:bg-sand-300 text-stone-400'
+                      }`}
+                    >
+                      {hasChar ? (showPin ? char : '•') : ''}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {pinError && (
+                <p className="text-xs font-mono font-bold text-rose-500 animate-fade-in">
+                  Incorrect PIN. Default PIN is 2600.
+                </p>
+              )}
+            </div>
 
             {/* Numeric Keypad */}
             <div className="grid grid-cols-3 gap-2.5 max-w-[240px] mx-auto select-none">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
                 <button
                   key={num}
+                  type="button"
                   onClick={() => handlePinDigit(String(num))}
-                  className="btn-manga bg-sand-100 dark:bg-sand-300 hover:bg-amber-400 hover:text-stone-950 text-ink-900 py-3 rounded-lg text-base font-mono font-black border-2 border-stone-900 shadow-2xs active:scale-95"
+                  className="btn-manga bg-sand-100 dark:bg-sand-300 hover:bg-amber-400 hover:text-stone-950 text-ink-900 py-3 rounded-lg text-base font-mono font-black border-2 border-stone-900 shadow-2xs active:scale-95 transition-all"
                 >
                   {num}
                 </button>
               ))}
               <button
+                type="button"
                 onClick={() => setEnteredPin('')}
-                className="btn-manga bg-sand-200 dark:bg-sand-400 text-stone-600 text-xs font-mono font-black py-3 rounded-lg border-2 border-stone-900 shadow-2xs"
+                className="btn-manga bg-sand-200 dark:bg-sand-400 text-stone-600 dark:text-stone-300 hover:bg-rose-500 hover:text-white text-xs font-mono font-black py-3 rounded-lg border-2 border-stone-900 shadow-2xs"
               >
                 Clear
               </button>
               <button
+                type="button"
                 onClick={() => handlePinDigit('0')}
-                className="btn-manga bg-sand-100 dark:bg-sand-300 hover:bg-amber-400 hover:text-stone-950 text-ink-900 py-3 rounded-lg text-base font-mono font-black border-2 border-stone-900 shadow-2xs active:scale-95"
+                className="btn-manga bg-sand-100 dark:bg-sand-300 hover:bg-amber-400 hover:text-stone-950 text-ink-900 py-3 rounded-lg text-base font-mono font-black border-2 border-stone-900 shadow-2xs active:scale-95 transition-all"
               >
                 0
               </button>
               <button
+                type="button"
                 onClick={handlePinBackspace}
-                className="btn-manga bg-sand-200 dark:bg-sand-400 text-stone-600 text-xs font-mono font-black py-3 rounded-lg border-2 border-stone-900 shadow-2xs"
+                className="btn-manga bg-sand-200 dark:bg-sand-400 text-stone-600 dark:text-stone-300 hover:bg-amber-400 hover:text-stone-950 text-xs font-mono font-black py-3 rounded-lg border-2 border-stone-900 shadow-2xs"
               >
                 ⌫
+              </button>
+            </div>
+
+            {/* Quick Unlock Action Button */}
+            <div className="max-w-[240px] mx-auto pt-1">
+              <button
+                type="button"
+                onClick={() => checkPin(enteredPin)}
+                disabled={enteredPin.length === 0}
+                className="btn-manga bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-stone-950 text-xs font-black w-full py-2.5 rounded-lg border-2 border-stone-900 shadow-2xs flex items-center justify-center gap-1.5"
+              >
+                <Unlock className="w-3.5 h-3.5" />
+                <span>Unlock Studio</span>
               </button>
             </div>
 
