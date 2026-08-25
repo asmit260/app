@@ -18,7 +18,8 @@ class LocalStorageMockDb {
           custom_lists: {},
           custom_list_items: {},
           episode_progress: {},
-          calendar_events: {}
+          calendar_events: {},
+          news_articles: {}
         }));
       }
     } catch (e) {
@@ -29,7 +30,7 @@ class LocalStorageMockDb {
   getDb() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return { profiles: {}, watchlist: {}, custom_lists: {}, custom_list_items: {}, episode_progress: {}, calendar_events: {} };
+      if (!raw) return { profiles: {}, watchlist: {}, custom_lists: {}, custom_list_items: {}, episode_progress: {}, calendar_events: {}, news_articles: {} };
       const parsed = JSON.parse(raw);
       if (!parsed.custom_lists) parsed.custom_lists = {};
       if (!parsed.custom_list_items) parsed.custom_list_items = {};
@@ -37,10 +38,11 @@ class LocalStorageMockDb {
       if (!parsed.watchlist) parsed.watchlist = {};
       if (!parsed.episode_progress) parsed.episode_progress = {};
       if (!parsed.calendar_events) parsed.calendar_events = {};
+      if (!parsed.news_articles) parsed.news_articles = {};
       return parsed;
     } catch (e) {
       console.error("getDb parse error, resetting:", e);
-      const resetDb = { profiles: {}, watchlist: {}, custom_lists: {}, custom_list_items: {}, episode_progress: {}, calendar_events: {} };
+      const resetDb = { profiles: {}, watchlist: {}, custom_lists: {}, custom_list_items: {}, episode_progress: {}, calendar_events: {}, news_articles: {} };
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(resetDb)); } catch (_) {}
       return resetDb;
     }

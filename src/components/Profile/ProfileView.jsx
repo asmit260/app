@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Sun, Moon, Globe, Download, Upload, Trash2, LogOut, AlertTriangle, Sparkles, RefreshCw, Loader2, Volume2, VolumeX, Check } from 'lucide-react';
+import { User, Sun, Moon, Globe, Download, Upload, Trash2, LogOut, AlertTriangle, Sparkles, RefreshCw, Loader2, Volume2, VolumeX, Check, ShieldAlert, ChevronRight } from 'lucide-react';
 import { saveProfileSettings, exportWatchlistJSON, importWatchlistJSON, resetAllData } from '../../services/storage';
 import { signOut } from '../../services/auth';
 import { CURRENT_APP_VERSION } from '../../services/updater';
@@ -13,7 +13,8 @@ export default function ProfileView({
   watchlist,
   onReloadWatchlist,
   currentUser,
-  onCheckForUpdate
+  onCheckForUpdate,
+  onOpenModeratorStudio
 }) {
   const [username, setUsername] = useState(profile.username || 'Scout Trainee');
   const [titleLang, setTitleLang] = useState(profile.titleLanguage || 'english');
@@ -212,6 +213,38 @@ export default function ProfileView({
           </div>
         )}
       </div>
+
+      {/* Moderator Studio Launch Card */}
+      {onOpenModeratorStudio && (
+        <div className="card-manga-panel p-4 bg-sand-50 dark:bg-sand-200 border-2 border-stone-900 shadow-manga space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="p-2 rounded-md bg-amber-400 border border-stone-900 shadow-2xs shrink-0">
+                <ShieldAlert className="w-4 h-4 text-stone-950" />
+              </span>
+              <div className="min-w-0">
+                <h3 className="font-display font-black text-sm text-ink-900 uppercase tracking-tight">
+                  Moderator Studio
+                </h3>
+                <p className="text-[10px] text-stone-500 font-sans line-clamp-1">
+                  Publish daily anime news, trailers, and announcements
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                sound.playTab();
+                onOpenModeratorStudio();
+              }}
+              className="btn-manga bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black px-3 py-1.5 rounded-md flex items-center gap-1 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] shrink-0 active:translate-y-0.5"
+            >
+              <span>Studio</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* App Version & Updates */}
       <div className="card-manga-panel p-4 bg-sand-50 dark:bg-sand-200 space-y-3">

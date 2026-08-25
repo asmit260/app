@@ -3,10 +3,12 @@ import TopBar from './components/Navigation/TopBar';
 import BottomNav from './components/Navigation/BottomNav';
 import ScheduleView from './components/Schedule/ScheduleView';
 import ExploreView from './components/Explore/ExploreView';
+import NewsView from './components/News/NewsView';
 import MyListView from './components/MyList/MyListView';
 import StatsView from './components/Stats/StatsView';
 import ProfileView from './components/Profile/ProfileView';
 import AnimeDetailModal from './components/Detail/AnimeDetailModal';
+import ModeratorNewsStudio from './components/Moderator/ModeratorNewsStudio';
 import SplashScreen from './components/Common/SplashScreen';
 import LoginModal from './components/Auth/LoginModal';
 import UpdateModal from './components/Common/UpdateModal';
@@ -87,6 +89,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [showLogin, setShowLogin] = useState(false);
   const [updateInfo, setUpdateInfo] = useState(null);
+  const [showModeratorStudio, setShowModeratorStudio] = useState(false);
 
   // Sync DOM with darkMode state on mount and change
   useEffect(() => {
@@ -325,6 +328,12 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'news' && (
+            <NewsView
+              onOpenModeratorStudio={() => setShowModeratorStudio(true)}
+            />
+          )}
+
           {activeTab === 'mylist' && (
             <MyListView
               watchlist={watchlist}
@@ -358,6 +367,7 @@ export default function App() {
               onReloadWatchlist={loadAllData}
               currentUser={currentUser}
               onCheckForUpdate={handleManualUpdateCheck}
+              onOpenModeratorStudio={() => setShowModeratorStudio(true)}
             />
           )}
           </div>
@@ -380,6 +390,14 @@ export default function App() {
           onUpdateStatus={(anime, status) => handleUpdateWatchlist(anime, status)}
           onRemoveItem={(id) => handleRemoveWatchlistItem(id)}
           titleLanguage={profile.titleLanguage}
+        />
+      )}
+
+      {/* Moderator Studio Modal */}
+      {showModeratorStudio && (
+        <ModeratorNewsStudio
+          isOpen={showModeratorStudio}
+          onClose={() => setShowModeratorStudio(false)}
         />
       )}
 
