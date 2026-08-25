@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
   ShieldAlert, 
@@ -25,7 +25,10 @@ import {
   Building2, 
   BookOpen, 
   KeyRound,
-  RotateCcw
+  RotateCcw,
+  Upload,
+  ImagePlus,
+  Camera
 } from 'lucide-react';
 import { 
   fetchNewsArticles, 
@@ -55,6 +58,46 @@ const PRESET_COVERS = [
   { label: 'Neon / City', url: 'https://images.unsplash.com/photo-1563089145-599997674d42?w=800&auto=format&fit=crop&q=80' }
 ];
 
+function compressAndReadImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1200;
+        const MAX_HEIGHT = 900;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        resolve(dataUrl);
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function ModeratorNewsStudio({ isOpen, onClose, onArticlesUpdated }) {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [enteredPin, setEnteredPin] = useState('');
@@ -81,6 +124,50 @@ export default function ModeratorNewsStudio({ isOpen, onClose, onArticlesUpdated
   const [previewMode, setPreviewMode] = useState(false);
   const [newPinInput, setNewPinInput] = useState('');
   const [pinSuccessMsg, setPinSuccessMsg] = useState('');
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
+
+  const coverFileInputRef = useRef(null);
+  const bodyFileInputRef = useRef(null);
+
+  const handleCoverFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsProcessingImage(true);
+    sound.playTap();
+    try {
+      const compressedDataUrl = await compressAndReadImage(file);
+      setForm(prev => ({ ...prev, cover_image: compressedDataUrl }));
+      sound.playSaveSuccess();
+    } catch (err) {
+      console.error("Image upload error:", err);
+      alert("Could not process the selected image file.");
+    } finally {
+      setIsProcessingImage(false);
+      if (coverFileInputRef.current) coverFileInputRef.current.value = '';
+    }
+  };
+
+  const handleBodyImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsProcessingImage(true);
+    sound.playTap();
+    try {
+      const compressedDataUrl = await compressAndReadImage(file);
+      const cleanName = file.name.replace(/\.[^/.]+$/, '') || 'Image';
+      const markdownImage = `\n\n![${cleanName}](${compressedDataUrl})\n\n`;
+      setForm(prev => ({ ...prev, content: (prev.content || '') + markdownImage }));
+      sound.playSaveSuccess();
+    } catch (err) {
+      console.error("Image insert error:", err);
+      alert("Could not process image for article body.");
+    } finally {
+      setIsProcessingImage(false);
+      if (bodyFileInputRef.current) bodyFileInputRef.current.value = '';
+    }
+  };
 
   // Load articles once unlocked
   const loadArticles = async () => {
@@ -561,18 +648,54 @@ export default function ModeratorNewsStudio({ isOpen, onClose, onArticlesUpdated
                     </div>
                   </div>
 
-                  {/* Cover Image URL + Quick Presets */}
-                  <div className="space-y-1.5">
-                    <label className="block text-[11px] font-black uppercase text-stone-600 dark:text-stone-300">
-                      Cover Image URL
-                    </label>
+                  {/* Cover Image: Upload from Local Device OR Enter URL */}
+                  <div className="space-y-2 p-3 bg-sand-100 dark:bg-sand-300 rounded-lg border-2 border-stone-900 shadow-2xs">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-[11px] font-black uppercase text-stone-700 dark:text-stone-200">
+                        Article Cover Artwork
+                      </label>
+                      {form.cover_image && (
+                        <button
+                          type="button"
+                          onClick={() => setForm({ ...form, cover_image: '' })}
+                          className="text-[10px] font-mono font-bold text-rose-500 hover:underline flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          Remove Cover
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Hidden Native File Input */}
                     <input
-                      type="url"
-                      value={form.cover_image}
-                      onChange={(e) => setForm({ ...form, cover_image: e.target.value })}
-                      placeholder="https://... (Direct Image URL)"
-                      className="w-full p-2.5 bg-sand-100 dark:bg-sand-300 rounded-lg border-2 border-stone-900 text-xs font-mono text-ink-900 focus:outline-none shadow-inner"
+                      type="file"
+                      ref={coverFileInputRef}
+                      accept="image/*"
+                      onChange={handleCoverFileUpload}
+                      className="hidden"
                     />
+
+                    {/* Action 1: Upload from Device Button */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => coverFileInputRef.current?.click()}
+                        disabled={isProcessingImage}
+                        className="btn-manga bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black py-2.5 px-3 rounded-lg border-2 border-stone-900 shadow-2xs flex items-center justify-center gap-2 active:scale-95 transition-all"
+                      >
+                        <ImagePlus className="w-4 h-4" />
+                        <span>{isProcessingImage ? 'Compressing...' : 'Upload from Device / Gallery'}</span>
+                      </button>
+
+                      {/* Action 2: Direct Image URL input */}
+                      <input
+                        type="url"
+                        value={form.cover_image}
+                        onChange={(e) => setForm({ ...form, cover_image: e.target.value })}
+                        placeholder="Or paste image URL (https://...)"
+                        className="w-full p-2 bg-sand-50 dark:bg-sand-200 rounded-lg border-2 border-stone-900 text-xs font-mono text-ink-900 focus:outline-none shadow-inner"
+                      />
+                    </div>
 
                     {/* Quick Image Presets */}
                     <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-0.5">
@@ -582,17 +705,20 @@ export default function ModeratorNewsStudio({ isOpen, onClose, onArticlesUpdated
                           key={pIdx}
                           type="button"
                           onClick={() => setForm({ ...form, cover_image: preset.url })}
-                          className="shrink-0 px-2 py-0.5 bg-sand-200 dark:bg-sand-400 rounded text-[9px] font-bold text-stone-700 dark:text-stone-200 border border-stone-900/30 hover:border-amber-500"
+                          className="shrink-0 px-2 py-0.5 bg-sand-50 dark:bg-sand-200 rounded text-[9px] font-bold text-stone-700 dark:text-stone-200 border border-stone-900/30 hover:border-amber-500"
                         >
                           {preset.label}
                         </button>
                       ))}
                     </div>
 
-                    {/* Image Preview Thumbnail */}
+                    {/* Image Live Preview */}
                     {form.cover_image && (
-                      <div className="relative aspect-[16/9] w-full max-w-xs rounded-lg overflow-hidden border-2 border-stone-900 shadow-sm mt-1 bg-sand-300">
+                      <div className="relative aspect-[16/9] w-full max-w-sm rounded-lg overflow-hidden border-2 border-stone-900 shadow-sm mt-1 bg-sand-200">
                         <img src={form.cover_image} alt="Preview" className="w-full h-full object-cover" />
+                        <div className="absolute bottom-1 right-1 bg-stone-900/80 text-white text-[9px] font-mono px-1.5 py-0.5 rounded">
+                          Cover Preview
+                        </div>
                       </div>
                     )}
                   </div>
@@ -626,8 +752,17 @@ export default function ModeratorNewsStudio({ isOpen, onClose, onArticlesUpdated
                       </button>
                     </div>
 
+                    {/* Hidden Body File Input */}
+                    <input
+                      type="file"
+                      ref={bodyFileInputRef}
+                      accept="image/*"
+                      onChange={handleBodyImageUpload}
+                      className="hidden"
+                    />
+
                     {/* Fast Markdown Toolbar */}
-                    <div className="flex items-center gap-1 bg-sand-100 dark:bg-sand-300 p-1 rounded-t-lg border-2 border-b-0 border-stone-900">
+                    <div className="flex items-center gap-1 bg-sand-100 dark:bg-sand-300 p-1 rounded-t-lg border-2 border-b-0 border-stone-900 overflow-x-auto hide-scrollbar">
                       <button
                         type="button"
                         onClick={() => insertMarkdown('**', '**')}
@@ -675,6 +810,15 @@ export default function ModeratorNewsStudio({ isOpen, onClose, onArticlesUpdated
                         title="Insert link"
                       >
                         <LinkIcon className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => bodyFileInputRef.current?.click()}
+                        className="p-1 rounded hover:bg-amber-400 hover:text-stone-950 text-stone-700 dark:text-stone-300 text-xs flex items-center gap-1 font-bold"
+                        title="Insert Image from Device"
+                      >
+                        <ImagePlus className="w-3.5 h-3.5 text-amber-500" />
+                        <span className="text-[10px]">Add Photo</span>
                       </button>
                     </div>
 
