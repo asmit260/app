@@ -1,54 +1,105 @@
 // Intelligent Anime Franchise Normalizer & Grouping Engine
-// Detects and aggregates individual seasons, cours, movies, OVAs, and arcs into unified franchise hubs
+// Detects and aggregates individual seasons, cours, movies, OVAs, OADs, specials, and arcs into unified franchise hubs
+
+const CANONICAL_FRANCHISE_MAP = [
+  { pattern: /^(Re:?\s*Zero|ReZero)/i, key: 'rezerostartinglifeinanotherworld', title: 'Re:ZERO -Starting Life in Another World-' },
+  { pattern: /^(Attack on Titan|Shingeki no Kyojin)/i, key: 'attackontitan', title: 'Attack on Titan' },
+  { pattern: /^(Demon Slayer|Kimetsu no Yaiba)/i, key: 'demonslayerkimetsunoyaiba', title: 'Demon Slayer: Kimetsu no Yaiba' },
+  { pattern: /^(My Hero Academia|Boku no Hero Academia)/i, key: 'myheroacademia', title: 'My Hero Academia' },
+  { pattern: /^(Jujutsu Kaisen)/i, key: 'jujutsukaisen', title: 'Jujutsu Kaisen' },
+  { pattern: /^(KonoSuba|Kono Subarashii Sekai)/i, key: 'konosuba', title: "KonoSuba: God's Blessing on this Wonderful World!" },
+  { pattern: /^(Mushoku Tensei)/i, key: 'mushokutensei', title: 'Mushoku Tensei: Jobless Reincarnation' },
+  { pattern: /^(Frieren|Sousou no Frieren)/i, key: 'frieren', title: 'Frieren: Beyond Journey\'s End' },
+  { pattern: /^(That Time I Got Reincarnated as a Slime|Tensei shitara Slime Datta Ken|Slime Datta Ken)/i, key: 'thattimeigotreincarnatedasaslime', title: 'That Time I Got Reincarnated as a Slime' },
+  { pattern: /^(The Eminence in Shadow|Kage no Jitsuryokusha)/i, key: 'theeminenceinshadow', title: 'The Eminence in Shadow' },
+  { pattern: /^(Bleach)/i, key: 'bleach', title: 'Bleach' },
+  { pattern: /^(Chainsaw Man)/i, key: 'chainsawman', title: 'Chainsaw Man' },
+  { pattern: /^(Spy\s*x?\s*Family)/i, key: 'spyxfamily', title: 'Spy x Family' },
+  { pattern: /^(Dr\.?\s*Stone)/i, key: 'drstone', title: 'Dr. STONE' },
+  { pattern: /^(Haikyuu|Haikyu)/i, key: 'haikyuu', title: 'Haikyuu!!' },
+  { pattern: /^(One Punch Man|Wanpanman)/i, key: 'onepunchman', title: 'One Punch Man' },
+  { pattern: /^(Sword Art Online|SAO)/i, key: 'swordartonline', title: 'Sword Art Online' },
+  { pattern: /^(Vinland Saga)/i, key: 'vinlandsaga', title: 'Vinland Saga' },
+  { pattern: /^(Fate\/|Fate\s+)/i, key: 'fatestaynight', title: 'Fate Series' },
+  { pattern: /^(Overlord)/i, key: 'overlord', title: 'Overlord' },
+  { pattern: /^(Made in Abyss)/i, key: 'madeinabyss', title: 'Made in Abyss' },
+  { pattern: /^(Mob Psycho 100)/i, key: 'mobpsycho100', title: 'Mob Psycho 100' },
+  { pattern: /^(Tokyo Revengers)/i, key: 'tokyorevengers', title: 'Tokyo Revengers' },
+  { pattern: /^(Oshi no Ko)/i, key: 'oshinoko', title: '【OSHI NO KO】' },
+  { pattern: /^(DanMachi|Dungeon ni Deai|Is It Wrong to Try to Pick Up Girls in a Dungeon)/i, key: 'danmachi', title: 'Is It Wrong to Try to Pick Up Girls in a Dungeon?' },
+  { pattern: /^(Fullmetal Alchemist|Hagane no Renkinjutsushi)/i, key: 'fullmetalalchemist', title: 'Fullmetal Alchemist' },
+  { pattern: /^(Steins;?\s*Gate)/i, key: 'steinsgate', title: 'Steins;Gate' },
+  { pattern: /^(Gintama)/i, key: 'gintama', title: 'Gintama' },
+  { pattern: /^(Code Geass)/i, key: 'codegeass', title: 'Code Geass' },
+  { pattern: /^(Hunter x Hunter|Hunter \/ Hunter)/i, key: 'hunterxhunter', title: 'Hunter x Hunter' },
+  { pattern: /^(JoJo's Bizarre Adventure|JoJo no Kimyou na Bouken)/i, key: 'jojosbizarreadventure', title: "JoJo's Bizarre Adventure" },
+  { pattern: /^(Bungou Stray Dogs|Bungo Stray Dogs)/i, key: 'bungostraydogs', title: 'Bungou Stray Dogs' },
+  { pattern: /^(Black Clover)/i, key: 'blackclover', title: 'Black Clover' },
+  { pattern: /^(Kaguya-sama|Kaguya-sama wa Kokurasetai|Kaguya-sama: Love Is War)/i, key: 'kaguyasama', title: 'Kaguya-sama: Love Is War' },
+  { pattern: /^(Classroom of the Elite|Youkoso Jitsuryoku)/i, key: 'classroomoftheelite', title: 'Classroom of the Elite' },
+  { pattern: /^(Blue Lock)/i, key: 'bluelock', title: 'Blue Lock' },
+  { pattern: /^(Hell's Paradise|Jigokuraku)/i, key: 'hellsparadise', title: "Hell's Paradise" },
+  { pattern: /^(Solo Leveling|Ore dake Level Up)/i, key: 'sololeveling', title: 'Solo Leveling' },
+  { pattern: /^(Kaiju No\.?\s*8|Kaijuu 8-gou)/i, key: 'kaijuno8', title: 'Kaiju No.8' },
+  { pattern: /^(Bakemonogatari|Nisemonogatari|Owarimonogatari|Kizumonogatari|Monogatari Series)/i, key: 'monogatariseries', title: 'Monogatari Series' },
+  { pattern: /^(Naruto|Boruto)/i, key: 'narutoseries', title: 'Naruto' },
+  { pattern: /^(Dragon Ball)/i, key: 'dragonballseries', title: 'Dragon Ball' }
+];
 
 export function getFranchiseKey(rawTitle) {
   if (!rawTitle) return '';
-  let str = rawTitle.trim();
+  const trimmed = rawTitle.trim();
 
-  // 1. Strip Demon Slayer specific arc subtitles
+  // 1. Direct Canonical mapping
+  for (const canon of CANONICAL_FRANCHISE_MAP) {
+    if (canon.pattern.test(trimmed)) {
+      return canon.key;
+    }
+  }
+
+  // 2. Generic Normalizer
+  let str = trimmed;
+
+  // Strip Demon Slayer specific arc subtitles
   str = str.replace(/Demon Slayer:\s*Kimetsu no Yaiba.*$/i, 'Demon Slayer: Kimetsu no Yaiba');
 
-  // 2. Strip "The Final Season", "Final Season", "Final Chapters", "Final Chapter", "Final Arc"
-  str = str.replace(/[:\-]?\s*(The\s+)?Final\s+(Season|Chapter|Chapters|Part|Act|Arc).*$/i, '');
+  // Strip Final Season/Part/Arc/Chapters
+  str = str.replace(/[:\-—–]?\s*(The\s+)?Final\s+(Season|Chapter|Chapters|Part|Act|Arc|Movie).*$/i, '');
 
-  // 3. Strip Season & Cour indicators: "Season 2", "2nd Season", "Part 2", "2nd Cour"
+  // Strip Season & Cour indicators
   str = str
-    .replace(/[:\-]?\s*Season\s+\d+.*$/i, '')
-    .replace(/[:\-]?\s*\d+(st|nd|rd|th)\s+Season.*$/i, '')
-    .replace(/[:\-]?\s*(Part|Cour)\s+\d+.*$/i, '')
-    .replace(/[:\-]?\s*\d+(st|nd|rd|th)\s+(Part|Cour).*$/i, '');
+    .replace(/[:\-—–]?\s*Season\s+\d+.*$/i, '')
+    .replace(/[:\-—–]?\s*\d+(st|nd|rd|th)\s+Season.*$/i, '')
+    .replace(/[:\-—–]?\s*(Part|Cour)\s+\d+.*$/i, '')
+    .replace(/[:\-—–]?\s*\d+(st|nd|rd|th)\s+(Part|Cour).*$/i, '');
 
-  // 4. Strip Roman Numerals at end (II, III, IV, V, VI, VII, VIII, IX, X)
+  // Strip Roman Numerals at end (II, III, IV, V, VI, VII, VIII, IX, X)
   str = str.replace(/\s+(II|III|IV|V|VI|VII|VIII|IX|X)\b.*$/i, '');
 
-  // 5. Strip trailing standalone numbers (e.g. "Jujutsu Kaisen 0", "KonoSuba 3")
+  // Strip standalone trailing number
   str = str.replace(/\s+\d+\b.*$/i, '');
 
-  // 6. Strip standard OVA / OAD / Special / Movie endings
-  str = str.replace(/[:\-]?\s*(OVA|OAD|Special|The Movie|Movie).*$/i, '');
+  // Strip standard OVA / OAD / Special / Movie / Spinoff / Recap
+  str = str.replace(/[:\-—–]?\s*(The\s+)?(OVA|OAD|Specials?|The Movie|Movie|Gekijouban|Film|Shorts?|Picture Drama|Recap|Chibi|Mini Anime|Spinoff|Spin-off|Picture Drama)\b.*$/i, '');
 
-  // 7. Strip subtitle arc names after dash or colon
-  str = str.replace(/[:\-]\s*(The\s+)?(Conflict|Arise|Reze|Mugen Train|Entertainment District|Swordsmith Village|Hashira Training|Memory Snow|The Frozen Bond|Director's Cut|Shin Henshuu-ban|Code:\s*White|Sennen Kessen-hen|Thousand-Year Blood War|To the Top|NEW WORLD).*$/i, '');
+  // Strip subtitle arc names after dash or colon
+  str = str.replace(/[:\-—–]\s*(The\s+)?(Conflict|Arise|Reze|Mugen Train|Entertainment District|Swordsmith Village|Hashira Training|Memory Snow|The Frozen Bond|Hyouketsu no Kizuna|Director's Cut|Shin Henshuu-ban|Code:\s*White|Sennen Kessen-hen|Thousand-Year Blood War|To the Top|NEW WORLD|Legend of Crimson|Kurenai Densetsu|No Regrets|Kuinaki Sentaku|Ilse's Notebook|Lost Girls|Chronicle).*$/i, '');
 
-  // 8. Strip trailing Arc/Hen markers
-  str = str.replace(/[:\-]?\s*(\w+\s+)*(Arc|Hen|Chapter)\b.*$/i, '');
+  // Strip trailing Arc/Hen/Chapter markers
+  str = str.replace(/[:\-—–]?\s*(\w+\s+)*(Arc|Hen|Chapter)\b.*$/i, '');
 
-  // 9. Strip parenthetical tags like (TV), (2024), etc.
+  // Strip parenthetical tags like (TV), (OVA), (2024), etc.
   str = str.replace(/\s*\([^)]*\)$/, '');
 
-  // 10. Clean trailing punctuation
-  str = str.replace(/[:\-\s]+$/, '').trim();
+  // Clean trailing punctuation
+  str = str.replace(/[:\-—–\s]+$/, '').trim();
 
-  // 11. Known franchise colon heads
+  // Known franchise colon heads
   const colonIdx = str.indexOf(':');
   if (colonIdx > 2) {
     const head = str.substring(0, colonIdx).trim();
     if (!/^(Re|Fate|Steins)$/i.test(head)) {
-      if (/^Demon Slayer/i.test(head)) {
-        str = "Demon Slayer: Kimetsu no Yaiba";
-      } else if (/^(Bleach|Dr\.\s*STONE|Spy\s*x\s*Family|Mushoku Tensei|Chainsaw Man|Solo Leveling|KonoSuba|Attack on Titan|Haikyuu!!|Jujutsu Kaisen|Boku no Hero Academia|My Hero Academia)$/i.test(head)) {
-        str = head;
-      }
+      str = head;
     }
   }
 
@@ -58,7 +109,17 @@ export function getFranchiseKey(rawTitle) {
 export function getFranchiseDisplayTitle(items) {
   if (!items || items.length === 0) return 'Franchise';
   
-  // Find the earliest or shortest canonical title
+  // Check if any item matches a known canonical title
+  for (const item of items) {
+    const title = item.anime_title || '';
+    for (const canon of CANONICAL_FRANCHISE_MAP) {
+      if (canon.pattern.test(title)) {
+        return canon.title;
+      }
+    }
+  }
+
+  // Find the earliest or shortest title
   const sorted = [...items].sort((a, b) => {
     const lenA = (a.anime_title || '').length;
     const lenB = (b.anime_title || '').length;
@@ -68,19 +129,18 @@ export function getFranchiseDisplayTitle(items) {
   const shortest = sorted[0]?.anime_title || '';
   let cleaned = shortest
     .replace(/Demon Slayer:\s*Kimetsu no Yaiba.*$/i, 'Demon Slayer: Kimetsu no Yaiba')
-    .replace(/[:\-]?\s*(The\s+)?Final\s+(Season|Chapter|Chapters|Part|Act|Arc).*$/i, '')
-    .replace(/[:\-]?\s*Season\s+\d+.*$/i, '')
-    .replace(/[:\-]?\s*\d+(st|nd|rd|th)\s+Season.*$/i, '')
-    .replace(/[:\-]?\s*(Part|Cour)\s+\d+.*$/i, '')
+    .replace(/[:\-—–]?\s*(The\s+)?Final\s+(Season|Chapter|Chapters|Part|Act|Arc|Movie).*$/i, '')
+    .replace(/[:\-—–]?\s*Season\s+\d+.*$/i, '')
+    .replace(/[:\-—–]?\s*\d+(st|nd|rd|th)\s+Season.*$/i, '')
+    .replace(/[:\-—–]?\s*(Part|Cour)\s+\d+.*$/i, '')
     .replace(/\s+(II|III|IV|V|VI|VII|VIII|IX|X)\b.*$/i, '')
-    .replace(/[:\-]?\s*(OVA|OAD|Special|The Movie|Movie).*$/i, '')
-    .replace(/[:\-]\s*(The\s+)?(Conflict|Arise|Reze|Mugen Train|Entertainment District|Swordsmith Village|Hashira Training|Memory Snow|The Frozen Bond|Director's Cut|Shin Henshuu-ban|Code:\s*White|Sennen Kessen-hen|Thousand-Year Blood War|To the Top|NEW WORLD).*$/i, '')
-    .replace(/[:\-\s]+$/, '')
+    .replace(/[:\-—–]?\s*(The\s+)?(OVA|OAD|Specials?|The Movie|Movie|Gekijouban|Film|Shorts?|Picture Drama|Recap|Chibi|Mini Anime|Spinoff|Spin-off).*$/i, '')
+    .replace(/[:\-—–]\s*(The\s+)?(Conflict|Arise|Reze|Mugen Train|Entertainment District|Swordsmith Village|Hashira Training|Memory Snow|The Frozen Bond|Hyouketsu no Kizuna|Director's Cut|Shin Henshuu-ban|Code:\s*White|Sennen Kessen-hen|Thousand-Year Blood War|To the Top|NEW WORLD|Legend of Crimson|No Regrets).*$/i, '')
+    .replace(/[:\-—–\s]+$/, '')
     .trim();
 
-  // If cleaned is too short (e.g. less than 4 chars or chopped mid-word), fallback to shortest
   if (!cleaned || (cleaned.length < 4 && shortest.length >= 4)) {
-    cleaned = shortest.replace(/[:\-]?\s*Season\s+\d+.*$/i, '').trim();
+    cleaned = shortest.replace(/[:\-—–]?\s*Season\s+\d+.*$/i, '').trim();
   }
 
   return cleaned || shortest;
@@ -88,40 +148,59 @@ export function getFranchiseDisplayTitle(items) {
 
 export function getSeasonSubtitle(rawTitle, franchiseTitle) {
   if (!rawTitle) return 'Season 1';
-  let t = rawTitle.trim();
-  
-  // Try removing the franchiseTitle from the start
-  if (franchiseTitle && t.toLowerCase().startsWith(franchiseTitle.toLowerCase())) {
-    let remainder = t.substring(franchiseTitle.length).replace(/^[:\-\s]+/, '').replace(/[:\-\s]+$/, '').trim();
-    if (remainder) {
-      if (/^(II|III|IV|V|VI|VII|VIII|IX|X)\b/i.test(remainder)) {
-        return 'Season ' + remainder;
-      }
-      return remainder;
-    }
-  }
+  const t = rawTitle.trim();
 
-  // Common pattern matches if franchise prefix didn't match cleanly
-  const finalMatch = t.match(/(The\s+)?Final\s+(Season|Chapters?|Part|Act|Arc)[^)]*/i);
-  if (finalMatch) return finalMatch[0].trim();
+  // 1. Specific Famous OVAs & Movies
+  if (/Memory Snow/i.test(t)) return 'Memory Snow (OVA)';
+  if (/The Frozen Bond|Hyouketsu no Kizuna/i.test(t)) return 'The Frozen Bond (Movie/OVA)';
+  if (/Director's Cut|Shin Henshuu-ban/i.test(t)) return "Director's Cut";
+  if (/No Regrets|Kuinaki Sentaku/i.test(t)) return 'No Regrets (OVA)';
+  if (/Ilse's Notebook/i.test(t)) return "Ilse's Notebook (OVA)";
+  if (/Lost Girls/i.test(t)) return 'Lost Girls (OVA)';
+  if (/Legend of Crimson|Kurenai Densetsu/i.test(t)) return 'Legend of Crimson (Movie)';
+  if (/An Explosion on This Wonderful World/i.test(t)) return 'Bakuen (Spin-off)';
+  if (/Mugen Train|Mugen Ressha/i.test(t)) return 'Mugen Train Arc';
+  if (/Entertainment District|Yuukaku-hen/i.test(t)) return 'Entertainment District Arc';
+  if (/Swordsmith Village|Katanakaji/i.test(t)) return 'Swordsmith Village Arc';
+  if (/Hashira Training|Hashira Geiko/i.test(t)) return 'Hashira Training Arc';
+  if (/Infinity Castle/i.test(t)) return 'Infinity Castle (Movie)';
+  if (/Code:?\s*White/i.test(t)) return 'Code: White (Movie)';
+  if (/Jujutsu Kaisen 0/i.test(t)) return 'Jujutsu Kaisen 0 (Movie)';
+  if (/Two Heroes/i.test(t)) return 'Two Heroes (Movie)';
+  if (/Heroes Rising/i.test(t)) return 'Heroes Rising (Movie)';
+  if (/World Heroes'? Mission/i.test(t)) return 'World Heroes\' Mission (Movie)';
+  if (/You're Next/i.test(t)) return 'You\'re Next (Movie)';
 
-  const seasonPartMatch = t.match(/Season\s+\d+(\s+Part\s+\d+)?/i);
+  // 2. Final Season / Arcs
+  const finalPartMatch = t.match(/(The\s+)?Final\s+(Season|Chapters?|Part|Act|Arc)(\s+Part\s+\d+)?(\s*-\s*The Final Chapters)?/i);
+  if (finalPartMatch) return finalPartMatch[0].trim();
+
+  // 3. Numbered Seasons & Parts
+  const seasonPartMatch = t.match(/Season\s+\d+(\s+Part\s+\d+)?(\s+Cour\s+\d+)?/i);
   if (seasonPartMatch) return seasonPartMatch[0].trim();
 
-  const ordSeasonMatch = t.match(/\d+(st|nd|rd|th)\s+Season(\s+Part\s+\d+)?/i);
+  const ordSeasonMatch = t.match(/\d+(st|nd|rd|th)\s+Season(\s+Part\s+\d+)?(\s+Cour\s+\d+)?/i);
   if (ordSeasonMatch) return ordSeasonMatch[0].trim();
 
   const partMatch = t.match(/(Part|Cour)\s+\d+/i);
   if (partMatch) return partMatch[0].trim();
 
-  const movieMatch = t.match(/(The\s+Movie|Movie)[^)]*/i);
-  if (movieMatch) return movieMatch[0].trim();
+  // 4. General Movies & OVAs
+  if (/\b(The\s+Movie|Movie|Film|Gekijouban)\b/i.test(t)) return 'The Movie';
+  if (/\b(OVA|OAD)\b/i.test(t)) return 'OVA / Special';
+  if (/\b(Special|Specials)\b/i.test(t)) return 'Special';
+  if (/\b(Spinoff|Spin-off)\b/i.test(t)) return 'Spin-off';
+  if (/\b(Recap|Chronicle)\b/i.test(t)) return 'Recap / Movie';
 
-  const ovaMatch = t.match(/(OVA|OAD|Special|Memory Snow|The Frozen Bond)[^)]*/i);
-  if (ovaMatch) return ovaMatch[0].trim();
-
+  // 5. Roman Numerals (II, III, IV, etc.)
   const romanMatch = t.match(/\s+(II|III|IV|V|VI|VII|VIII|IX|X)\b/i);
   if (romanMatch) return 'Season ' + romanMatch[1].trim();
+
+  // 6. Standalone Trailing Number (e.g. KonoSuba 2)
+  const numMatch = t.match(/\s+(\d+)\b/);
+  if (numMatch && parseInt(numMatch[1]) > 1 && parseInt(numMatch[1]) < 20) {
+    return 'Season ' + numMatch[1];
+  }
 
   return 'Season 1';
 }
