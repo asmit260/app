@@ -17,10 +17,17 @@ import {
   Laugh,
   Coffee,
   Ghost,
-  Trophy
+  Trophy,
+  Bookmark,
+  PauseCircle,
+  XCircle,
+  Trash2,
+  ChevronDown
 } from 'lucide-react';
 import { anilistQuery, SEARCH_ANIME_QUERY, EXPLORE_PAGE_QUERY } from '../../services/anilist';
 import { sound } from '../../services/soundEffects';
+import { burstConfetti } from '../../utils/confetti';
+import QuickEpisodeModal from '../Common/QuickEpisodeModal';
 
 const GENRES = [
   { id: 'all', label: 'All Vibes', icon: Sparkles },
@@ -35,9 +42,18 @@ const GENRES = [
   { id: 'Sports', label: 'Sports', icon: Trophy }
 ];
 
+const STATUS_OPTIONS = [
+  { id: 'watching', label: 'Watching', icon: Flame },
+  { id: 'plan_to_watch', label: 'Plan to Watch', icon: Bookmark },
+  { id: 'completed', label: 'Completed', icon: Trophy },
+  { id: 'on_hold', label: 'On Hold', icon: PauseCircle },
+  { id: 'dropped', label: 'Dropped', icon: XCircle }
+];
+
 export default function ExploreView({
   watchlist = [],
   onUpdateWatchlist,
+  onRemoveItem,
   onSelectAnime,
   titleLanguage = 'english'
 }) {
@@ -55,6 +71,8 @@ export default function ExploreView({
   const [searchResults, setSearchResults] = useState([]);
   const [loadingCurated, setLoadingCurated] = useState(true);
   const [searching, setSearching] = useState(false);
+  const [activeMenuAnimeId, setActiveMenuAnimeId] = useState(null);
+  const [pickerAnime, setPickerAnime] = useState(null);
 
   // Fast watchlist map
   const watchlistMap = useMemo(() => {
@@ -64,6 +82,13 @@ export default function ExploreView({
     });
     return map;
   }, [watchlist]);
+
+  // Close open dropdowns on outside click
+  useEffect(() => {
+    const handleOutsideClick = () => setActiveMenuAnimeId(null);
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, []);
 
   // Debounce search input
   useEffect(() => {
@@ -149,12 +174,36 @@ export default function ExploreView({
     return anime.title?.english || anime.title?.romaji || anime.title?.native || 'Anime';
   };
 
-  const handleQuickAdd = (e, anime) => {
+  const handleSelectStatus = (e, anime, statusId) => {
     e.stopPropagation();
+    setActiveMenuAnimeId(null);
+
+    if (statusId === 'remove') {
+      if (onRemoveItem) onRemoveItem(anime.id);
+      sound.playSaveSuccess();
+      return;
+    }
+
+    if (statusId === 'watching') {
+      setPickerAnime(anime);
+      return;
+    }
+
+    if (statusId === 'completed') {
+      sound.playCelebration();
+      burstConfetti();
+      onUpdateWatchlist(anime, 'completed', anime.episodes || null);
+      return;
+    }
+
     sound.playSaveSuccess();
-    const isAiring = anime.status === 'RELEASING';
-    const status = isAiring ? 'watching' : 'plan_to_watch';
-    onUpdateWatchlist(anime, status, isAiring ? 1 : 0);
+    onUpdateWatchlist(anime, statusId);
+  };
+
+  const handleConfirmPickerEpisodes = (epNumber) => {
+    if (!pickerAnime) return;
+    onUpdateWatchlist(pickerAnime, 'watching', epNumber);
+    setPickerAnime(null);
   };
 
   // ═══ COMPONENT: MANGA POSTER CARD ═══
@@ -163,15 +212,16 @@ export default function ExploreView({
     const tracked = watchlistMap[anime.id];
     const isWatching = tracked?.status === 'watching';
     const isCompleted = tracked?.status === 'completed';
+    const isMenuOpen = activeMenuAnimeId === anime.id;
 
     return (
       <div
         key={anime.id}
         onClick={() => onSelectAnime(anime.id)}
-        className="card-manga-panel bg-sand-50 dark:bg-sand-200 rounded-lg border-2 border-stone-900 shadow-[2.5px_2.5px_0px_0px_rgba(24,19,13,1)] overflow-hidden flex flex-col justify-between cursor-pointer group active:scale-[0.98] transition-all"
+        className="card-manga-panel bg-sand-50 dark:bg-sand-200 rounded-lg border-2 border-stone-900 shadow-[2.5px_2.5px_0px_0px_rgba(24,19,13,1)] flex flex-col justify-between cursor-pointer group active:scale-[0.98] transition-all relative"
       >
         {/* Poster Image */}
-        <div className="relative aspect-[3/4] w-full bg-sand-200 dark:bg-sand-300 overflow-hidden border-b-2 border-stone-900">
+        <div className="relative aspect-[3/4] w-full bg-sand-200 dark:bg-sand-300 overflow-hidden border-b-2 border-stone-900 rounded-t-[6px]">
           {cover ? (
             <img
               src={cover}
@@ -193,28 +243,88 @@ export default function ExploreView({
             </div>
           )}
 
-          {/* Quick Add / Tracked Overlay Button */}
-          <div className="absolute bottom-1.5 right-1.5">
+          {/* Quick Status Action Button */}
+          <div className="absolute bottom-1.5 right-1.5 z-20">
             {tracked ? (
-              <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase font-mono border border-stone-900 shadow-sm flex items-center gap-0.5 ${
-                isWatching 
-                  ? 'bg-status-watching text-white' 
-                  : isCompleted 
-                    ? 'bg-status-completed text-white' 
-                    : 'bg-amber-400 text-stone-950 font-black'
-              }`}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveMenuAnimeId(isMenuOpen ? null : anime.id);
+                }}
+                className={`px-2 py-0.5 rounded text-[9px] font-black uppercase font-mono border-2 border-stone-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] flex items-center gap-1 active:translate-y-0.5 transition-transform ${
+                  tracked.status === 'watching' 
+                    ? 'bg-status-watching text-white' 
+                    : tracked.status === 'completed' 
+                      ? 'bg-status-completed text-white' 
+                      : tracked.status === 'plan_to_watch'
+                        ? 'bg-sky-500 text-white'
+                        : tracked.status === 'on_hold'
+                          ? 'bg-amber-500 text-white'
+                          : 'bg-rose-500 text-white'
+                }`}
+                title="Change Watchlist Status"
+              >
                 <Check className="w-2.5 h-2.5 stroke-[3]" />
-                <span>{tracked.status}</span>
-              </span>
+                <span className="truncate max-w-[55px]">{tracked.status.replace('_', ' ')}</span>
+                <ChevronDown className="w-2.5 h-2.5 opacity-80" />
+              </button>
             ) : (
               <button
-                onClick={(e) => handleQuickAdd(e, anime)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveMenuAnimeId(isMenuOpen ? null : anime.id);
+                }}
                 className="btn-manga bg-amber-400 hover:bg-amber-300 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] flex items-center gap-0.5 active:translate-y-0.5"
-                title="Add to Watchlist"
+                title="Add to Watchlist (Select Status)"
               >
                 <Plus className="w-3 h-3 stroke-[3]" />
                 <span>Add</span>
+                <ChevronDown className="w-2.5 h-2.5 opacity-80" />
               </button>
+            )}
+
+            {/* Quick Status Dropdown Menu */}
+            {isMenuOpen && (
+              <div 
+                className="absolute right-0 bottom-full mb-1.5 w-36 bg-sand-50 dark:bg-stone-900 border-2 border-stone-900 rounded-lg shadow-manga-lg py-1 z-50 animate-fade-in text-left"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="px-2 py-0.5 text-[8px] font-mono font-black uppercase text-stone-500 border-b border-stone-900/20 mb-1">
+                  Set Watch Status
+                </div>
+                {STATUS_OPTIONS.map(opt => {
+                  const OptIcon = opt.icon;
+                  const isCurrent = tracked?.status === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={(e) => handleSelectStatus(e, anime, opt.id)}
+                      className={`w-full px-2 py-1 text-[10px] font-black flex items-center justify-between hover:bg-amber-400 hover:text-stone-950 transition-colors ${
+                        isCurrent ? 'bg-amber-400/20 text-ink-900' : 'text-stone-700 dark:text-stone-200'
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <OptIcon className="w-3 h-3" />
+                        <span>{opt.label}</span>
+                      </span>
+                      {isCurrent && <Check className="w-3 h-3 stroke-[3] text-amber-600 dark:text-amber-400" />}
+                    </button>
+                  );
+                })}
+
+                {tracked && onRemoveItem && (
+                  <>
+                    <div className="border-t border-stone-900/20 my-1" />
+                    <button
+                      onClick={(e) => handleSelectStatus(e, anime, 'remove')}
+                      className="w-full px-2 py-1 text-[10px] font-black text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white transition-colors flex items-center gap-1.5"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      <span>Remove</span>
+                    </button>
+                  </>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -443,6 +553,23 @@ export default function ExploreView({
             </>
           )}
         </div>
+      )}
+
+      {/* Quick Episode Picker Modal for Explore & Search Cards */}
+      {pickerAnime && (
+        <QuickEpisodeModal
+          isOpen={!!pickerAnime}
+          onClose={() => setPickerAnime(null)}
+          anime={pickerAnime}
+          currentEp={Number(watchlistMap[pickerAnime.id]?.episodes_watched) || 1}
+          maxAiredEp={
+            pickerAnime.nextAiringEpisode?.episode 
+              ? Math.max(1, pickerAnime.nextAiringEpisode.episode - 1)
+              : (pickerAnime.totalEpisodes || pickerAnime.episodes || 24)
+          }
+          onConfirm={handleConfirmPickerEpisodes}
+          titleLanguage={titleLanguage}
+        />
       )}
 
     </div>

@@ -319,6 +319,7 @@ export default function App() {
             <ExploreView
               watchlist={watchlist}
               onUpdateWatchlist={handleUpdateWatchlist}
+              onRemoveItem={handleRemoveWatchlistItem}
               onSelectAnime={(id) => setSelectedAnimeId(id)}
               titleLanguage={profile.titleLanguage}
             />
