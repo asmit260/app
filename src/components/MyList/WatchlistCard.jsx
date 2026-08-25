@@ -14,6 +14,7 @@ const STATUS_THEMES = {
 export default function WatchlistCard({
   item,
   viewMode = 'compact', // 'compact' | 'dense' | 'grid'
+  overrideTitle,
   onSelectAnime,
   onUpdateStatus,
   onStepEpisode,
@@ -32,6 +33,7 @@ export default function WatchlistCard({
   const score = item.score || 0;
   const rewatchCount = item.rewatch_count || 0;
   const status = item.status || 'watching';
+  const displayTitle = overrideTitle || item.anime_title || 'Anime';
 
   const progressPercent = totalEps ? Math.min(100, Math.round((watched / totalEps) * 100)) : (watched > 0 ? 100 : 0);
   const statusTheme = STATUS_THEMES[status] || STATUS_THEMES.watching;
@@ -109,7 +111,7 @@ export default function WatchlistCard({
           <div>
             <div className="flex items-start justify-between gap-1.5">
               <h3 className="font-display font-black text-xs sm:text-sm text-ink-900 line-clamp-1 leading-snug group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-                {item.anime_title}
+                {displayTitle}
               </h3>
 
               {/* Status Select Dropdown */}
@@ -256,7 +258,7 @@ export default function WatchlistCard({
 
           <div className="min-w-0 flex-grow pr-2">
             <h4 className="font-display font-bold text-xs text-ink-900 line-clamp-1 group-hover:text-amber-600">
-              {item.anime_title}
+              {displayTitle}
             </h4>
             <div className="flex items-center gap-2 mt-0.5">
               <span className={`text-[8px] font-black uppercase px-1 py-0.2 rounded border ${statusTheme.bg}`}>
@@ -340,7 +342,7 @@ export default function WatchlistCard({
       {/* Title & Progress Pill */}
       <div className="p-2 space-y-1">
         <h4 className="font-display font-black text-xs text-ink-900 line-clamp-1 leading-tight">
-          {item.anime_title}
+          {displayTitle}
         </h4>
 
         <div className="flex items-center justify-between text-[9px] font-mono text-stone-500 font-bold">

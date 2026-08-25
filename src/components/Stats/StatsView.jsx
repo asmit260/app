@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Flame, Clock, Film, CheckCircle2, BarChart2, TrendingUp, Activity, Star } from 'lucide-react';
+import { groupWatchlistByFranchise } from '../../utils/franchise';
 
 const STATUS_COLORS = { watching: '#06b6d4', completed: '#10b981', plan_to_watch: '#7c3aed', on_hold: '#eab308', dropped: '#ef4444' };
 const STATUS_LABELS = { watching: 'Watching', completed: 'Completed', plan_to_watch: 'Plan to Watch', on_hold: 'On Hold', dropped: 'Dropped' };
@@ -24,7 +25,10 @@ export default function StatsView({ watchlist = [], history = [] }) {
   // ── HERO STATS ──────────────────────────────────────────────
   const heroStats = useMemo(() => {
     const total = watchlist.length;
-    let totalEps = 0, totalMinutes = 0, completedCount = 0, ratedCount = 0, ratedSum = 0;
+    const franchiseGroups = groupWatchlistByFranchise(watchlist);
+    const totalSeries = franchiseGroups.length;
+
+    let totalEps = 0, totalMinutes = 0, completedCount = 0, completedFranchises = 0, ratedCount = 0, ratedSum = 0;
     watchlist.forEach(item => {
       let eps = Number(item.episodes_watched) || 0;
       if (item.status === 'completed' && eps === 0) {
@@ -35,11 +39,24 @@ export default function StatsView({ watchlist = [], history = [] }) {
       if (item.status === 'completed') completedCount++;
       if (item.score) { ratedSum += Number(item.score); ratedCount++; }
     });
-    const completionRate = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+
+    // Count fully completed franchises
+    franchiseGroups.forEach(f => {
+      if (f.overallStatus === 'completed') {
+        completedFranchises++;
+      }
+    });
+
+    const completionRate = totalSeries > 0 ? Math.round((completedFranchises / totalSeries) * 100) : 0;
     return {
-      total, totalEps, hours: Math.floor(totalMinutes / 60),
+      total,
+      totalSeries,
+      completedFranchises,
+      totalEps,
+      hours: Math.floor(totalMinutes / 60),
       days: (totalMinutes / 1440).toFixed(1),
-      completedCount, completionRate,
+      completedCount,
+      completionRate,
       avgScore: ratedCount > 0 ? (ratedSum / ratedCount).toFixed(1) : null
     };
   }, [watchlist]);
@@ -490,10 +507,17 @@ export default function StatsView({ watchlist = [], history = [] }) {
       <div className="grid grid-cols-2 gap-3">
         <div className="card-manga-panel p-3.5 bg-sand-50 dark:bg-sand-200">
           <div className="flex items-center justify-between text-stone-500">
-            <span className="text-[10px] font-black uppercase">Total Shows</span>
+            <span className="text-[10px] font-black uppercase">Total Series</span>
             <Film className="w-4 h-4 text-amber-500" />
           </div>
-          <p className="font-mono font-black text-2xl text-ink-900 mt-1">{heroStats.total}</p>
+          <p className="font-mono font-black text-2xl text-ink-900 mt-1">
+            {heroStats.totalSeries}
+            {heroStats.totalSeries !== heroStats.total && (
+              <span className="text-xs font-bold text-stone-500 ml-1.5 font-sans">
+                ({heroStats.total} seasons)
+              </span>
+            )}
+          </p>
           <span className="text-[10px] text-stone-500 font-mono">{heroStats.totalEps} episodes</span>
         </div>
         <div className="card-manga-panel p-3.5 bg-sand-50 dark:bg-sand-200">
@@ -505,7 +529,7 @@ export default function StatsView({ watchlist = [], history = [] }) {
           <div className="mt-1.5 h-2.5 bg-sand-200 dark:bg-sand-300 rounded-full border border-stone-900/20 overflow-hidden p-0.5">
             <div className="h-full rounded-full bg-emerald-500 transition-all duration-700" style={{ width: `${heroStats.completionRate}%`, minWidth: heroStats.completionRate > 0 ? '4px' : '0' }} />
           </div>
-          <span className="text-[10px] text-stone-500 font-mono mt-0.5 block">{heroStats.completedCount} / {heroStats.total} finished</span>
+          <span className="text-[10px] text-stone-500 font-mono mt-0.5 block">{heroStats.completedFranchises} / {heroStats.totalSeries} series finished</span>
         </div>
         <div className="card-manga-panel p-3.5 bg-sand-50 dark:bg-sand-200">
           <div className="flex items-center justify-between text-stone-500">

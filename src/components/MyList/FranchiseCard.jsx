@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, Layers, Star, Plus, Minus, RotateCcw, Sparkles,
 import WatchlistCard from './WatchlistCard';
 import { sound } from '../../services/soundEffects';
 import { burstConfetti } from '../../utils/confetti';
+import { getSeasonSubtitle } from '../../utils/franchise';
 
 const STATUS_THEMES = {
   watching: { label: 'Watching', bg: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/50' },
@@ -91,6 +92,7 @@ export default function FranchiseCard({
               <WatchlistCard
                 key={seasonItem.anime_id || seasonItem.id}
                 item={seasonItem}
+                overrideTitle={getSeasonSubtitle(seasonItem.anime_title, title)}
                 viewMode="grid"
                 onSelectAnime={onSelectAnime}
                 onUpdateStatus={onUpdateStatus}
@@ -195,6 +197,7 @@ export default function FranchiseCard({
               <WatchlistCard
                 key={seasonItem.anime_id || seasonItem.id}
                 item={seasonItem}
+                overrideTitle={getSeasonSubtitle(seasonItem.anime_title, title)}
                 viewMode={viewMode === 'grid' ? 'compact' : viewMode}
                 onSelectAnime={onSelectAnime}
                 onUpdateStatus={onUpdateStatus}

@@ -86,6 +86,46 @@ export function getFranchiseDisplayTitle(items) {
   return cleaned || shortest;
 }
 
+export function getSeasonSubtitle(rawTitle, franchiseTitle) {
+  if (!rawTitle) return 'Season 1';
+  let t = rawTitle.trim();
+  
+  // Try removing the franchiseTitle from the start
+  if (franchiseTitle && t.toLowerCase().startsWith(franchiseTitle.toLowerCase())) {
+    let remainder = t.substring(franchiseTitle.length).replace(/^[:\-\s]+/, '').replace(/[:\-\s]+$/, '').trim();
+    if (remainder) {
+      if (/^(II|III|IV|V|VI|VII|VIII|IX|X)\b/i.test(remainder)) {
+        return 'Season ' + remainder;
+      }
+      return remainder;
+    }
+  }
+
+  // Common pattern matches if franchise prefix didn't match cleanly
+  const finalMatch = t.match(/(The\s+)?Final\s+(Season|Chapters?|Part|Act|Arc)[^)]*/i);
+  if (finalMatch) return finalMatch[0].trim();
+
+  const seasonPartMatch = t.match(/Season\s+\d+(\s+Part\s+\d+)?/i);
+  if (seasonPartMatch) return seasonPartMatch[0].trim();
+
+  const ordSeasonMatch = t.match(/\d+(st|nd|rd|th)\s+Season(\s+Part\s+\d+)?/i);
+  if (ordSeasonMatch) return ordSeasonMatch[0].trim();
+
+  const partMatch = t.match(/(Part|Cour)\s+\d+/i);
+  if (partMatch) return partMatch[0].trim();
+
+  const movieMatch = t.match(/(The\s+Movie|Movie)[^)]*/i);
+  if (movieMatch) return movieMatch[0].trim();
+
+  const ovaMatch = t.match(/(OVA|OAD|Special|Memory Snow|The Frozen Bond)[^)]*/i);
+  if (ovaMatch) return ovaMatch[0].trim();
+
+  const romanMatch = t.match(/\s+(II|III|IV|V|VI|VII|VIII|IX|X)\b/i);
+  if (romanMatch) return 'Season ' + romanMatch[1].trim();
+
+  return 'Season 1';
+}
+
 /**
  * Group a flat watchlist array into Franchise Groups
  * Returns an array of franchise objects:
