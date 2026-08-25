@@ -1,8 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { Film, LayoutGrid, List, Columns2, Sparkles, Flame, Trophy, Bookmark, PauseCircle, XCircle } from 'lucide-react';
+import { Film, LayoutGrid, List, Columns2, Sparkles, Flame, Trophy, Bookmark, PauseCircle, XCircle, Layers } from 'lucide-react';
 import WatchlistCard from './WatchlistCard';
+import FranchiseCard from './FranchiseCard';
 import QuickEpisodeModal from '../Common/QuickEpisodeModal';
 import { startRewatch, upsertWatchlistEntry } from '../../services/storage';
+import { groupWatchlistByFranchise } from '../../utils/franchise';
 
 const STATUS_CONFIG = [
   { id: 'all', label: 'All', icon: Sparkles },
@@ -23,7 +25,23 @@ export default function MyListView({
 }) {
   const [activeStatus, setActiveStatus] = useState('all');
   const [viewMode, setViewMode] = useState('compact'); // 'compact' | 'dense' | 'grid'
+  const [groupBySeries, setGroupBySeries] = useState(() => {
+    try {
+      const stored = localStorage.getItem('anitrack_group_series');
+      return stored !== null ? stored === 'true' : true;
+    } catch (_) {
+      return true;
+    }
+  });
   const [pickerAnime, setPickerAnime] = useState(null);
+
+  const handleToggleGroupSeries = () => {
+    const next = !groupBySeries;
+    setGroupBySeries(next);
+    try {
+      localStorage.setItem('anitrack_group_series', String(next));
+    } catch (_) {}
+  };
 
   // Status counts map
   const statusCounts = useMemo(() => {
@@ -42,6 +60,11 @@ export default function MyListView({
       .filter(item => activeStatus === 'all' || item.status === activeStatus)
       .sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0));
   }, [watchlist, activeStatus]);
+
+  // Grouped Watchlist by Franchise / Series
+  const franchiseGroups = useMemo(() => {
+    return groupWatchlistByFranchise(filteredList);
+  }, [filteredList]);
 
   // Direct episode stepper handler
   const handleStepEpisode = async (animeId, nextEp, nextStatus) => {
@@ -86,18 +109,33 @@ export default function MyListView({
       {/* ═══ HEADER & CONTROLS CARD ═══ */}
       <div className="card-manga-panel p-3.5 bg-sand-50 dark:bg-sand-200 rounded-lg border-2 border-stone-900 shadow-[3px_3px_0px_0px_rgba(24,19,13,1)] space-y-3">
         
-        {/* Row 1: Title & Layout Switcher */}
+        {/* Row 1: Title & Controls Toolbar */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <h1 className="font-display font-black text-lg sm:text-xl text-ink-900 uppercase tracking-tight truncate">
               My Watchlist
             </h1>
             <span className="bg-amber-400 text-stone-950 dark:bg-amber-400 dark:text-stone-950 text-[10px] font-mono font-black px-2 py-0.5 rounded-full border border-stone-900 shrink-0">
-              {watchlist.length}
+              {groupBySeries ? `${franchiseGroups.length} Series (${watchlist.length} shows)` : watchlist.length}
             </span>
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
+            {/* Group by Series Hub Toggle Button */}
+            <button
+              onClick={handleToggleGroupSeries}
+              className={`px-2.5 py-1.5 rounded-md border-2 border-stone-900 text-xs font-black flex items-center gap-1.5 transition-all shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] select-none active:translate-y-0.5 ${
+                groupBySeries 
+                  ? 'bg-amber-400 text-stone-950 font-black' 
+                  : 'bg-sand-100 dark:bg-sand-300 text-stone-600 dark:text-stone-300 hover:bg-sand-200'
+              }`}
+              title={groupBySeries ? "Series Grouping Active: Multiple seasons & OVAs are grouped under unified hubs (Click for flat list)" : "Flat List Active: Showing all entries individually (Click to group by Series)"}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{groupBySeries ? 'Grouped by Series' : 'Flat List'}</span>
+            </button>
+
+            {/* Layout switchers */}
             <div className="flex items-center bg-sand-100 dark:bg-sand-300 p-0.5 rounded-md border-2 border-stone-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)]">
               <button
                 onClick={() => setViewMode('compact')}
@@ -168,6 +206,23 @@ export default function MyListView({
             Add airing anime directly from the Airing Schedule tab to track your progress.
           </p>
         </div>
+      ) : groupBySeries ? (
+        <div className={viewMode === 'grid' ? "grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5 sm:gap-4" : viewMode === 'dense' ? "space-y-3" : "grid grid-cols-1 md:grid-cols-2 gap-3.5"}>
+          {franchiseGroups.map((franchise) => (
+            <FranchiseCard
+              key={franchise.franchiseKey}
+              franchise={franchise}
+              viewMode={viewMode}
+              onSelectAnime={onSelectAnime}
+              onUpdateStatus={(animeId, newStatus) => onUpdateStatus(animeId, newStatus)}
+              onStepEpisode={handleStepEpisode}
+              onRemoveItem={onRemoveItem}
+              onStartRewatch={handleStartRewatch}
+              onOpenEpisodePicker={(clickedItem) => setPickerAnime(clickedItem)}
+              titleLanguage={titleLanguage}
+            />
+          ))}
+        </div>
       ) : (
         <div className={viewMode === 'grid' ? "grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5 sm:gap-4" : viewMode === 'dense' ? "space-y-2" : "grid grid-cols-1 md:grid-cols-2 gap-3"}>
           {filteredList.map((item) => (
@@ -213,3 +268,4 @@ export default function MyListView({
     </div>
   );
 }
+
