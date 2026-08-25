@@ -1,5 +1,6 @@
-// Supabase Client — LocalStorage Mock DB (shared with website)
-// Uses the SAME storage keys as the website so data syncs between both
+// Supabase Client — Hybrid Real Cloud Supabase + LocalStorage Mock DB fallback
+// Directly connects to live Supabase backend when VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are present
+import { createClient } from '@supabase/supabase-js';
 
 const STORAGE_KEY = 'anitrack_mock_db';
 const SESSION_KEY = 'anitrack_mock_session';
@@ -415,6 +416,31 @@ class LocalStorageMockDb {
   }
 }
 
-const supabaseInstance = new LocalStorageMockDb();
+const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
+
+let supabaseInstance;
+let isMockDb = true;
+
+if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+  try {
+    supabaseInstance = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
+    });
+    isMockDb = false;
+  } catch (err) {
+    console.warn("Failed to initialize live Supabase client, falling back to local DB:", err);
+    supabaseInstance = new LocalStorageMockDb();
+    isMockDb = true;
+  }
+} else {
+  supabaseInstance = new LocalStorageMockDb();
+  isMockDb = true;
+}
+
 export const supabase = supabaseInstance;
-export const isMock = true;
+export const isMock = isMockDb;
