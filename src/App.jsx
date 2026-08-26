@@ -344,6 +344,7 @@ export default function App() {
       <TopBar
         activeTab={activeTab}
         onSelectTab={setActiveTab}
+        watchingCount={watchingCount}
         darkMode={darkMode}
         onToggleTheme={handleToggleTheme}
         currentUser={currentUser}

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Sun, Moon, LogIn, User, RotateCw } from 'lucide-react';
+import { Sun, Moon, LogIn, User, RotateCw, Calendar, Compass, Newspaper, Bookmark, BarChart3 } from 'lucide-react';
 import { sound } from '../../services/soundEffects';
 
 export default function TopBar({ 
   activeTab, 
   onSelectTab,
+  watchingCount = 0,
   darkMode, 
   onToggleTheme,
   currentUser,
@@ -12,12 +13,19 @@ export default function TopBar({
   onRefresh
 }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const titles = {
-    schedule: 'Airing Schedule',
-    explore: 'Explore & Discover',
-    mylist: 'My Watchlist',
-    stats: 'Anime Analytics',
-    profile: 'Profile & Settings'
+
+  const desktopTabs = [
+    { id: 'schedule', label: 'Schedule', icon: Calendar },
+    { id: 'explore', label: 'Explore', icon: Compass },
+    { id: 'news', label: 'News', icon: Newspaper },
+    { id: 'mylist', label: 'Watchlist', icon: Bookmark, badge: watchingCount },
+    { id: 'stats', label: 'Analytics', icon: BarChart3 },
+    { id: 'profile', label: 'Profile', icon: User }
+  ];
+
+  const handleTabClick = (tabId) => {
+    sound.playTab();
+    if (onSelectTab) onSelectTab(tabId);
   };
 
   const handleAvatarClick = () => {
@@ -37,17 +45,44 @@ export default function TopBar({
 
   return (
     <header className="sticky top-0 z-30 bg-sand-100/90 dark:bg-sand-100/90 backdrop-blur-md border-b-2 border-stone-900 px-4 pt-[max(env(safe-area-inset-top,0px),12px)] pb-3 transition-colors duration-200">
-      <div className="max-w-5xl mx-auto flex items-center justify-between">
+      <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
         
         {/* Brand Sticker */}
-        <div className="flex items-center gap-3">
-          <div className="btn-manga bg-amber-400 text-stone-950 px-3.5 py-1 text-sm font-black uppercase tracking-tight -rotate-1 shadow-manga">
+        <div className="flex items-center gap-3 shrink-0">
+          <div 
+            onClick={() => handleTabClick('schedule')}
+            className="btn-manga bg-amber-400 text-stone-950 px-3.5 py-1 text-sm font-black uppercase tracking-tight -rotate-1 shadow-manga cursor-pointer select-none hover:scale-105 active:scale-95 transition-transform"
+          >
             AniTrack
           </div>
-          <span className="font-display font-bold text-base text-ink-900 hidden sm:inline">
-            {titles[activeTab] || 'AniTrack'}
-          </span>
         </div>
+
+        {/* Desktop Navigation Links (Visible on Tablet & Desktop) */}
+        <nav className="hidden md:flex items-center gap-1 bg-sand-50 dark:bg-sand-200 p-1 rounded-xl border-2 border-stone-900 shadow-2xs">
+          {desktopTabs.map(t => {
+            const Icon = t.icon;
+            const isActive = activeTab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => handleTabClick(t.id)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all select-none relative ${
+                  isActive 
+                    ? 'bg-amber-400 text-stone-950 border border-stone-900 shadow-2xs' 
+                    : 'text-stone-600 dark:text-stone-300 hover:text-stone-950 dark:hover:text-white hover:bg-sand-200 dark:hover:bg-sand-300'
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isActive ? 'stroke-[2.5]' : ''}`} />
+                <span>{t.label}</span>
+                {t.badge > 0 && (
+                  <span className="ml-1 px-1.5 py-0.2 text-[9px] font-mono font-black bg-status-watching text-white rounded-full border border-stone-900">
+                    {t.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
