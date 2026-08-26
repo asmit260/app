@@ -7,8 +7,9 @@ export default function TopBar({
   onSelectTab,
   watchingCount = 0,
   darkMode, 
-  onToggleTheme,
+  onToggleTheme, 
   currentUser,
+  profile = {},
   onOpenLogin,
   onRefresh
 }) {
@@ -105,24 +106,41 @@ export default function TopBar({
             {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-stone-700" />}
           </button>
 
-          {/* Auth Button */}
+          {/* Auth / Profile Avatar Button */}
           {currentUser ? (
             <button
               onClick={handleAvatarClick}
-              className="w-8 h-8 rounded-full bg-amber-400 border-2 border-stone-900 flex items-center justify-center text-xs font-black text-stone-950 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5 transition-transform hover:scale-105"
-              title={`View Profile (${currentUser.raw_user_meta_data?.display_name || currentUser.email || 'User'})`}
+              className="w-8 h-8 rounded-full bg-amber-400 border-2 border-stone-900 flex items-center justify-center text-xs font-black text-stone-950 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5 transition-transform hover:scale-105 overflow-hidden"
+              title={`View Profile (${profile?.username || currentUser.raw_user_meta_data?.display_name || currentUser.email || 'User'})`}
             >
-              {(currentUser.raw_user_meta_data?.display_name || currentUser.email || 'U').charAt(0).toUpperCase()}
+              {profile?.avatar ? (
+                <img src={profile.avatar} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <span>{(profile?.username || currentUser.raw_user_meta_data?.display_name || currentUser.email || 'U').charAt(0).toUpperCase()}</span>
+              )}
             </button>
           ) : (
-            <button
-              onClick={onOpenLogin}
-              className="btn-manga bg-sand-50 dark:bg-sand-300 hover:bg-amber-400 hover:text-stone-950 text-ink-900 px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5"
-              title="Sign In"
-            >
-              <LogIn className="w-3.5 h-3.5" />
-              <span>Sign In</span>
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={handleAvatarClick}
+                className="w-8 h-8 rounded-full bg-sand-200 dark:bg-stone-700 border-2 border-stone-900 flex items-center justify-center text-xs font-black text-stone-950 dark:text-stone-100 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5 transition-transform hover:scale-105 overflow-hidden"
+                title="Profile & Settings"
+              >
+                {profile?.avatar ? (
+                  <img src={profile.avatar} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-4 h-4 text-stone-700 dark:text-stone-300" />
+                )}
+              </button>
+              <button
+                onClick={onOpenLogin}
+                className="hidden sm:inline-flex btn-manga bg-sand-50 dark:bg-sand-300 hover:bg-amber-400 hover:text-stone-950 text-ink-900 px-3 py-1.5 text-xs font-bold items-center gap-1.5 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5"
+                title="Sign In / Sync"
+              >
+                <LogIn className="w-3.5 h-3.5 text-amber-500" />
+                <span>Sign In</span>
+              </button>
+            </div>
           )}
         </div>
 

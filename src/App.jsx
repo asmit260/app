@@ -348,6 +348,7 @@ export default function App() {
         darkMode={darkMode}
         onToggleTheme={handleToggleTheme}
         currentUser={currentUser}
+        profile={profile}
         onOpenLogin={() => setShowLogin(true)}
         onRefresh={loadAllData}
       />

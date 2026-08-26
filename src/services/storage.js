@@ -84,6 +84,8 @@ function getLocalProfile() {
   } catch (_) {}
   return {
     username: 'Anime Scout',
+    bio: 'Dedicated anime watcher & seasonal tracker',
+    avatar: '',
     titleLanguage: 'english',
     theme: 'light',
     email: ''
@@ -448,6 +450,8 @@ export async function getProfileSettings() {
 
     const prof = {
       username: data?.display_name || user.user_metadata?.display_name || user.email?.split('@')[0] || localProf.username,
+      bio: data?.bio !== undefined ? data.bio : (localProf.bio || ''),
+      avatar: data?.avatar_url || data?.avatar || localProf.avatar || '',
       titleLanguage: data?.title_language || localProf.titleLanguage || 'english',
       theme: data?.theme || localProf.theme || 'light',
       email: user.email || ''
@@ -467,6 +471,8 @@ export async function updateProfileSettings(settings) {
   const payload = {
     id: userId,
     display_name: settings.username || 'Anime Scout',
+    bio: settings.bio !== undefined ? settings.bio : '',
+    avatar_url: settings.avatar !== undefined ? settings.avatar : '',
     title_language: settings.titleLanguage || 'english',
     theme: settings.theme || 'light',
     updated_at: new Date().toISOString()
@@ -474,6 +480,8 @@ export async function updateProfileSettings(settings) {
 
   saveLocalProfile({
     username: payload.display_name,
+    bio: payload.bio,
+    avatar: payload.avatar_url,
     titleLanguage: payload.title_language,
     theme: payload.theme,
     email: user?.email || ''
