@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Sun, Moon, Globe, Download, Upload, Trash2, LogOut, AlertTriangle, Sparkles, RefreshCw, Loader2, Volume2, VolumeX, Check, ShieldAlert, ChevronRight } from 'lucide-react';
+import { User, Sun, Moon, Globe, Download, Upload, Trash2, LogOut, AlertTriangle, Sparkles, RefreshCw, Loader2, Volume2, VolumeX, Check, ShieldAlert, ChevronRight, LogIn, Cloud } from 'lucide-react';
 import { saveProfileSettings, exportWatchlistJSON, importWatchlistJSON, resetAllData } from '../../services/storage';
 import { signOut } from '../../services/auth';
 import { CURRENT_APP_VERSION } from '../../services/updater';
@@ -14,7 +14,8 @@ export default function ProfileView({
   onReloadWatchlist,
   currentUser,
   onCheckForUpdate,
-  onOpenModeratorStudio
+  onOpenModeratorStudio,
+  onOpenLogin
 }) {
   const [username, setUsername] = useState(profile.username || 'Scout Trainee');
   const [titleLang, setTitleLang] = useState(profile.titleLanguage || 'english');
@@ -119,17 +120,48 @@ export default function ProfileView({
             <h1 className="font-display font-black text-xl text-ink-900">
               {username}
             </h1>
-            {currentUser?.email && (
+            {currentUser?.email ? (
               <p className="text-xs text-stone-500 font-mono mt-0.5">
                 {currentUser.email}
               </p>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-400 text-stone-950 text-[10px] font-black uppercase tracking-wider border border-stone-900 shadow-2xs mt-1">
+                Guest Mode (Local)
+              </span>
             )}
-            <p className="text-xs text-stone-500 font-sans mt-0.5">
+            <p className="text-xs text-stone-500 font-sans mt-1">
               {(watchlist || []).length} anime tracked · {(watchlist || []).filter(i => i.status === 'completed').length} completed
             </p>
           </div>
         </div>
       </div>
+
+      {/* Guest Mode Warning & Cloud Sync Prompt */}
+      {!currentUser && (
+        <div className="card-manga-panel p-4 bg-amber-400/15 border-2 border-stone-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in shadow-2xs">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-amber-400 border border-stone-900 shrink-0 mt-0.5">
+              <Cloud className="w-4 h-4 text-stone-950" />
+            </div>
+            <div className="space-y-0.5">
+              <h3 className="text-xs font-black uppercase text-ink-900 flex items-center gap-1.5">
+                Guest Mode Active
+                <span className="text-[10px] font-mono text-rose-600 dark:text-rose-400 font-bold">(Data Loss Risk)</span>
+              </h3>
+              <p className="text-[11px] text-stone-700 dark:text-stone-300">
+                Your anime is currently stored only in this local device's browser cache. Sign in to safely backup and sync your watchlist to the cloud.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onOpenLogin}
+            className="w-full sm:w-auto btn-manga bg-navy-700 hover:bg-navy-600 text-white text-xs font-black px-4 py-2 rounded-lg border-2 border-stone-900 shadow-2xs flex items-center justify-center gap-1.5 shrink-0"
+          >
+            <LogIn className="w-3.5 h-3.5 text-amber-400" />
+            <span>Sign In / Sync</span>
+          </button>
+        </div>
+      )}
 
       {/* Preferences Card */}
       <div className="card-manga-panel p-4 bg-sand-50 dark:bg-sand-200 space-y-4">

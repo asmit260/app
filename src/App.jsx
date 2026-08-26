@@ -11,6 +11,7 @@ import AnimeDetailModal from './components/Detail/AnimeDetailModal';
 import ModeratorNewsStudio from './components/Moderator/ModeratorNewsStudio';
 import SplashScreen from './components/Common/SplashScreen';
 import LoginModal from './components/Auth/LoginModal';
+import AuthPromptModal from './components/Auth/AuthPromptModal';
 import UpdateModal from './components/Common/UpdateModal';
 import { checkForAppUpdate } from './services/updater';
 
@@ -88,6 +89,9 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [showLogin, setShowLogin] = useState(false);
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+  const [authPromptActionLabel, setAuthPromptActionLabel] = useState('track anime in your watchlist');
+  const [pendingAuthAction, setPendingAuthAction] = useState(null);
   const [updateInfo, setUpdateInfo] = useState(null);
   const [showModeratorStudio, setShowModeratorStudio] = useState(false);
 
@@ -187,10 +191,47 @@ export default function App() {
     } catch (_) {}
   };
 
+  const checkAuthOrPrompt = (actionFn, actionLabel = 'save changes to your watchlist') => {
+    let isGuestAck = false;
+    try {
+      isGuestAck = localStorage.getItem('anitrack_guest_ack') === 'true';
+    } catch (_) {}
+
+    // If logged in OR guest warning already acknowledged, proceed immediately!
+    if (currentUser || isGuestAck) {
+      actionFn();
+      return;
+    }
+
+    // Otherwise, intercept and show warning modal with guest option
+    setPendingAuthAction(() => actionFn);
+    setAuthPromptActionLabel(actionLabel);
+    setShowAuthPrompt(true);
+  };
+
+  const handleContinueAsGuest = () => {
+    setShowAuthPrompt(false);
+    if (pendingAuthAction) {
+      const fn = pendingAuthAction;
+      setPendingAuthAction(null);
+      fn();
+    }
+  };
+
+  const handlePromptSignIn = () => {
+    setShowAuthPrompt(false);
+    setShowLogin(true);
+  };
+
   const handleAuthSuccess = async () => {
     await loadAllData();
     setShowLogin(false);
     showToast("Signed in successfully!");
+    if (pendingAuthAction) {
+      const fn = pendingAuthAction;
+      setPendingAuthAction(null);
+      fn();
+    }
   };
 
   // Build a full anime object from a watchlist item (for upsert calls that only have an ID)
@@ -212,52 +253,58 @@ export default function App() {
   };
 
   const handleUpdateWatchlist = async (anime, status, eps = null) => {
-    // If anime is a full object from AniList (has title object or coverImage), use it directly
-    // If anime is a bare {id} (from MyListView), look up the existing watchlist entry to preserve metadata
-    let fullAnime = anime;
-    const animeId = anime.id || anime.anime_id;
+    const titleText = anime?.title?.english || anime?.title?.romaji || anime?.anime_title || anime?.title || 'anime';
+    checkAuthOrPrompt(async () => {
+      // If anime is a full object from AniList (has title object or coverImage), use it directly
+      // If anime is a bare {id} (from MyListView), look up the existing watchlist entry to preserve metadata
+      let fullAnime = anime;
+      const animeId = anime.id || anime.anime_id;
 
-    if (!anime.title && !anime.anime_title && !anime.coverImage) {
-      // Bare ID — look up existing entry in current watchlist state
-      const existingItem = watchlist.find(i => 
-        (i.anime_id == animeId || i.id == animeId)
-      );
-      fullAnime = buildAnimeFromWatchlistItem(animeId, existingItem);
-    }
-
-    const updated = await upsertWatchlistEntry(fullAnime, status, eps);
-    if (updated) {
-      await loadAllData();
-      if (eps !== null) {
-        showToast(`Caught up on "${updated.anime_title}" (Ep ${eps})`);
-      } else {
-        showToast(`Saved "${updated.anime_title}" to ${status.replace('_', ' ')}`);
+      if (!anime.title && !anime.anime_title && !anime.coverImage) {
+        // Bare ID — look up existing entry in current watchlist state
+        const existingItem = watchlist.find(i => 
+          (i.anime_id == animeId || i.id == animeId)
+        );
+        fullAnime = buildAnimeFromWatchlistItem(animeId, existingItem);
       }
-    }
+
+      const updated = await upsertWatchlistEntry(fullAnime, status, eps);
+      if (updated) {
+        await loadAllData();
+        if (eps !== null) {
+          showToast(`Caught up on "${updated.anime_title}" (Ep ${eps})`);
+        } else {
+          showToast(`Saved "${updated.anime_title}" to ${status.replace('_', ' ')}`);
+        }
+      }
+    }, `track "${titleText}" in your watchlist`);
   };
 
   const handleIncrementEpisode = async (animeId) => {
     const item = watchlist.find(i => (i.anime_id == animeId || i.id == animeId));
     if (!item) return;
-    const current = Number(item.episodes_watched) || 0;
-    
-    // Check max episode limit for airing vs completed
-    const maxAired = item.nextAiringEpisode?.episode ? item.nextAiringEpisode.episode - 1 : (item.airing_episode || null);
-    const maxLimit = maxAired || item.total_episodes || null;
 
-    if (maxLimit && current >= maxLimit) {
-      showToast(maxAired ? `Already caught up to Episode ${current}!` : `All ${item.total_episodes} episodes completed!`);
-      return;
-    }
+    checkAuthOrPrompt(async () => {
+      const current = Number(item.episodes_watched) || 0;
+      
+      // Check max episode limit for airing vs completed
+      const maxAired = item.nextAiringEpisode?.episode ? item.nextAiringEpisode.episode - 1 : (item.airing_episode || null);
+      const maxLimit = maxAired || item.total_episodes || null;
 
-    const nextEp = current + 1;
-    const isFinished = item.total_episodes && nextEp >= item.total_episodes;
-    const status = isFinished ? 'completed' : item.status;
+      if (maxLimit && current >= maxLimit) {
+        showToast(maxAired ? `Already caught up to Episode ${current}!` : `All ${item.total_episodes} episodes completed!`);
+        return;
+      }
 
-    const fullAnime = buildAnimeFromWatchlistItem(animeId, item);
-    await upsertWatchlistEntry(fullAnime, status, nextEp);
-    await loadAllData();
-    showToast(`+1 Episode logged for "${item.anime_title}" (${nextEp})`);
+      const nextEp = current + 1;
+      const isFinished = item.total_episodes && nextEp >= item.total_episodes;
+      const status = isFinished ? 'completed' : item.status;
+
+      const fullAnime = buildAnimeFromWatchlistItem(animeId, item);
+      await upsertWatchlistEntry(fullAnime, status, nextEp);
+      await loadAllData();
+      showToast(`+1 Episode logged for "${item.anime_title}" (${nextEp})`);
+    }, `log episode progress for "${item.anime_title}"`);
   };
 
   const handleRemoveWatchlistItem = async (animeId) => {
@@ -368,6 +415,7 @@ export default function App() {
               currentUser={currentUser}
               onCheckForUpdate={handleManualUpdateCheck}
               onOpenModeratorStudio={() => setShowModeratorStudio(true)}
+              onOpenLogin={() => setShowLogin(true)}
             />
           )}
           </div>
@@ -400,6 +448,15 @@ export default function App() {
           onClose={() => setShowModeratorStudio(false)}
         />
       )}
+
+      {/* Guest Warning & Cloud Auth Prompt Modal */}
+      <AuthPromptModal
+        isOpen={showAuthPrompt}
+        onClose={() => setShowAuthPrompt(false)}
+        onSignIn={handlePromptSignIn}
+        onContinueAsGuest={handleContinueAsGuest}
+        actionLabel={authPromptActionLabel}
+      />
 
       {/* Login Modal */}
       <LoginModal

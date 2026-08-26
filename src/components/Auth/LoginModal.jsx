@@ -220,23 +220,40 @@ export default function LoginModal({ isOpen, onClose, onAuthSuccess }) {
         </button>
 
         {/* Toggle mode */}
-        <p className="text-xs font-bold text-stone-500 text-center mt-5 relative z-10">
+        <p className="text-xs font-bold text-stone-500 text-center mt-4 relative z-10">
           {mode === 'login' ? (
             <>
               Don't have an account?{' '}
-              <button onClick={() => { setMode('signup'); setError(''); setEmail(''); setPassword(''); }} className="text-navy-700 dark:text-navy-700 font-bold hover:underline">
+              <button onClick={() => { setMode('signup'); setError(''); setEmail(''); setPassword(''); }} className="text-navy-700 dark:text-navy-300 font-bold hover:underline">
                 Create one
               </button>
             </>
           ) : (
             <>
               Already have an account?{' '}
-              <button onClick={() => { setMode('login'); setError(''); setEmail(''); setPassword(''); setDisplayName(''); }} className="text-navy-700 dark:text-navy-700 font-bold hover:underline">
+              <button onClick={() => { setMode('login'); setError(''); setEmail(''); setPassword(''); setDisplayName(''); }} className="text-navy-700 dark:text-navy-300 font-bold hover:underline">
                 Sign in
               </button>
             </>
           )}
         </p>
+
+        {/* Continue as Guest Option with Data Loss Warning */}
+        <div className="mt-4 pt-3 border-t border-sand-300 dark:border-sand-400 text-center relative z-10">
+          <button
+            type="button"
+            onClick={() => {
+              try { localStorage.setItem('anitrack_guest_ack', 'true'); } catch (_) {}
+              onClose();
+            }}
+            className="text-xs font-black text-stone-600 dark:text-stone-300 hover:text-amber-500 transition-colors uppercase tracking-wider block mx-auto py-1"
+          >
+            👤 Continue as Guest
+          </button>
+          <p className="text-[10px] text-stone-500 font-medium mt-0.5 leading-tight">
+            ⚠️ Warning: Guest data is local only and may be lost if cache is cleared.
+          </p>
+        </div>
       </div>
     </div>
   );
