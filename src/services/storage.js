@@ -1,36 +1,135 @@
-// Supabase-backed storage manager — shared with website
-// Uses the same DB tables as the website: watchlist, episode_progress, profiles
+// Supabase & Offline-First Storage Manager
+// Provides instant zero-latency local storage for guest/offline use and seamless Supabase Cloud sync when authenticated
 
 import { supabase } from './supabase.js';
 import { getUser } from './auth.js';
 
-// Helper to get active user ID (logged in or local)
-async function getEffectiveUser() {
-  const user = await getUser();
-  if (user) return user;
-  return { id: 'local_user', email: '', raw_user_meta_data: { display_name: 'Anime Scout' } };
+const LOCAL_WATCHLIST_KEY = 'anitrack_local_watchlist';
+const LOCAL_HISTORY_KEY = 'anitrack_local_history';
+const LOCAL_PROFILE_KEY = 'anitrack_local_profile';
+
+// Validate standard RFC 4122 UUID (used by Supabase auth.users & postgres uuid columns)
+function isValidUUID(id) {
+  return typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 }
 
-// ─── Watchlist ──────────────────────────────────────────────────
+// ─── Local Storage Accessors ────────────────────────────────────────────────
 
-export async function getStoredWatchlist() {
-  const user = await getEffectiveUser();
-  
-  const { data, error } = await supabase
-    .from('watchlist')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('updated_at', { ascending: false });
-    
-  if (error) {
-    console.error("Watchlist fetch error:", error);
+function getLocalWatchlist() {
+  try {
+    const raw = localStorage.getItem(LOCAL_WATCHLIST_KEY);
+    if (raw) return JSON.parse(raw);
+
+    // Auto-migrate from previous mock database if it exists
+    const mockRaw = localStorage.getItem('anitrack_mock_db');
+    if (mockRaw) {
+      const parsed = JSON.parse(mockRaw);
+      if (parsed?.watchlist) {
+        const items = Object.values(parsed.watchlist);
+        if (items.length > 0) {
+          saveLocalWatchlist(items);
+          return items;
+        }
+      }
+    }
+    return [];
+  } catch (e) {
+    console.error("Failed to read local watchlist:", e);
     return [];
   }
-  return data || [];
+}
+
+function saveLocalWatchlist(list) {
+  try {
+    localStorage.setItem(LOCAL_WATCHLIST_KEY, JSON.stringify(list || []));
+  } catch (e) {
+    console.error("Failed to save local watchlist:", e);
+  }
+}
+
+function getLocalHistory() {
+  try {
+    const raw = localStorage.getItem(LOCAL_HISTORY_KEY);
+    if (raw) return JSON.parse(raw);
+
+    const mockRaw = localStorage.getItem('anitrack_mock_db');
+    if (mockRaw) {
+      const parsed = JSON.parse(mockRaw);
+      if (parsed?.episode_progress) {
+        const items = Object.values(parsed.episode_progress);
+        if (items.length > 0) {
+          saveLocalHistory(items);
+          return items;
+        }
+      }
+    }
+    return [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveLocalHistory(history) {
+  try {
+    localStorage.setItem(LOCAL_HISTORY_KEY, JSON.stringify(history || []));
+  } catch (e) {
+    console.error("Failed to save local history:", e);
+  }
+}
+
+function getLocalProfile() {
+  try {
+    const raw = localStorage.getItem(LOCAL_PROFILE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (_) {}
+  return {
+    username: 'Anime Scout',
+    titleLanguage: 'english',
+    theme: 'light',
+    email: ''
+  };
+}
+
+function saveLocalProfile(prof) {
+  try {
+    localStorage.setItem(LOCAL_PROFILE_KEY, JSON.stringify(prof));
+  } catch (_) {}
+}
+
+// ─── Watchlist Operations ───────────────────────────────────────────────────
+
+export async function getStoredWatchlist() {
+  const user = await getUser();
+
+  // 1. If not logged in or local guest, return local storage directly
+  if (!user || !isValidUUID(user.id)) {
+    return getLocalWatchlist();
+  }
+
+  // 2. If authenticated with Supabase, fetch from cloud DB with local fallback
+  try {
+    const { data, error } = await supabase
+      .from('watchlist')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false });
+
+    if (error) {
+      console.warn("Supabase watchlist fetch error, using local cache:", error);
+      return getLocalWatchlist();
+    }
+
+    const cloudItems = data || [];
+    saveLocalWatchlist(cloudItems);
+    return cloudItems;
+  } catch (err) {
+    console.warn("Network error fetching watchlist from Supabase:", err);
+    return getLocalWatchlist();
+  }
 }
 
 export async function upsertWatchlistEntry(anime, status, episodesWatched = null) {
-  const user = await getEffectiveUser();
+  const user = await getUser();
   const animeId = parseInt(anime.id || anime.anime_id);
   if (!animeId) return null;
 
@@ -41,8 +140,6 @@ export async function upsertWatchlistEntry(anime, status, episodesWatched = null
     : (existing ? existing.episodes_watched : (status === 'completed' && (anime.episodes || anime.totalEpisodes) ? (anime.episodes || anime.totalEpisodes) : (status === 'watching' ? 1 : 0)));
 
   // Strict Episode Limit Enforcement:
-  // For airing / releasing shows with scheduled countdown, cap at the latest aired episode.
-  // For other shows, cap at total planned episodes if known.
   const maxAired = anime.nextAiringEpisode?.episode 
     ? Math.max(1, anime.nextAiringEpisode.episode - 1)
     : (anime.airing_episode || null);
@@ -81,8 +178,12 @@ export async function upsertWatchlistEntry(anime, status, episodesWatched = null
     genresArr = existing ? (Array.isArray(existing.genres) ? existing.genres : []) : [];
   }
 
+  const isAuthUser = user && isValidUUID(user.id);
+  const userId = isAuthUser ? user.id : 'local_user';
+
   const payload = {
-    user_id: user.id,
+    id: existing?.id || `wl_${animeId}`,
+    user_id: userId,
     anime_id: animeId,
     status,
     anime_title: titleStr,
@@ -103,29 +204,41 @@ export async function upsertWatchlistEntry(anime, status, episodesWatched = null
     payload.start_date = new Date().toISOString().split('T')[0];
   }
 
-  const { error } = await supabase
-    .from('watchlist')
-    .upsert(payload);
-    
-  if (error) {
-    console.error("Upsert error:", error);
-    return null;
+  // 1. ALWAYS update local storage cache immediately
+  const localList = getLocalWatchlist();
+  const existingIdx = localList.findIndex(i => (parseInt(i.anime_id || i.id) === animeId));
+  if (existingIdx >= 0) {
+    localList[existingIdx] = { ...localList[existingIdx], ...payload };
+  } else {
+    localList.unshift(payload);
+  }
+  saveLocalWatchlist(localList);
+
+  // 2. If authenticated with Supabase, sync to cloud in background
+  if (isAuthUser) {
+    try {
+      const cloudPayload = { ...payload };
+      if (cloudPayload.id && String(cloudPayload.id).startsWith('wl_')) {
+        delete cloudPayload.id; // Let Postgres handle primary key UUID if new
+      }
+      await supabase.from('watchlist').upsert(cloudPayload);
+    } catch (cloudErr) {
+      console.warn("Cloud sync error for watchlist:", cloudErr);
+    }
   }
 
-  // Log activity progress for streak, heatmap, and timeline tracking
+  // 3. Log episode progress for activity streak and heatmap
   const epToLog = payload.episodes_watched > 0 ? payload.episodes_watched : 1;
   const note = status === 'completed' 
     ? `Completed (${payload.episodes_watched} eps)` 
     : (payload.episodes_watched > 0 ? `Episode ${payload.episodes_watched}` : `Started watching`);
   await logEpisodeProgress(animeId, epToLog, note);
 
+  // 4. Notify app listeners immediately
   window.dispatchEvent(new CustomEvent('anitrack-watchlist-changed'));
   return payload;
 }
 
-/**
- * Start a new rewatch cycle for an anime, preserving previous completion and score
- */
 export async function startRewatch(anime) {
   const animeId = parseInt(anime.id || anime.anime_id);
   if (!animeId) return null;
@@ -142,136 +255,225 @@ export async function startRewatch(anime) {
 }
 
 export async function getWatchlistItem(animeId) {
-  const user = await getEffectiveUser();
   if (!animeId) return null;
+  const idNum = parseInt(animeId);
   
-  const { data } = await supabase
-    .from('watchlist')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('anime_id', parseInt(animeId))
-    .maybeSingle();
-    
-  return data;
+  // Check local cache first
+  const local = getLocalWatchlist();
+  const found = local.find(i => (parseInt(i.anime_id || i.id) === idNum));
+  if (found) return found;
+
+  // If authenticated, check Supabase
+  const user = await getUser();
+  if (user && isValidUUID(user.id)) {
+    try {
+      const { data } = await supabase
+        .from('watchlist')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('anime_id', idNum)
+        .maybeSingle();
+      if (data) return data;
+    } catch (_) {}
+  }
+  return null;
 }
 
 export async function removeWatchlistEntry(animeId) {
-  const user = await getEffectiveUser();
   if (!animeId) return;
-  
-  await supabase
-    .from('watchlist')
-    .delete()
-    .eq('user_id', user.id)
-    .eq('anime_id', parseInt(animeId));
-  
+  const idNum = parseInt(animeId);
+
+  // 1. Remove from local storage
+  const local = getLocalWatchlist();
+  const filtered = local.filter(i => (parseInt(i.anime_id || i.id) !== idNum));
+  saveLocalWatchlist(filtered);
+
+  // 2. Remove from Supabase if authenticated
+  const user = await getUser();
+  if (user && isValidUUID(user.id)) {
+    try {
+      await supabase
+        .from('watchlist')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('anime_id', idNum);
+    } catch (err) {
+      console.warn("Cloud delete error:", err);
+    }
+  }
+
   window.dispatchEvent(new CustomEvent('anitrack-watchlist-changed'));
 }
 
 export async function updateWatchlistRating(animeId, score) {
-  const user = await getEffectiveUser();
   if (!animeId) return null;
-  
-  await supabase
-    .from('watchlist')
-    .update({ score: score === 0 ? null : score, updated_at: new Date().toISOString() })
-    .match({ user_id: user.id, anime_id: parseInt(animeId) });
-  
+  const idNum = parseInt(animeId);
+
+  // 1. Update local storage
+  const local = getLocalWatchlist();
+  const item = local.find(i => (parseInt(i.anime_id || i.id) === idNum));
+  if (item) {
+    item.score = score === 0 ? null : score;
+    item.updated_at = new Date().toISOString();
+    saveLocalWatchlist(local);
+  }
+
+  // 2. Update Supabase if authenticated
+  const user = await getUser();
+  if (user && isValidUUID(user.id)) {
+    try {
+      await supabase
+        .from('watchlist')
+        .update({ score: score === 0 ? null : score, updated_at: new Date().toISOString() })
+        .match({ user_id: user.id, anime_id: idNum });
+    } catch (err) {
+      console.warn("Cloud update rating error:", err);
+    }
+  }
+
   window.dispatchEvent(new CustomEvent('anitrack-watchlist-changed'));
 }
 
-// ─── Episode Progress (History) ─────────────────────────────────
+// ─── Episode Progress (History) ─────────────────────────────────────────────
 
 export async function logEpisodeProgress(animeId, episodeNumber, note = '') {
-  const user = await getEffectiveUser();
   if (!animeId) return;
-  
-  const { data: existing } = await supabase.from('episode_progress')
-    .select('id')
-    .eq('user_id', user.id)
-    .eq('anime_id', parseInt(animeId))
-    .eq('episode_number', parseInt(episodeNumber))
-    .maybeSingle();
+  const idNum = parseInt(animeId);
+  const epNum = parseInt(episodeNumber);
+  const user = await getUser();
+  const isAuthUser = user && isValidUUID(user.id);
+  const userId = isAuthUser ? user.id : 'local_user';
 
-  if (existing) {
-    await supabase.from('episode_progress')
-      .update({ watched_at: new Date().toISOString(), note: note || `Episode ${episodeNumber}` })
-      .eq('id', existing.id);
-  } else {
-    await supabase.from('episode_progress')
-      .insert({
-        user_id: user.id,
-        anime_id: parseInt(animeId),
-        episode_number: parseInt(episodeNumber),
-        watched_at: new Date().toISOString(),
-        note: note || `Episode ${episodeNumber}`
-      });
+  // 1. Always save to local history
+  const history = getLocalHistory();
+  const newRecord = {
+    id: 'hist_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+    user_id: userId,
+    anime_id: idNum,
+    episode_number: epNum,
+    watched_at: new Date().toISOString(),
+    note: note || `Episode ${epNum}`
+  };
+  history.unshift(newRecord);
+  saveLocalHistory(history.slice(0, 1000));
+
+  // 2. Save to Supabase if authenticated
+  if (isAuthUser) {
+    try {
+      const { data: existing } = await supabase.from('episode_progress')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('anime_id', idNum)
+        .eq('episode_number', epNum)
+        .maybeSingle();
+
+      if (existing) {
+        await supabase.from('episode_progress')
+          .update({ watched_at: new Date().toISOString(), note: note || `Episode ${epNum}` })
+          .eq('id', existing.id);
+      } else {
+        await supabase.from('episode_progress')
+          .insert({
+            user_id: userId,
+            anime_id: idNum,
+            episode_number: epNum,
+            watched_at: new Date().toISOString(),
+            note: note || `Episode ${epNum}`
+          });
+      }
+    } catch (err) {
+      console.warn("Cloud progress log error:", err);
+    }
   }
 }
 
 export async function getWatchHistory() {
-  const user = await getEffectiveUser();
-  
-  const { data, error } = await supabase
-    .from('episode_progress')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('watched_at', { ascending: false });
-    
-  if (error) {
-    console.error("History fetch error:", error);
-    return [];
+  const user = await getUser();
+
+  // If not authenticated, return local history
+  if (!user || !isValidUUID(user.id)) {
+    return getLocalHistory();
   }
-  return data || [];
+
+  // If authenticated, fetch from Supabase
+  try {
+    const { data, error } = await supabase
+      .from('episode_progress')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('watched_at', { ascending: false });
+
+    if (error) {
+      return getLocalHistory();
+    }
+    const cloudHistory = data || [];
+    saveLocalHistory(cloudHistory);
+    return cloudHistory;
+  } catch (err) {
+    return getLocalHistory();
+  }
 }
 
-// ─── Profile & Data Management ──────────────────────────────────
+// ─── Profile & Data Management ──────────────────────────────────────────────
 
 export async function getProfileSettings() {
   const user = await getUser();
-  if (!user) {
-    const { data } = await supabase.from('profiles').select('*').eq('id', 'local_user').maybeSingle();
-    return {
-      username: data?.display_name || 'Scout Trainee',
-      titleLanguage: data?.title_language || 'english',
-      theme: data?.theme || 'light',
-      email: ''
-    };
+  const localProf = getLocalProfile();
+
+  if (!user || !isValidUUID(user.id)) {
+    return localProf;
   }
 
-  const { data } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .maybeSingle();
+  try {
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .maybeSingle();
 
-  return {
-    username: data?.display_name || user.user_metadata?.display_name || user.email?.split('@')[0] || 'Anime Scout',
-    titleLanguage: data?.title_language || 'english',
-    theme: data?.theme || 'light',
-    email: user.email || ''
-  };
+    const prof = {
+      username: data?.display_name || user.user_metadata?.display_name || user.email?.split('@')[0] || localProf.username,
+      titleLanguage: data?.title_language || localProf.titleLanguage || 'english',
+      theme: data?.theme || localProf.theme || 'light',
+      email: user.email || ''
+    };
+    saveLocalProfile(prof);
+    return prof;
+  } catch (err) {
+    return localProf;
+  }
 }
 
 export async function updateProfileSettings(settings) {
-  const user = await getEffectiveUser();
-  
+  const user = await getUser();
+  const isAuthUser = user && isValidUUID(user.id);
+  const userId = isAuthUser ? user.id : 'local_user';
+
   const payload = {
-    id: user.id,
+    id: userId,
     display_name: settings.username || 'Anime Scout',
     title_language: settings.titleLanguage || 'english',
     theme: settings.theme || 'light',
     updated_at: new Date().toISOString()
   };
 
-  const { error } = await supabase
-    .from('profiles')
-    .upsert(payload);
+  saveLocalProfile({
+    username: payload.display_name,
+    titleLanguage: payload.title_language,
+    theme: payload.theme,
+    email: user?.email || ''
+  });
 
-  if (error) {
-    console.error("Profile update error:", error);
+  if (isAuthUser) {
+    try {
+      await supabase
+        .from('profiles')
+        .upsert(payload);
+    } catch (err) {
+      console.warn("Cloud profile update error:", err);
+    }
   }
-  
+
   window.dispatchEvent(new CustomEvent('anitrack-db-changed'));
   return payload;
 }
@@ -304,9 +506,18 @@ export async function importWatchlistJSON(jsonData) {
 }
 
 export async function resetAllData() {
-  const user = await getEffectiveUser();
-  await supabase.from('watchlist').delete().eq('user_id', user.id);
-  await supabase.from('episode_progress').delete().eq('user_id', user.id);
+  const user = await getUser();
+  localStorage.removeItem(LOCAL_WATCHLIST_KEY);
+  localStorage.removeItem(LOCAL_HISTORY_KEY);
+  localStorage.removeItem(LOCAL_PROFILE_KEY);
+
+  if (user && isValidUUID(user.id)) {
+    try {
+      await supabase.from('watchlist').delete().eq('user_id', user.id);
+      await supabase.from('episode_progress').delete().eq('user_id', user.id);
+    } catch (_) {}
+  }
+
   window.dispatchEvent(new CustomEvent('anitrack-watchlist-changed'));
   window.dispatchEvent(new CustomEvent('anitrack-db-changed'));
 }
