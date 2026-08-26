@@ -102,7 +102,7 @@ export default function QuickEpisodeModal({
               />
             )}
             <div className="min-w-0 flex-1">
-              <h3 className="font-display font-black text-sm text-ink-900 dark:text-sand-50 line-clamp-1 leading-snug">
+              <h3 className="font-display font-black text-sm text-stone-900 dark:text-stone-100 line-clamp-1 leading-snug">
                 {getTitle()}
               </h3>
               <div className="flex items-center gap-1.5 mt-1">
@@ -116,7 +116,7 @@ export default function QuickEpisodeModal({
 
           <button 
             onClick={onClose}
-            className="p-1.5 text-stone-500 hover:text-ink-900 dark:hover:text-sand-50 rounded-md border-2 border-transparent hover:border-stone-900 hover:bg-sand-200 dark:hover:bg-stone-700 transition-all shrink-0"
+            className="p-1.5 text-stone-500 hover:text-stone-900 dark:hover:text-stone-100 rounded-md border-2 border-transparent hover:border-stone-900 hover:bg-sand-200 dark:hover:bg-stone-700 transition-all shrink-0"
             title="Close"
           >
             <X className="w-4 h-4" />
@@ -128,7 +128,7 @@ export default function QuickEpisodeModal({
           
           {/* Question Title */}
           <div className="text-center space-y-1">
-            <h4 className="font-display font-black text-base sm:text-lg text-ink-900 dark:text-sand-50 flex items-center justify-center gap-1.5">
+            <h4 className="font-display font-black text-base sm:text-lg text-stone-900 dark:text-stone-100 flex items-center justify-center gap-1.5">
               <Tv className="w-4 h-4 text-amber-500" />
               <span>Which episode are you on?</span>
             </h4>
@@ -142,7 +142,7 @@ export default function QuickEpisodeModal({
             <button
               onClick={() => handleStep(-1)}
               disabled={selectedEp <= 1}
-              className="w-11 h-11 rounded-lg border-2 border-stone-900 bg-sand-100 dark:bg-stone-800 text-ink-900 dark:text-sand-50 font-black flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5 disabled:opacity-30 disabled:pointer-events-none transition-all hover:bg-sand-200 dark:hover:bg-stone-700"
+              className="w-11 h-11 rounded-lg border-2 border-stone-900 bg-sand-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-black flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5 disabled:opacity-30 disabled:pointer-events-none transition-all hover:bg-sand-200 dark:hover:bg-stone-700"
               title="Decrease Episode (-1)"
             >
               <Minus className="w-5 h-5 stroke-[3]" />
@@ -160,7 +160,7 @@ export default function QuickEpisodeModal({
             <button
               onClick={() => handleStep(1)}
               disabled={selectedEp >= effectiveMax}
-              className="w-11 h-11 rounded-lg border-2 border-stone-900 bg-sand-100 dark:bg-stone-800 text-ink-900 dark:text-sand-50 font-black flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5 disabled:opacity-30 disabled:pointer-events-none transition-all hover:bg-sand-200 dark:hover:bg-stone-700"
+              className="w-11 h-11 rounded-lg border-2 border-stone-900 bg-sand-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-black flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5 disabled:opacity-30 disabled:pointer-events-none transition-all hover:bg-sand-200 dark:hover:bg-stone-700"
               title="Increase Episode (+1)"
             >
               <Plus className="w-5 h-5 stroke-[3]" />
@@ -230,7 +230,7 @@ export default function QuickEpisodeModal({
         <div className="p-3.5 sm:p-4 border-t-2 border-stone-900 bg-sand-100 dark:bg-stone-800 flex items-center gap-2">
           <button
             onClick={onClose}
-            className="flex-1 py-2 rounded-lg border-2 border-stone-900 bg-sand-200 dark:bg-stone-700 text-stone-800 dark:text-sand-50 font-bold text-xs hover:bg-sand-300 transition-all active:translate-y-0.5"
+            className="flex-1 py-2 rounded-lg border-2 border-stone-900 bg-sand-200 dark:bg-stone-700 text-stone-800 dark:text-stone-100 font-bold text-xs hover:bg-sand-300 transition-all active:translate-y-0.5"
           >
             Cancel
           </button>

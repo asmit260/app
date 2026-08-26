@@ -518,7 +518,7 @@ export default function AnimeDetailModal({
                         href={link.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border-2 border-stone-900 bg-sand-50 dark:bg-stone-800 text-ink-900 dark:text-sand-50 font-bold text-xs shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] hover:bg-amber-400 hover:text-stone-950 active:translate-y-0.5 transition-all"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border-2 border-stone-900 bg-sand-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-bold text-xs shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] hover:bg-amber-400 hover:text-stone-950 active:translate-y-0.5 transition-all"
                         style={link.color ? { borderLeftColor: link.color, borderLeftWidth: '4px' } : {}}
                       >
                         {link.icon ? (

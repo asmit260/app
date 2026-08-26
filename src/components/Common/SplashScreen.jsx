@@ -97,7 +97,7 @@ export default function SplashScreen({ onFinish }) {
           {/* Status Message */}
           <div className="flex items-center justify-between text-[11px] font-mono font-bold text-stone-600 dark:text-stone-400 px-1">
             <span className="truncate max-w-[200px]">{statusText}</span>
-            <span className="text-ink-900 dark:text-sand-50">{progress}%</span>
+            <span className="text-stone-900 dark:text-stone-100 font-black">{progress}%</span>
           </div>
         </div>
 

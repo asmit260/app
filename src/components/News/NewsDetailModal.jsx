@@ -118,7 +118,7 @@ function parseInlineFormatting(text) {
     }
     const token = match[0];
     if (token.startsWith('**') && token.endsWith('**')) {
-      parts.push(<strong key={match.index} className="font-black text-ink-900 dark:text-sand-50">{token.slice(2, -2)}</strong>);
+      parts.push(<strong key={match.index} className="font-black text-stone-900 dark:text-stone-100">{token.slice(2, -2)}</strong>);
     } else if (token.startsWith('*') && token.endsWith('*')) {
       parts.push(<em key={match.index} className="italic">{token.slice(1, -1)}</em>);
     } else if (token.startsWith('[') && token.includes('](')) {

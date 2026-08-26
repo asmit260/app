@@ -155,7 +155,7 @@ export default function WatchlistCard({
                 title="Tap to jump to specific episode"
               >
                 <span>Progress:</span>
-                <span className={`text-ink-900 dark:text-sand-50 font-black ${isBouncing ? 'animate-bounce-subtle text-amber-500' : ''}`}>
+                <span className={`text-stone-900 dark:text-stone-100 font-black ${isBouncing ? 'animate-bounce-subtle text-amber-500' : ''}`}>
                   Ep {watched} / {totalEps || '?'}
                 </span>
               </button>

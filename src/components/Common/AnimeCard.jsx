@@ -148,140 +148,143 @@ const AnimeCard = React.memo(function AnimeCard({
             className={`absolute top-2 left-2 z-20 w-8 h-8 rounded-md border-2 border-stone-900 flex items-center justify-center transition-all active:scale-90 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] ${
               isAlertActive
                 ? 'bg-amber-400 text-stone-950 ring-2 ring-amber-300'
-                : 'bg-sand-50 dark:bg-stone-900 text-ink-900 dark:text-sand-50 hover:bg-amber-400 hover:text-stone-950'
+                : 'bg-sand-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 hover:bg-amber-400 hover:text-stone-950'
             }`}
             title={isAlertActive ? 'Airing alert active — tap to manage' : 'Set Airing Notification / Alarm'}
           >
-            <Bell className={`w-4 h-4 ${isAlertActive ? 'fill-current text-stone-950' : 'text-stone-900 dark:text-sand-50'}`} />
+            <Bell className={`w-4 h-4 ${isAlertActive ? 'fill-current text-stone-950' : 'text-stone-900 dark:text-stone-100'}`} />
           </button>
         )}
 
         {/* Top Right Progress Indicator (if tracked) */}
         {watchlistEntry && (
-          <div className="absolute top-2 right-2 z-10 pointer-events-none">
-            <span className="px-2 py-0.5 text-[10px] font-mono font-black bg-stone-900/90 text-white border border-stone-900 rounded shadow-sm flex items-center gap-1">
-              <Eye className="w-3 h-3 text-amber-400" />
-              {currentEpWatched}/{totalEps || '?'}
-            </span>
+          <div className="absolute top-2 right-2 z-20 bg-stone-950/85 backdrop-blur-xs text-amber-400 border border-stone-900 text-[10px] font-mono font-bold px-2 py-0.5 rounded shadow-sm">
+            {currentStatus === 'completed' ? (
+              <span className="flex items-center gap-1 text-lime-400">
+                <Check className="w-3 h-3 stroke-[3]" />
+                Done
+              </span>
+            ) : (
+              <span>Ep {currentEpWatched}{totalEps ? `/${totalEps}` : ''}</span>
+            )}
           </div>
         )}
 
-        {/* Bottom Badges Overlay */}
-        <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-white font-mono text-[11px] pointer-events-none">
-          <span className="bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-sm border border-white/20">
-            {airingInfo ? `Ep ${airingInfo.episode}${totalEps ? ' / ' + totalEps : ''}` : `${totalEps ? totalEps + ' Ep' : 'TBA'}`}
-          </span>
-          {airingInfo?.isAired && (
-            <span className="bg-emerald-500 text-white px-2 py-0.5 rounded-sm font-black text-[10px] uppercase border border-emerald-700 shadow-sm flex items-center gap-0.5">
-              <Check className="w-2.5 h-2.5 stroke-[3]" />
-              <span>Aired</span>
-            </span>
-          )}
+        {/* Bottom Left Episode & Score Badge */}
+        <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between pointer-events-none z-10">
+          <div className="flex items-center gap-1.5">
+            {airingInfo ? (
+              <span className="bg-stone-900/90 text-amber-400 text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-amber-400/40">
+                Ep {airingInfo.episode}
+              </span>
+            ) : totalEps ? (
+              <span className="bg-stone-900/90 text-stone-200 text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-stone-700">
+                {totalEps} Ep{totalEps > 1 ? 's' : ''}
+              </span>
+            ) : (
+              <span className="bg-stone-900/90 text-amber-400 text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-amber-400/40">
+                TV
+              </span>
+            )}
+          </div>
+
           {score && (
-            <span className="bg-amber-400 text-stone-950 px-2 py-0.5 rounded-sm font-black border border-stone-900 shadow-[1.5px_1.5px_0px_0px_rgba(0,0,0,1)] flex items-center gap-0.5">
-              <Star className="w-2.5 h-2.5 fill-stone-950 stroke-none" />
-              <span>{score}%</span>
+            <span className="bg-amber-400 text-stone-950 text-[10px] font-mono font-black px-1.5 py-0.5 rounded border border-stone-900 shadow-2xs flex items-center gap-0.5">
+              <Star className="w-2.5 h-2.5 fill-current stroke-none" />
+              {score}%
             </span>
           )}
         </div>
       </div>
 
-      {/* Content Area */}
-      <div className="p-3 flex-grow flex flex-col justify-between">
-        <div className="flex flex-col gap-1">
+      {/* Card Body Info Area */}
+      <div className="p-3.5 flex flex-col justify-between flex-grow space-y-2.5">
+        
+        {/* Title & Studio */}
+        <div>
           <h3 
+            className="font-display font-black text-sm sm:text-base text-ink-900 line-clamp-2 leading-tight group-hover:text-amber-500 transition-colors cursor-pointer"
             onClick={() => onSelectAnime(anime.id)}
-            className="font-display font-bold text-sm text-ink-900 line-clamp-2 leading-snug cursor-pointer group-hover:text-navy-700 transition-colors"
+            title={getTitle()}
           >
             {getTitle()}
           </h3>
-
-          <span className="font-sans text-[11px] text-stone-500 truncate">
+          <p className="text-[11px] font-sans font-semibold text-stone-500 mt-0.5 line-clamp-1">
             {studio}
-          </span>
-
-          {whyWatch && (
-            <p className="text-[10px] text-stone-600 line-clamp-2 mt-0.5 italic font-sans">
-              "{whyWatch}"
-            </p>
-          )}
-
-          {/* Genre Pills */}
-          <div className="flex flex-wrap gap-1 mt-1.5 overflow-hidden max-h-[26px]">
-            {genres.slice(0, 3).map((g) => (
-              <span 
-                key={g} 
-                className="px-2 py-0.5 bg-sand-200 dark:bg-sand-300 text-stone-700 text-[9px] font-bold rounded border border-stone-900/30 shrink-0"
-              >
-                {g}
-              </span>
-            ))}
-            {genres.length > 3 && (
-              <span className="px-1.5 py-0.5 bg-sand-300 dark:bg-sand-400 text-stone-600 text-[9px] font-bold rounded border border-stone-900/20 shrink-0">
-                +{genres.length - 3}
-              </span>
-            )}
-          </div>
-
-          {/* Airing schedule time & countdown */}
-          {airingInfo && (
-            <div className="flex items-center justify-between text-xs mt-2 pt-2 border-t border-sand-300 dark:border-sand-400">
-              <span className="flex items-center gap-1 font-mono text-[11px] font-bold text-navy-700">
-                <Clock className="w-3.5 h-3.5" />
-                {airingInfo.time}
-              </span>
-              <span className={`text-[10px] font-mono font-bold ${
-                airingInfo.isAired ? 'text-status-completed' : 'text-amber-500'
-              }`}>
-                {airingInfo.countdown}
-              </span>
-            </div>
-          )}
+          </p>
         </div>
 
-        {/* Direct Interactive Status Action Button */}
-        <div className="mt-3 pt-2 border-t border-sand-300 dark:border-sand-400 relative">
-          <div className={`flex items-stretch w-full rounded-lg border-2 border-stone-900 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] overflow-hidden transition-all ${
-            justSaved
-              ? 'bg-emerald-400 text-ink-900 border-emerald-600 scale-[1.02]'
-              : statusConfig 
-                ? statusConfig.bg 
-                : 'bg-sand-100 dark:bg-sand-300 text-ink-900'
-          }`}>
-            <button
-              ref={btnRef}
-              onClick={handleMainButtonClick}
-              className="flex-grow py-2 px-2.5 text-xs font-bold text-left flex items-center justify-between transition-colors hover:bg-black/5 active:bg-black/10 min-w-0"
-            >
-              <span className="truncate flex items-center gap-1.5 font-black">
-                {justSaved ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 stroke-[3]" />
-                    <span>Saved!</span>
-                  </>
-                ) : currentStatus ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 stroke-[3] shrink-0" />
-                    <span className="truncate">
-                      {currentStatus === 'watching' ? `Watching (Ep ${currentEpWatched || 1})` : (statusConfig?.label || currentStatus)}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <Plus className="w-3.5 h-3.5 stroke-[3] shrink-0" />
-                    <span className="truncate">Add to Watchlist</span>
-                  </>
-                )}
+        {/* Genres Pill Row */}
+        {genres.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {genres.slice(0, 2).map((genre) => (
+              <span 
+                key={genre}
+                className="text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.2 rounded border border-stone-900/30 dark:border-stone-600 bg-sand-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300"
+              >
+                {genre}
               </span>
-              {currentStatus === 'watching' && (
-                <span className="p-1 rounded bg-amber-400/40 text-amber-950 dark:text-amber-200 ml-1 shrink-0 hover:bg-amber-400/60 transition-colors" title="Change episode">
-                  <Edit3 className="w-3 h-3 stroke-[2.5]" />
-                </span>
+            ))}
+          </div>
+        )}
+
+        {/* Airing Schedule Countdown Banner (if applicable) */}
+        {airingInfo && (
+          <div className={`p-2 rounded-md border-2 border-stone-900 text-xs font-mono font-bold flex items-center justify-between shadow-[1px_1px_0px_0px_rgba(24,19,13,1)] ${
+            airingInfo.isAired
+              ? 'bg-sand-200 dark:bg-stone-800 text-stone-500 border-stone-600'
+              : 'bg-sand-50 dark:bg-stone-800 text-ink-900'
+          }`}>
+            <span className="flex items-center gap-1.5">
+              <Clock className={`w-3.5 h-3.5 ${airingInfo.isAired ? 'text-stone-400' : 'text-sky-500'}`} />
+              {airingInfo.airingTimeFormatted || 'Airing'}
+            </span>
+            <span className={`text-[10px] ${airingInfo.isAired ? 'text-stone-400 font-normal' : 'text-amber-500 font-black'}`}>
+              {airingInfo.countdown}
+            </span>
+          </div>
+        )}
+
+        {/* Action Button & Status Dropdown Container */}
+        <div className="mt-auto pt-1 relative" ref={btnRef}>
+          <div className={`flex rounded-md border-2 border-stone-900 shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] overflow-hidden transition-all duration-200 ${
+            justSaved
+              ? 'bg-amber-400 text-stone-950 scale-[1.02]'
+              : currentStatus
+                ? `${statusConfig?.bg || 'bg-amber-400 text-stone-950'} font-bold`
+                : 'bg-sand-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 hover:bg-amber-400 hover:text-stone-950'
+          }`}>
+            
+            {/* Main Action Trigger Button */}
+            <button
+              onClick={handleMainButtonClick}
+              className="flex-grow py-1.5 px-2 text-xs font-bold font-sans flex items-center justify-center gap-1.5 truncate select-none active:bg-black/10 transition-colors"
+            >
+              {justSaved ? (
+                <>
+                  <Check className="w-3.5 h-3.5 stroke-[3] text-stone-950" />
+                  <span className="text-stone-950">Saved!</span>
+                </>
+              ) : currentStatus ? (
+                <>
+                  <span className="truncate">{statusConfig?.label}</span>
+                  {currentStatus === 'watching' && (
+                    <span className="font-mono text-[10px] bg-black/15 dark:bg-white/20 px-1 rounded flex items-center gap-0.5">
+                      <Edit3 className="w-2.5 h-2.5" />
+                      {currentEpWatched}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                  <span>Add to Watchlist</span>
+                </>
               )}
             </button>
 
             {/* Clean Dividing Line */}
-            <div className="w-[1.5px] bg-stone-900/30 shrink-0" />
+            <div className="w-[1.5px] bg-stone-900/30 dark:bg-stone-600 shrink-0" />
 
             {/* Dropdown Menu Toggle Trigger Button */}
             <button
@@ -293,42 +296,45 @@ const AnimeCard = React.memo(function AnimeCard({
             </button>
           </div>
 
-          {/* Status Dropdown Menu with 100% Solid Opaque Background */}
+          {/* Status Dropdown Menu with High-Contrast Dark & Light Mode */}
           {showDropdown && (
             <>
               {/* Invisible backdrop to capture outside clicks */}
               <div 
-                className="fixed inset-0 z-40 bg-black/20" 
+                className="fixed inset-0 z-40 bg-black/30" 
                 onClick={(e) => { e.stopPropagation(); setShowDropdown(false); }} 
               />
 
               <div 
-                className={`absolute left-0 right-0 z-50 bg-[#FDFAF5] dark:bg-[#1C1917] border-2 border-stone-900 rounded-md shadow-[4px_4px_0px_0px_rgba(24,19,13,1)] py-1 overflow-hidden animate-fade-in ${
-                  dropdownDir === 'down' ? 'top-full mt-1' : 'bottom-full mb-1'
+                className={`absolute left-0 right-0 z-50 bg-[#FDFAF5] dark:bg-[#1E1A17] border-2 border-stone-900 dark:border-stone-600 rounded-lg shadow-[4px_4px_0px_0px_rgba(24,19,13,1)] py-1.5 overflow-hidden animate-fade-in ${
+                  dropdownDir === 'down' ? 'top-full mt-1.5' : 'bottom-full mb-1.5'
                 }`}
                 onClick={(e) => e.stopPropagation()}
               >
-                {Object.entries(availableStatuses).map(([statusKey, cfg]) => (
-                  <button
-                    key={statusKey}
-                    onClick={(e) => handleStatusSelect(e, statusKey)}
-                    className={`w-full text-left px-3 py-2 text-xs font-bold flex items-center justify-between transition-colors ${
-                      currentStatus === statusKey 
-                        ? 'bg-amber-400 text-stone-950 font-black' 
-                        : 'text-ink-900 dark:text-sand-50 hover:bg-sand-200 dark:hover:bg-sand-300'
-                    }`}
-                  >
-                    <span>{cfg.label}</span>
-                    {currentStatus === statusKey && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                  </button>
-                ))}
+                {Object.entries(availableStatuses).map(([statusKey, cfg]) => {
+                  const isSelected = currentStatus === statusKey;
+                  return (
+                    <button
+                      key={statusKey}
+                      onClick={(e) => handleStatusSelect(e, statusKey)}
+                      className={`w-full text-left px-3 py-2 text-xs font-bold flex items-center justify-between transition-colors ${
+                        isSelected 
+                          ? 'bg-amber-400 text-stone-950 font-black' 
+                          : 'text-stone-900 dark:text-stone-100 hover:bg-sand-200 dark:hover:bg-stone-800'
+                      }`}
+                    >
+                      <span className="text-stone-900 dark:text-stone-100">{cfg.label}</span>
+                      {isSelected && <Check className="w-3.5 h-3.5 stroke-[3] text-stone-950" />}
+                    </button>
+                  );
+                })}
 
                 {currentStatus && (
                   <>
-                    <hr className="border-stone-900/20 dark:border-stone-100/20 my-1" />
+                    <hr className="border-stone-900/20 dark:border-stone-700 my-1" />
                     <button
                       onClick={(e) => handleStatusSelect(e, 'remove')}
-                      className="w-full text-left px-3 py-2 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 flex items-center gap-1.5"
+                      className="w-full text-left px-3 py-2 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-500/15 flex items-center gap-1.5 transition-colors"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>Remove from list</span>
