@@ -118,71 +118,118 @@ export async function cancelDeviceNotification(animeId) {
   }
 }
 
-// ─── Persistent Alert CRUD in Supabase Mock DB ──────────────────
+// ─── Persistent Alert CRUD in LocalStorage + Supabase Cloud ──────
+
+const LOCAL_ALERTS_KEY = 'anitrack_local_alerts';
+
+function isValidUUID(id) {
+  return typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
+
+function getLocalAlerts() {
+  try {
+    const raw = localStorage.getItem(LOCAL_ALERTS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function saveLocalAlerts(map) {
+  try {
+    localStorage.setItem(LOCAL_ALERTS_KEY, JSON.stringify(map || {}));
+  } catch (_) {}
+}
 
 export async function getActiveAnimeAlerts() {
+  const local = getLocalAlerts();
   try {
-    const user = await getUser() || { id: 'local_user' };
-    const { data } = await supabase
+    const user = await getUser();
+    if (!user || !isValidUUID(user.id)) {
+      return local;
+    }
+
+    const { data, error } = await supabase
       .from('calendar_events')
       .select('*')
       .eq('user_id', user.id);
     
+    if (error) return local;
+
     const alertsMap = {};
     (data || []).forEach(item => {
       if (item.anime_id) {
         alertsMap[item.anime_id] = item;
       }
     });
+    saveLocalAlerts(alertsMap);
     return alertsMap;
   } catch (e) {
-    console.error("getActiveAnimeAlerts error:", e);
-    return {};
+    return local;
   }
 }
 
 export async function saveAnimeAlert({ animeId, title, cover, airingAt, episode, leadMinutes = 15 }) {
-  try {
-    const user = await getUser() || { id: 'local_user' };
-    const id = `${user.id}_alert_${animeId}`;
+  const animeIdNum = parseInt(animeId, 10) || animeId;
+  const user = await getUser();
+  const isAuth = user && isValidUUID(user.id);
+  const userId = isAuth ? user.id : 'local_user';
 
-    const payload = {
-      id,
-      user_id: user.id,
-      anime_id: parseInt(animeId, 10) || animeId,
-      title,
-      cover,
-      airing_at: airingAt,
-      episode,
-      lead_minutes: leadMinutes,
-      created_at: new Date().toISOString()
-    };
+  const payload = {
+    id: `${userId}_alert_${animeIdNum}`,
+    user_id: userId,
+    anime_id: animeIdNum,
+    title,
+    cover,
+    airing_at: airingAt,
+    episode,
+    lead_minutes: leadMinutes,
+    created_at: new Date().toISOString()
+  };
 
-    await supabase.from('calendar_events').upsert(payload);
-    window.dispatchEvent(new CustomEvent('anitrack-alerts-changed'));
-    return payload;
-  } catch (e) {
-    console.error("saveAnimeAlert error:", e);
-    return null;
+  // 1. Save to local storage cache immediately
+  const local = getLocalAlerts();
+  local[animeIdNum] = payload;
+  saveLocalAlerts(local);
+
+  // 2. Save to Supabase if authenticated
+  if (isAuth) {
+    try {
+      await supabase.from('calendar_events').upsert(payload);
+    } catch (err) {
+      console.warn("Cloud save alert error:", err);
+    }
   }
+
+  window.dispatchEvent(new CustomEvent('anitrack-alerts-changed'));
+  return payload;
 }
 
 export async function removeAnimeAlert(animeId) {
+  const animeIdNum = parseInt(animeId, 10) || animeId;
   try {
-    const user = await getUser() || { id: 'local_user' };
-    
-    await cancelDeviceNotification(animeId);
+    await cancelDeviceNotification(animeIdNum);
 
-    await supabase
-      .from('calendar_events')
-      .delete()
-      .eq('user_id', user.id)
-      .eq('anime_id', parseInt(animeId, 10) || animeId);
-    
+    // 1. Remove from local storage
+    const local = getLocalAlerts();
+    delete local[animeIdNum];
+    saveLocalAlerts(local);
+
+    // 2. Remove from Supabase if authenticated
+    const user = await getUser();
+    if (user && isValidUUID(user.id)) {
+      await supabase
+        .from('calendar_events')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('anime_id', animeIdNum);
+    }
+
     window.dispatchEvent(new CustomEvent('anitrack-alerts-changed'));
   } catch (e) {
     console.error("removeAnimeAlert error:", e);
   }
 }
+
 
 
