@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   X, ZoomIn, ZoomOut, RotateCw, Check, Upload, Trash2, 
   Sparkles, Move, Image as ImageIcon, RefreshCw, Layers
@@ -31,7 +32,17 @@ export default function AvatarCropModal({
   
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
-  const CANVAS_SIZE = 260; // 260x260 viewport for crisp rendering on both mobile and desktop
+  const CANVAS_SIZE = 220; // Compact 220x220 viewport for zero-scroll mobile & desktop layout
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = '';
+      };
+    }
+  }, [isOpen]);
 
   // Load image safely into HTMLImageElement
   const loadImage = useCallback((src) => {
@@ -316,10 +327,14 @@ export default function AvatarCropModal({
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+  const modalContent = (
+    <div 
+      className="fixed inset-0 z-[999] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-fade-in overflow-y-auto"
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+      onClick={onClose}
+    >
       <div 
-        className="w-full max-w-sm sm:max-w-md bg-sand-50 dark:bg-stone-900 border-3 border-stone-900 rounded-2xl shadow-manga-lg overflow-hidden flex flex-col max-h-[92vh]"
+        className="w-full max-w-sm sm:max-w-md bg-sand-50 dark:bg-stone-900 border-3 border-stone-900 rounded-2xl shadow-manga-lg overflow-hidden flex flex-col max-h-[90vh] my-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -342,7 +357,7 @@ export default function AvatarCropModal({
         </div>
 
         {/* Modal Scrollable Body */}
-        <div className="p-4 sm:p-5 space-y-4 overflow-y-auto hide-scrollbar">
+        <div className="p-4 sm:p-5 space-y-3.5 overflow-y-auto hide-scrollbar">
           
           {/* Canvas Interactive Viewport */}
           <div className="flex flex-col items-center">
@@ -371,7 +386,7 @@ export default function AvatarCropModal({
 
               {!loadedImage && !isLoadingImage && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-stone-400 pointer-events-none">
-                  <Upload className="w-8 h-8 mb-2 text-stone-500" />
+                  <Upload className="w-7 h-7 mb-1.5 text-stone-500" />
                   <p className="text-xs font-bold text-stone-700 dark:text-stone-300">Tap to Upload Photo</p>
                   <p className="text-[10px] text-stone-500 text-center mt-0.5">JPG, PNG, WebP supported</p>
                 </div>
@@ -388,7 +403,7 @@ export default function AvatarCropModal({
             </div>
 
             {loadedImage && (
-              <p className="text-[10px] font-mono text-stone-500 dark:text-stone-400 mt-2 flex items-center gap-1">
+              <p className="text-[10px] font-mono text-stone-500 dark:text-stone-400 mt-1.5 flex items-center gap-1">
                 <Move className="w-3 h-3 text-amber-500" />
                 <span>Drag inside circle to position photo</span>
               </p>
@@ -397,7 +412,7 @@ export default function AvatarCropModal({
 
           {/* Interactive Controls (Zoom & Rotate) */}
           {loadedImage && (
-            <div className="space-y-2 bg-sand-100 dark:bg-stone-800 p-3 rounded-xl border-2 border-stone-900 shadow-2xs animate-fade-in">
+            <div className="space-y-2 bg-sand-100 dark:bg-stone-800 p-2.5 rounded-xl border-2 border-stone-900 shadow-2xs animate-fade-in">
               <div className="flex items-center justify-between text-xs font-bold text-stone-800 dark:text-stone-200">
                 <span className="flex items-center gap-1">
                   <ZoomIn className="w-3.5 h-3.5 text-stone-500" />
@@ -408,7 +423,7 @@ export default function AvatarCropModal({
                 </span>
               </div>
 
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2">
                 <input
                   type="range"
                   min="0.8"
@@ -425,7 +440,7 @@ export default function AvatarCropModal({
                   className="p-1.5 rounded-lg bg-sand-50 dark:bg-stone-700 hover:bg-amber-400 text-stone-700 dark:text-stone-200 hover:text-stone-950 border-2 border-stone-900 transition-colors shadow-2xs shrink-0"
                   title="Rotate 90°"
                 >
-                  <RotateCw className="w-4 h-4" />
+                  <RotateCw className="w-3.5 h-3.5" />
                 </button>
 
                 {/* Reset Center */}
@@ -470,13 +485,13 @@ export default function AvatarCropModal({
           </div>
 
           {/* Anime Presets Gallery */}
-          <div className="space-y-2 pt-2 border-t border-stone-900/10 dark:border-stone-700">
+          <div className="space-y-1.5 pt-2 border-t border-stone-900/10 dark:border-stone-700">
             <div className="flex items-center justify-between text-xs font-bold text-stone-700 dark:text-stone-300">
               <span className="flex items-center gap-1">
                 <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                 <span>Anime Presets</span>
               </span>
-              <span className="text-[10px] font-mono text-stone-500">1-Tap Select</span>
+              <span className="text-[10px] font-mono text-stone-500">1-Tap</span>
             </div>
 
             <div className="grid grid-cols-6 gap-2">
@@ -515,4 +530,6 @@ export default function AvatarCropModal({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }
