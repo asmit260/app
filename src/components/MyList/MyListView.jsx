@@ -3,6 +3,7 @@ import { Film, LayoutGrid, List, Columns2, Sparkles, Flame, Trophy, Bookmark, Pa
 import WatchlistCard from './WatchlistCard';
 import FranchiseCard from './FranchiseCard';
 import QuickEpisodeModal from '../Common/QuickEpisodeModal';
+import ConfirmModal from '../Common/ConfirmModal';
 import { startRewatch, upsertWatchlistEntry } from '../../services/storage';
 import { groupWatchlistByFranchise } from '../../utils/franchise';
 
@@ -28,19 +29,22 @@ export default function MyListView({
   const [groupBySeries, setGroupBySeries] = useState(() => {
     try {
       const stored = localStorage.getItem('anitrack_group_series');
-      return stored !== null ? stored === 'true' : true;
+      return stored === null ? true : stored === 'true';
     } catch (_) {
       return true;
     }
   });
   const [pickerAnime, setPickerAnime] = useState(null);
+  const [rewatchTarget, setRewatchTarget] = useState(null);
 
   const handleToggleGroupSeries = () => {
-    const next = !groupBySeries;
-    setGroupBySeries(next);
-    try {
-      localStorage.setItem('anitrack_group_series', String(next));
-    } catch (_) {}
+    setGroupBySeries(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('anitrack_group_series', String(next));
+      } catch (_) {}
+      return next;
+    });
   };
 
   // Status counts map
@@ -67,16 +71,14 @@ export default function MyListView({
   }, [filteredList]);
 
   // Direct episode stepper handler
-  const handleStepEpisode = async (animeId, nextEp, nextStatus) => {
+  const handleStepEpisode = async (animeId, nextEp, nextStatus = null) => {
     const item = watchlist.find(i => (i.anime_id == animeId || i.id == animeId));
     if (!item) return;
 
     const fullAnime = {
       id: animeId,
-      title: item.anime_title,
-      anime_title: item.anime_title,
-      coverImage: item.anime_cover,
-      anime_cover: item.anime_cover,
+      title: { userPreferred: item.anime_title, english: item.anime_title, romaji: item.anime_title },
+      coverImage: { extraLarge: item.anime_cover, large: item.anime_cover, medium: item.anime_cover },
       genres: item.genres,
       duration: item.duration,
       totalEpisodes: item.total_episodes,
@@ -89,10 +91,8 @@ export default function MyListView({
   };
 
   // Direct start rewatch
-  const handleStartRewatch = async (item) => {
-    if (window.confirm(`Start a new rewatch cycle for "${item.anime_title}"? (Lifetime stats and previous completions will be preserved!)`)) {
-      await startRewatch(item);
-    }
+  const handleStartRewatch = (item) => {
+    setRewatchTarget(item);
   };
 
   const handleConfirmPickerEpisodes = async (selectedEp) => {
@@ -264,6 +264,19 @@ export default function MyListView({
           titleLanguage={titleLanguage}
         />
       )}
+
+      {/* Rewatch Confirmation Dialog */}
+      <ConfirmModal
+        isOpen={Boolean(rewatchTarget)}
+        onClose={() => setRewatchTarget(null)}
+        onConfirm={async () => {
+          if (rewatchTarget) await startRewatch(rewatchTarget);
+        }}
+        title="Start Rewatch Cycle"
+        message={`Start a new rewatch cycle for "${rewatchTarget?.anime_title}"? Your lifetime stats, previous finishes, and ratings will remain safely preserved.`}
+        confirmText="Start Rewatch"
+        type="info"
+      />
 
     </div>
   );

@@ -42,11 +42,13 @@ import {
 } from '../../services/news';
 import { sound } from '../../services/soundEffects';
 import { burstConfetti } from '../../utils/confetti';
+import ConfirmModal from '../Common/ConfirmModal';
 
 const CATEGORIES = [
-  { id: 'announcement', label: '🔥 Announcement', icon: Flame },
-  { id: 'trailer', label: '🎬 Trailer', icon: Film },
-  { id: 'delay', label: '⚠️ Delay Notice', icon: AlertTriangle },
+  { id: 'announcement', label: '📢 Announcement', icon: Sparkles },
+  { id: 'trailer', label: '🎬 PV / Trailer', icon: Film },
+  { id: 'trending', label: '🔥 Trending', icon: Flame },
+  { id: 'delay', label: '⚠️ Delay / Hiatus', icon: AlertTriangle },
   { id: 'industry', label: '🏢 Industry', icon: Building2 },
   { id: 'manga', label: '📖 Manga / Light Novel', icon: BookOpen }
 ];
@@ -109,6 +111,10 @@ export default function ModeratorNewsStudio({ isOpen, onClose, onArticlesUpdated
   const [isLoading, setIsLoading] = useState(false);
   const [editingArticleId, setEditingArticleId] = useState(null);
 
+  // Modal alert & confirmation states
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [studioNotice, setStudioNotice] = useState(null);
+
   // Form State
   const [form, setForm] = useState({
     title: '',
@@ -141,7 +147,11 @@ export default function ModeratorNewsStudio({ isOpen, onClose, onArticlesUpdated
       sound.playSaveSuccess();
     } catch (err) {
       console.error("Image upload error:", err);
-      alert("Could not process the selected image file.");
+      setStudioNotice({
+        title: "Image Upload Error",
+        message: "Could not process the selected image file. Please try another image.",
+        type: "danger"
+      });
     } finally {
       setIsProcessingImage(false);
       if (coverFileInputRef.current) coverFileInputRef.current.value = '';
@@ -162,7 +172,11 @@ export default function ModeratorNewsStudio({ isOpen, onClose, onArticlesUpdated
       sound.playSaveSuccess();
     } catch (err) {
       console.error("Image insert error:", err);
-      alert("Could not process image for article body.");
+      setStudioNotice({
+        title: "Image Insert Error",
+        message: "Could not process image for article body. Please check the image format.",
+        type: "danger"
+      });
     } finally {
       setIsProcessingImage(false);
       if (bodyFileInputRef.current) bodyFileInputRef.current.value = '';
@@ -272,11 +286,19 @@ export default function ModeratorNewsStudio({ isOpen, onClose, onArticlesUpdated
   const handleSaveArticle = async (e) => {
     e.preventDefault();
     if (!form.title.trim()) {
-      alert('Please provide an article headline.');
+      setStudioNotice({
+        title: "Missing Headline",
+        message: "Please provide an article headline before publishing.",
+        type: "warning"
+      });
       return;
     }
     if (!form.content.trim()) {
-      alert('Please provide article body content.');
+      setStudioNotice({
+        title: "Missing Content",
+        message: "Please provide article body markdown content before publishing.",
+        type: "warning"
+      });
       return;
     }
 
@@ -307,7 +329,11 @@ export default function ModeratorNewsStudio({ isOpen, onClose, onArticlesUpdated
       if (onArticlesUpdated) onArticlesUpdated();
     } catch (err) {
       console.error(err);
-      alert('Failed to publish article.');
+      setStudioNotice({
+        title: "Publish Failed",
+        message: "An error occurred while saving the article to the database. Please check your network connection.",
+        type: "danger"
+      });
     }
   };
 
@@ -329,13 +355,8 @@ export default function ModeratorNewsStudio({ isOpen, onClose, onArticlesUpdated
   };
 
   // Delete article
-  const handleDeleteClick = async (artId, artTitle) => {
-    if (window.confirm(`Permanently delete article "${artTitle}"?`)) {
-      sound.playSaveSuccess();
-      await deleteNewsArticle(artId);
-      await loadArticles();
-      if (onArticlesUpdated) onArticlesUpdated();
-    }
+  const handleDeleteClick = (artId, artTitle) => {
+    setDeleteTarget({ id: artId, title: artTitle });
   };
 
   // Toggle pin
@@ -350,7 +371,11 @@ export default function ModeratorNewsStudio({ isOpen, onClose, onArticlesUpdated
   const handleChangePin = (e) => {
     e.preventDefault();
     if (newPinInput.length !== 4 || !/^\d{4}$/.test(newPinInput)) {
-      alert('PIN must be exactly 4 numeric digits.');
+      setStudioNotice({
+        title: "Invalid PIN",
+        message: "Moderator PIN must be exactly 4 numeric digits (0-9).",
+        type: "warning"
+      });
       return;
     }
     saveModeratorPin(newPinInput);
@@ -971,6 +996,37 @@ export default function ModeratorNewsStudio({ isOpen, onClose, onArticlesUpdated
             </div>
           </div>
         )}
+
+        {/* Delete Article Confirmation Dialog */}
+        <ConfirmModal
+          isOpen={Boolean(deleteTarget)}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={async () => {
+            if (deleteTarget) {
+              sound.playSaveSuccess();
+              await deleteNewsArticle(deleteTarget.id);
+              await loadArticles();
+              if (onArticlesUpdated) onArticlesUpdated();
+              setDeleteTarget(null);
+            }
+          }}
+          title="Delete News Article"
+          message={`Are you sure you want to permanently delete "${deleteTarget?.title}"? This article will be removed from all users' news feeds.`}
+          confirmText="Delete Article"
+          type="danger"
+        />
+
+        {/* Studio Notice / Alert Dialog */}
+        <ConfirmModal
+          isOpen={Boolean(studioNotice)}
+          onClose={() => setStudioNotice(null)}
+          onConfirm={() => setStudioNotice(null)}
+          title={studioNotice?.title || "Notice"}
+          message={studioNotice?.message || ""}
+          confirmText="OK"
+          cancelText="Dismiss"
+          type={studioNotice?.type || "warning"}
+        />
 
       </div>
     </div>

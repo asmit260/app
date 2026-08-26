@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Minus, Trash2, RotateCcw, Star, Film, Check, ChevronDown } from 'lucide-react';
 import { sound } from '../../services/soundEffects';
 import { burstConfetti } from '../../utils/confetti';
+import ConfirmModal from '../Common/ConfirmModal';
 
 const STATUS_THEMES = {
   watching: { label: 'Watching', bg: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/50' },
@@ -25,6 +26,7 @@ export default function WatchlistCard({
 }) {
   const [isBouncing, setIsBouncing] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const animeId = item.anime_id || item.id;
   const cover = item.anime_cover || item.anime_cover_image || item.coverImage || '';
@@ -222,9 +224,7 @@ export default function WatchlistCard({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (window.confirm(`Remove "${item.anime_title}" from your watchlist?`)) {
-                    onRemoveItem(animeId);
-                  }
+                  setShowDeleteModal(true);
                 }}
                 className="p-1 rounded text-stone-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
                 title="Remove from list"
@@ -234,6 +234,17 @@ export default function WatchlistCard({
             </div>
           </div>
         </div>
+
+        {/* Modern Confirmation Modal */}
+        <ConfirmModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={() => onRemoveItem(animeId)}
+          title="Remove from Watchlist"
+          message={`Are you sure you want to remove "${item.anime_title}" from your watchlist? All tracking progress will be removed.`}
+          confirmText="Remove"
+          type="danger"
+        />
       </div>
     );
   }
@@ -286,13 +297,25 @@ export default function WatchlistCard({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (window.confirm(`Remove "${item.anime_title}"?`)) onRemoveItem(animeId);
+              setShowDeleteModal(true);
             }}
             className="p-1 text-stone-400 hover:text-rose-500"
+            title="Remove"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
+
+        {/* Modern Confirmation Modal */}
+        <ConfirmModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={() => onRemoveItem(animeId)}
+          title="Remove from Watchlist"
+          message={`Are you sure you want to remove "${item.anime_title}" from your watchlist? All tracking progress will be removed.`}
+          confirmText="Remove"
+          type="danger"
+        />
       </div>
     );
   }
@@ -354,6 +377,17 @@ export default function WatchlistCard({
           <div className="h-full bg-amber-400 rounded-full" style={{ width: `${progressPercent}%` }} />
         </div>
       </div>
+
+      {/* Modern Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={() => onRemoveItem(animeId)}
+        title="Remove from Watchlist"
+        message={`Are you sure you want to remove "${item.anime_title}" from your watchlist? All tracking progress will be removed.`}
+        confirmText="Remove"
+        type="danger"
+      />
     </div>
   );
 }

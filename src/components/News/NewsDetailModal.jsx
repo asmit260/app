@@ -141,6 +141,8 @@ function parseInlineFormatting(text) {
 }
 
 export default function NewsDetailModal({ article, onClose }) {
+  const [copied, setCopied] = useState(false);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') onClose();
@@ -169,7 +171,9 @@ export default function NewsDetailModal({ article, onClose }) {
     } else {
       try {
         await navigator.clipboard.writeText(`${article.title}\n${article.source_url || window.location.href}`);
-        alert('Article link copied to clipboard!');
+        sound.playSaveSuccess();
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2200);
       } catch (_) {}
     }
   };
@@ -197,6 +201,11 @@ export default function NewsDetailModal({ article, onClose }) {
           </div>
 
           <div className="flex items-center gap-1.5">
+            {copied && (
+              <span className="text-[10px] font-mono font-black bg-emerald-500 text-white px-2 py-1 rounded border border-stone-900 animate-scale-up">
+                ✓ Copied!
+              </span>
+            )}
             <button
               onClick={handleShare}
               className="p-1.5 rounded-lg border-2 border-stone-900 bg-sand-50 dark:bg-sand-200 text-stone-700 dark:text-stone-300 hover:bg-amber-400 hover:text-stone-950 transition-colors shadow-2xs"
