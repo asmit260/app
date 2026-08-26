@@ -227,19 +227,32 @@ export async function upsertWatchlistEntry(anime, status, episodesWatched = null
     }
   }
 
-  // 3. Log episode progress for activity streak ONLY when actively watching or completing
-  if (status === 'watching' && payload.episodes_watched > 0) {
-    await logEpisodeProgress(animeId, payload.episodes_watched, `Episode ${payload.episodes_watched}`);
-  } else if (status === 'completed' && payload.episodes_watched > 0) {
-    await logEpisodeProgress(animeId, payload.episodes_watched, `Completed (${payload.episodes_watched} eps)`);
-  } else if (status === 'plan_to_watch' || status === 'on_hold' || status === 'dropped') {
-    // Prune any phantom "Started watching" history logs for unstarted anime
-    const history = getLocalHistory();
-    const cleaned = history.filter(h => !(parseInt(h.anime_id) === animeId && (h.note === 'Started watching' || h.episode_number === 1 && payload.episodes_watched === 0)));
-    if (cleaned.length !== history.length) {
-      saveLocalHistory(cleaned);
+  // 3. Log all user anime actions into the Anime Progress Stream
+  let actionType = status;
+  let actionNote = '';
+  let epToLog = payload.episodes_watched || 0;
+
+  if (status === 'plan_to_watch') {
+    actionNote = existing ? 'Moved to Plan to Watch' : 'Added to Plan to Watch';
+    epToLog = 0;
+  } else if (status === 'watching') {
+    if (!existing || (!existing.episodes_watched && payload.episodes_watched <= 1)) {
+      actionNote = 'Started watching (Ep 1)';
+      epToLog = 1;
+    } else {
+      actionNote = `Updated to Ep ${payload.episodes_watched}`;
+      epToLog = payload.episodes_watched;
     }
+  } else if (status === 'completed') {
+    actionNote = `Completed (${payload.episodes_watched || payload.total_episodes || ''} eps)`;
+    epToLog = payload.episodes_watched || payload.total_episodes || 1;
+  } else if (status === 'on_hold') {
+    actionNote = payload.episodes_watched > 0 ? `Put on Hold (at Ep ${payload.episodes_watched})` : 'Moved to On Hold';
+  } else if (status === 'dropped') {
+    actionNote = payload.episodes_watched > 0 ? `Dropped (at Ep ${payload.episodes_watched})` : 'Dropped anime';
   }
+
+  await logEpisodeProgress(animeId, epToLog, actionNote, actionType, titleStr);
 
   // 4. Notify app listeners immediately
   window.dispatchEvent(new CustomEvent('anitrack-watchlist-changed'));
@@ -257,7 +270,7 @@ export async function startRewatch(anime) {
     rewatch_count: currentRewatches
   }, 'watching', 1);
 
-  await logEpisodeProgress(animeId, 1, `Started Rewatch #${currentRewatches}`);
+  await logEpisodeProgress(animeId, 1, `Started Rewatch #${currentRewatches}`, 'rewatch', anime.title || anime.anime_title || '');
   return res;
 }
 
@@ -290,8 +303,9 @@ export async function removeWatchlistEntry(animeId) {
   if (!animeId) return;
   const idNum = parseInt(animeId);
 
-  // 1. Remove from local storage
+  // 1. Find existing entry to log title
   const local = getLocalWatchlist();
+  const itemToRemove = local.find(i => (parseInt(i.anime_id || i.id) === idNum));
   const filtered = local.filter(i => (parseInt(i.anime_id || i.id) !== idNum));
   saveLocalWatchlist(filtered);
 
@@ -307,6 +321,11 @@ export async function removeWatchlistEntry(animeId) {
     } catch (err) {
       console.warn("Cloud delete error:", err);
     }
+  }
+
+  // 3. Log removal action to Anime Progress Stream
+  if (itemToRemove) {
+    await logEpisodeProgress(idNum, 0, 'Removed from Watchlist', 'removed', itemToRemove.anime_title || '');
   }
 
   window.dispatchEvent(new CustomEvent('anitrack-watchlist-changed'));
@@ -341,12 +360,12 @@ export async function updateWatchlistRating(animeId, score) {
   window.dispatchEvent(new CustomEvent('anitrack-watchlist-changed'));
 }
 
-// ─── Episode Progress (History) ─────────────────────────────────────────────
+// ─── Anime Progress Stream (History) ────────────────────────────────────────
 
-export async function logEpisodeProgress(animeId, episodeNumber, note = '') {
+export async function logEpisodeProgress(animeId, episodeNumber, note = '', actionType = 'watching', animeTitle = '') {
   if (!animeId) return;
   const idNum = parseInt(animeId);
-  const epNum = parseInt(episodeNumber);
+  const epNum = Number.isInteger(parseInt(episodeNumber)) ? parseInt(episodeNumber) : 0;
   const user = await getUser();
   const isAuthUser = user && isValidUUID(user.id);
   const userId = isAuthUser ? user.id : 'local_user';
@@ -357,9 +376,11 @@ export async function logEpisodeProgress(animeId, episodeNumber, note = '') {
     id: 'hist_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
     user_id: userId,
     anime_id: idNum,
+    anime_title: animeTitle || '',
+    action_type: actionType,
     episode_number: epNum,
     watched_at: new Date().toISOString(),
-    note: note || `Episode ${epNum}`
+    note: note || (actionType === 'watching' ? `Episode ${epNum}` : note)
   };
   history.unshift(newRecord);
   saveLocalHistory(history.slice(0, 1000));
@@ -367,27 +388,14 @@ export async function logEpisodeProgress(animeId, episodeNumber, note = '') {
   // 2. Save to Supabase if authenticated
   if (isAuthUser) {
     try {
-      const { data: existing } = await supabase.from('episode_progress')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('anime_id', idNum)
-        .eq('episode_number', epNum)
-        .maybeSingle();
-
-      if (existing) {
-        await supabase.from('episode_progress')
-          .update({ watched_at: new Date().toISOString(), note: note || `Episode ${epNum}` })
-          .eq('id', existing.id);
-      } else {
-        await supabase.from('episode_progress')
-          .insert({
-            user_id: userId,
-            anime_id: idNum,
-            episode_number: epNum,
-            watched_at: new Date().toISOString(),
-            note: note || `Episode ${epNum}`
-          });
-      }
+      await supabase.from('episode_progress')
+        .insert({
+          user_id: userId,
+          anime_id: idNum,
+          episode_number: epNum,
+          watched_at: new Date().toISOString(),
+          note: note || `Episode ${epNum}`
+        });
     } catch (err) {
       console.warn("Cloud progress log error:", err);
     }

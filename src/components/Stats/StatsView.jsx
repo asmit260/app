@@ -656,30 +656,82 @@ export default function StatsView({ watchlist = [], history = [] }) {
         </div>
       )}
 
-      {/* ═══ EPISODE PROGRESS TIMELINE ═══ */}
+      {/* ═══ ANIME PROGRESS STREAM ═══ */}
       <div className="card-manga-panel p-4 bg-sand-50 dark:bg-sand-200">
-        <h3 className="font-display font-black text-sm uppercase text-ink-900 border-b-2 border-stone-900 pb-2 mb-4">Episode Progress Stream</h3>
+        <div className="flex items-center justify-between border-b-2 border-stone-900 pb-2 mb-4">
+          <h3 className="font-display font-black text-sm uppercase text-ink-900 flex items-center gap-1.5">
+            <Activity className="w-4 h-4 text-amber-500" />
+            <span>Anime Progress Stream</span>
+          </h3>
+          <span className="text-[10px] font-mono font-bold text-stone-500">
+            {history.length} Event{history.length === 1 ? '' : 's'}
+          </span>
+        </div>
+
         {paginatedHistory.length > 0 ? (
-          <div className="relative pl-5 border-l-[3px] border-stone-900/40 dark:border-stone-700/40 space-y-4 ml-1.5">
-            {paginatedHistory.map((log, idx) => (
-              <div key={log.id || idx} className="relative">
-                <div className="absolute -left-[23px] top-1 w-3 h-3 bg-amber-500 border-[2.5px] border-stone-900" />
-                <time className="block font-mono text-[9px] font-bold text-stone-500 mb-0.5">
-                  {new Date(log.watched_at).toLocaleString()}
-                </time>
-                <div className="font-sans text-xs font-bold text-stone-600 dark:text-stone-400">
-                  Updated <span className="font-black text-ink-900">
-                    {watchlist.find(i => (i.anime_id == log.anime_id || i.id == log.anime_id))?.anime_title || 'Show'}
-                  </span> to <span className="font-black text-cyan-600 font-mono">Ep {log.episode_number}</span>
-                  {log.note && <span className="italic text-stone-500 font-normal"> — {log.note}</span>}
+          <div className="relative pl-5 border-l-[3px] border-stone-900/40 dark:border-stone-700/40 space-y-3.5 ml-1.5">
+            {paginatedHistory.map((log, idx) => {
+              const matchedItem = watchlist.find(i => (i.anime_id == log.anime_id || i.id == log.anime_id));
+              const title = log.anime_title || matchedItem?.anime_title || 'Anime';
+              const rawNote = log.note || '';
+
+              // Visual badge/color config per action
+              const getBadgeConfig = () => {
+                const noteLower = rawNote.toLowerCase();
+                const type = log.action_type || '';
+
+                if (type === 'completed' || noteLower.includes('completed')) {
+                  return { dot: 'bg-lime-500', badgeBg: 'bg-lime-500/20 border-lime-500/40 text-lime-800 dark:text-lime-300' };
+                }
+                if (type === 'plan_to_watch' || noteLower.includes('plan')) {
+                  return { dot: 'bg-sky-500', badgeBg: 'bg-sky-500/20 border-sky-500/40 text-sky-800 dark:text-sky-300' };
+                }
+                if (type === 'on_hold' || noteLower.includes('hold')) {
+                  return { dot: 'bg-amber-500', badgeBg: 'bg-amber-500/20 border-amber-500/40 text-amber-800 dark:text-amber-300' };
+                }
+                if (type === 'dropped' || noteLower.includes('dropped')) {
+                  return { dot: 'bg-rose-500', badgeBg: 'bg-rose-500/20 border-rose-500/40 text-rose-800 dark:text-rose-300' };
+                }
+                if (type === 'rewatch' || noteLower.includes('rewatch')) {
+                  return { dot: 'bg-purple-500', badgeBg: 'bg-purple-500/20 border-purple-500/40 text-purple-800 dark:text-purple-300' };
+                }
+                if (type === 'removed' || noteLower.includes('removed')) {
+                  return { dot: 'bg-stone-500', badgeBg: 'bg-stone-500/20 border-stone-500/40 text-stone-700 dark:text-stone-300' };
+                }
+                return { dot: 'bg-emerald-500', badgeBg: 'bg-emerald-500/20 border-emerald-500/40 text-emerald-800 dark:text-emerald-300' };
+              };
+
+              const badge = getBadgeConfig();
+
+              return (
+                <div key={log.id || idx} className="relative">
+                  <div className={`absolute -left-[23px] top-1 w-3 h-3 ${badge.dot} border-[2.5px] border-stone-900 rounded-full shadow-2xs`} />
+                  <time className="block font-mono text-[9px] font-bold text-stone-500 mb-0.5">
+                    {new Date(log.watched_at).toLocaleString()}
+                  </time>
+                  <div className="font-sans text-xs font-bold text-stone-700 dark:text-stone-300 flex flex-wrap items-center gap-1.5">
+                    <span className="font-black text-ink-900">
+                      {title}
+                    </span>
+                    {log.episode_number > 0 && (
+                      <span className="font-mono font-black text-stone-900 dark:text-stone-100 bg-sand-200 dark:bg-stone-800 px-1.5 py-0.2 rounded border border-stone-900/30 dark:border-stone-600 text-[11px]">
+                        Ep {log.episode_number}
+                      </span>
+                    )}
+                    {rawNote && (
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded border ${badge.badgeBg}`}>
+                        {rawNote}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-6">
-            <p className="text-xs font-bold text-stone-500">No episode updates yet.</p>
-            <p className="text-[10px] text-stone-400 font-sans mt-1">Log episodes from the Schedule or Watchlist to see your activity here.</p>
+            <p className="text-xs font-bold text-stone-500">No anime updates yet.</p>
+            <p className="text-[10px] text-stone-400 font-sans mt-1">Add anime to your watchlist or log episodes to see your activity timeline here.</p>
           </div>
         )}
         {hasMoreHistory && (
