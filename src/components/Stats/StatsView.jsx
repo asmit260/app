@@ -1,10 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { Flame, Clock, Film, CheckCircle2, BarChart2, TrendingUp, Activity, Star } from 'lucide-react';
+import { Flame, Clock, Film, CheckCircle2, BarChart2, TrendingUp, Activity } from 'lucide-react';
 import { groupWatchlistByFranchise } from '../../utils/franchise';
 
 const STATUS_COLORS = { watching: '#06b6d4', completed: '#10b981', plan_to_watch: '#7c3aed', on_hold: '#eab308', dropped: '#ef4444' };
 const STATUS_LABELS = { watching: 'Watching', completed: 'Completed', plan_to_watch: 'Plan to Watch', on_hold: 'On Hold', dropped: 'Dropped' };
-const SHOW_PALETTE = ['#C8813A','#7c3aed','#06b6d4','#10b981','#ec4899','#f97316','#6366f1','#eab308'];
 
 function getLocalDateKey(d) {
   if (!d) return '';
@@ -188,28 +187,6 @@ export default function StatsView({ watchlist = [], history = [] }) {
       droppedAt3Rate: dropRate,
     };
   }, [dayCounts, watchlist]);
-
-  // ── TOP SHOWS (Rated or Watched) ────────────────────────────
-  const topShowsBarData = useMemo(() => {
-    const rated = watchlist.filter(s => Number(s.score) > 0).sort((a, b) => Number(b.score) - Number(a.score));
-    const targetShows = rated.length > 0 
-      ? rated.slice(0, 5) 
-      : [...watchlist].sort((a, b) => (Number(b.episodes_watched) || 0) - (Number(a.episodes_watched) || 0)).slice(0, 5);
-
-    return targetShows.map((s, i) => {
-      const isRated = Number(s.score) > 0;
-      const scoreVal = isRated ? Number(s.score) : Math.min(10, Math.max(1, Math.round(((s.episodes_watched || 1) / (s.total_episodes || 12)) * 10)));
-      return {
-        title: s.anime_title || 'Unknown',
-        shortTitle: (s.anime_title || 'Unknown').length > 20 ? (s.anime_title || '').slice(0, 18) + '…' : (s.anime_title || 'Unknown'),
-        score: isRated ? `${s.score}/10` : `${s.episodes_watched || 0} ep`,
-        pct: (scoreVal / 10) * 100,
-        color: SHOW_PALETTE[i % SHOW_PALETTE.length],
-        id: s.anime_id || s.id,
-        isRated
-      };
-    });
-  }, [watchlist]);
 
   // ── TIMELINE LOGS (History with fallback) ───────────────────
   const timelineLogs = useMemo(() => {
@@ -634,27 +611,6 @@ export default function StatsView({ watchlist = [], history = [] }) {
           {renderDailyTrend()}
         </div>
       </div>
-
-      {/* ═══ TOP SHOWS ═══ */}
-      {topShowsBarData.length > 0 && (
-        <div className="card-manga-panel p-4 bg-sand-50 dark:bg-sand-200">
-          <h3 className="font-display font-black text-sm uppercase text-ink-900 border-b-2 border-stone-900 pb-2 mb-3 flex items-center gap-1.5">
-            <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-            Top Shows
-          </h3>
-          <div className="space-y-2.5">
-            {topShowsBarData.map(show => (
-              <div key={show.id} className="flex items-center gap-2.5">
-                <span className="w-24 text-[11px] font-bold text-ink-900 truncate flex-shrink-0">{show.shortTitle}</span>
-                <div className="flex-grow h-4 bg-sand-200 dark:bg-sand-300 border border-stone-900/10 overflow-hidden rounded-xs">
-                  <div className="h-full transition-all duration-700 border-r-2 border-stone-900" style={{width: `${show.pct}%`, background: show.color}} />
-                </div>
-                <span className="text-xs font-mono font-black text-ink-900 w-12 text-right flex-shrink-0">{show.score}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* ═══ ANIME PROGRESS STREAM ═══ */}
       <div className="card-manga-panel p-4 bg-sand-50 dark:bg-sand-200">
