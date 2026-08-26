@@ -5,11 +5,11 @@ import { burstConfetti } from '../../utils/confetti';
 import QuickEpisodeModal from './QuickEpisodeModal';
 
 const STATUS_LABELS = {
-  watching: { label: 'Watching', bg: 'bg-status-watching-bg text-status-watching border-status-watching/40' },
-  completed: { label: 'Completed', bg: 'bg-status-completed-bg text-status-completed border-status-completed/40' },
-  plan_to_watch: { label: 'Plan to Watch', bg: 'bg-status-plan-bg text-status-plan border-status-plan/40' },
-  on_hold: { label: 'On Hold', bg: 'bg-status-hold-bg text-status-hold border-status-hold/40' },
-  dropped: { label: 'Dropped', bg: 'bg-status-dropped-bg text-status-dropped border-status-dropped/40' }
+  watching: { label: 'Watching', bg: 'bg-emerald-600 dark:bg-emerald-500 text-white dark:text-stone-950 border-emerald-700' },
+  completed: { label: 'Completed', bg: 'bg-lime-600 dark:bg-lime-500 text-white dark:text-stone-950 border-lime-700' },
+  plan_to_watch: { label: 'Plan to Watch', bg: 'bg-sky-600 dark:bg-sky-400 text-white dark:text-stone-950 border-sky-700' },
+  on_hold: { label: 'On Hold', bg: 'bg-amber-500 dark:bg-amber-400 text-stone-950 border-amber-600' },
+  dropped: { label: 'Dropped', bg: 'bg-rose-600 dark:bg-rose-500 text-white border-rose-700' }
 };
 
 const AnimeCard = React.memo(function AnimeCard({
@@ -58,10 +58,10 @@ const AnimeCard = React.memo(function AnimeCard({
 
   // For airing anime, remove 'completed' option; only allow 'watching', 'plan_to_watch', 'on_hold', 'dropped'
   const availableStatuses = isAiring ? {
-    watching: { label: 'Watching', bg: 'bg-status-watching-bg text-status-watching border-status-watching/40' },
-    plan_to_watch: { label: 'Plan to Watch', bg: 'bg-status-plan-bg text-status-plan border-status-plan/40' },
-    on_hold: { label: 'On Hold', bg: 'bg-status-hold-bg text-status-hold border-status-hold/40' },
-    dropped: { label: 'Dropped', bg: 'bg-status-dropped-bg text-status-dropped border-status-dropped/40' }
+    watching: STATUS_LABELS.watching,
+    plan_to_watch: STATUS_LABELS.plan_to_watch,
+    on_hold: STATUS_LABELS.on_hold,
+    dropped: STATUS_LABELS.dropped
   } : STATUS_LABELS;
 
   const statusConfig = currentStatus ? STATUS_LABELS[currentStatus] : null;
@@ -228,18 +228,18 @@ const AnimeCard = React.memo(function AnimeCard({
           </div>
         )}
 
-        {/* Airing Schedule Countdown Banner (if applicable) */}
+        {/* Airing Schedule Countdown Banner (High Contrast Dark & Light) */}
         {airingInfo && (
-          <div className={`p-2 rounded-md border-2 border-stone-900 text-xs font-mono font-bold flex items-center justify-between shadow-[1px_1px_0px_0px_rgba(24,19,13,1)] ${
+          <div className={`p-2 rounded-md border-2 border-stone-900 dark:border-stone-700 text-xs font-mono font-bold flex items-center justify-between shadow-[1px_1px_0px_0px_rgba(24,19,13,1)] ${
             airingInfo.isAired
-              ? 'bg-sand-200 dark:bg-stone-800 text-stone-500 border-stone-600'
-              : 'bg-sand-50 dark:bg-stone-800 text-ink-900'
+              ? 'bg-sand-200 dark:bg-stone-800 text-stone-500 dark:text-stone-400 border-stone-400 dark:border-stone-700'
+              : 'bg-sand-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100'
           }`}>
-            <span className="flex items-center gap-1.5">
-              <Clock className={`w-3.5 h-3.5 ${airingInfo.isAired ? 'text-stone-400' : 'text-sky-500'}`} />
-              {airingInfo.airingTimeFormatted || 'Airing'}
+            <span className="flex items-center gap-1.5 text-stone-900 dark:text-stone-100">
+              <Clock className={`w-3.5 h-3.5 ${airingInfo.isAired ? 'text-stone-400' : 'text-sky-600 dark:text-sky-400'}`} />
+              <span className="font-bold text-stone-900 dark:text-stone-100">{airingInfo.airingTimeFormatted || 'Airing'}</span>
             </span>
-            <span className={`text-[10px] ${airingInfo.isAired ? 'text-stone-400 font-normal' : 'text-amber-500 font-black'}`}>
+            <span className={`text-[10px] font-mono ${airingInfo.isAired ? 'text-stone-500 dark:text-stone-400 font-normal' : 'text-amber-600 dark:text-amber-400 font-black'}`}>
               {airingInfo.countdown}
             </span>
           </div>
@@ -301,12 +301,12 @@ const AnimeCard = React.memo(function AnimeCard({
             <>
               {/* Invisible backdrop to capture outside clicks */}
               <div 
-                className="fixed inset-0 z-40 bg-black/30" 
+                className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px]" 
                 onClick={(e) => { e.stopPropagation(); setShowDropdown(false); }} 
               />
 
               <div 
-                className={`absolute left-0 right-0 z-50 bg-[#FDFAF5] dark:bg-[#1E1A17] border-2 border-stone-900 dark:border-stone-600 rounded-lg shadow-[4px_4px_0px_0px_rgba(24,19,13,1)] py-1.5 overflow-hidden animate-fade-in ${
+                className={`absolute left-0 right-0 z-50 bg-[#FDFAF5] dark:bg-[#1E1A17] border-2 border-stone-900 dark:border-stone-600 rounded-lg shadow-manga-lg py-1.5 overflow-hidden animate-fade-in ${
                   dropdownDir === 'down' ? 'top-full mt-1.5' : 'bottom-full mb-1.5'
                 }`}
                 onClick={(e) => e.stopPropagation()}
@@ -323,7 +323,7 @@ const AnimeCard = React.memo(function AnimeCard({
                           : 'text-stone-900 dark:text-stone-100 hover:bg-sand-200 dark:hover:bg-stone-800'
                       }`}
                     >
-                      <span className="text-stone-900 dark:text-stone-100">{cfg.label}</span>
+                      <span className={isSelected ? 'text-stone-950 font-black' : 'text-stone-900 dark:text-white font-bold'}>{cfg.label}</span>
                       {isSelected && <Check className="w-3.5 h-3.5 stroke-[3] text-stone-950" />}
                     </button>
                   );
@@ -336,8 +336,8 @@ const AnimeCard = React.memo(function AnimeCard({
                       onClick={(e) => handleStatusSelect(e, 'remove')}
                       className="w-full text-left px-3 py-2 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-500/15 flex items-center gap-1.5 transition-colors"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Remove from list</span>
+                      <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                      <span className="text-rose-600 dark:text-rose-400">Remove from list</span>
                     </button>
                   </>
                 )}
