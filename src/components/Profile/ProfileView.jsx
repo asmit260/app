@@ -191,29 +191,29 @@ export default function ProfileView({
       {/* ═══ 1. HERO MANGA PROFILE CARD ═══ */}
       <div className="card-manga-panel p-0 overflow-hidden bg-sand-50 dark:bg-sand-200 border-3 border-stone-900 shadow-manga-lg">
         
-        {/* Banner Texture */}
-        <div className="h-28 sm:h-32 w-full bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 border-b-2 border-stone-900 relative p-4 flex items-start justify-between">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-stone-950/85 text-amber-400 text-[10px] font-mono font-black uppercase rounded-md border border-stone-900 shadow-2xs">
+        {/* Banner Texture Header */}
+        <div className="h-24 sm:h-28 w-full bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 border-b-2 border-stone-900 relative px-4 py-3 flex items-start justify-between">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-stone-950 text-amber-400 text-[10px] font-mono font-black uppercase rounded-md border border-stone-900 shadow-2xs">
             <Sparkles className="w-3 h-3" />
             <span>AniTrack Passport</span>
           </div>
 
           <button
             onClick={() => setIsEditingProfile(!isEditingProfile)}
-            className="btn-manga bg-sand-50 text-stone-950 text-xs font-black px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-amber-100"
+            className="btn-manga bg-sand-50 text-stone-950 text-xs font-black px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-amber-100 shadow-2xs"
           >
             <Edit3 className="w-3.5 h-3.5" />
-            <span>{isEditingProfile ? 'Done Editing' : 'Edit Profile'}</span>
+            <span>{isEditingProfile ? 'Done' : 'Edit Profile'}</span>
           </button>
         </div>
 
-        {/* Profile Content Details */}
-        <div className="px-5 pb-5 pt-0 relative">
-          <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 -mt-14 sm:-mt-16 text-center sm:text-left">
+        {/* Profile Content Body */}
+        <div className="px-5 pb-5 pt-0">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             
-            {/* Circular Avatar with Interactive Hover / Crop Tool */}
-            <div className="relative group cursor-pointer" onClick={() => setShowAvatarModal(true)}>
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-stone-900 bg-navy-700 text-sand-50 flex items-center justify-center font-display font-black text-3xl sm:text-4xl shadow-manga overflow-hidden relative transition-transform group-hover:scale-105">
+            {/* Circular Avatar floating cleanly over the banner border */}
+            <div className="relative -mt-10 sm:-mt-12 self-center sm:self-auto shrink-0 group cursor-pointer" onClick={() => setShowAvatarModal(true)}>
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-3 border-stone-900 bg-navy-700 text-sand-50 flex items-center justify-center font-display font-black text-2xl sm:text-3xl shadow-[3px_3px_0px_0px_rgba(24,19,13,1)] overflow-hidden relative transition-transform group-hover:scale-105">
                 {avatar ? (
                   <img 
                     src={avatar} 
@@ -226,8 +226,8 @@ export default function ProfileView({
 
                 {/* Hover Camera Overlay */}
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white transition-opacity backdrop-blur-xs">
-                  <Camera className="w-6 h-6 text-amber-400" />
-                  <span className="text-[9px] font-mono font-bold uppercase mt-1">Change</span>
+                  <Camera className="w-5 h-5 text-amber-400" />
+                  <span className="text-[8px] font-mono font-bold uppercase mt-0.5">Change</span>
                 </div>
               </div>
 
@@ -238,56 +238,59 @@ export default function ProfileView({
                   e.stopPropagation();
                   setShowAvatarModal(true);
                 }}
-                className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-amber-400 text-stone-950 border-2 border-stone-900 flex items-center justify-center shadow-sm hover:scale-110 active:scale-95 transition-all"
+                className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-amber-400 text-stone-950 border-2 border-stone-900 flex items-center justify-center shadow-2xs hover:scale-110 active:scale-95 transition-all"
                 title="Change Avatar"
               >
-                <Camera className="w-4 h-4" />
+                <Camera className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            {/* Display Name & Status */}
-            <div className="flex-1 space-y-1">
+            {/* Display Name, Cloud Sync & Bio (Cleanly positioned with NO overlap) */}
+            <div className="flex-1 min-w-0 pt-2 sm:pt-3 text-center sm:text-left space-y-1">
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
                 <h1 className="font-display font-black text-xl sm:text-2xl text-ink-900 leading-tight">
                   {username}
                 </h1>
                 {currentUser?.email ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 text-[10px] font-mono font-bold">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 text-[10px] font-mono font-bold">
                     <ShieldCheck className="w-3 h-3 text-emerald-600" />
                     Cloud Sync Active
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400/30 text-amber-900 dark:text-amber-300 border border-amber-500/40 text-[10px] font-mono font-bold">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-amber-400/30 text-amber-900 dark:text-amber-300 border border-amber-500/40 text-[10px] font-mono font-bold">
                     <Info className="w-3 h-3 text-amber-600" />
-                    Local Mode
+                    Local Guest Mode
                   </span>
                 )}
               </div>
 
-              <p className="text-xs text-stone-600 dark:text-stone-400 font-sans italic max-w-lg">
-                "{bio}"
-              </p>
-
               {currentUser?.email && (
-                <p className="text-[11px] font-mono text-stone-500">
+                <p className="text-xs font-mono text-stone-500 font-semibold truncate">
                   {currentUser.email}
                 </p>
               )}
+
+              {bio && bio.trim() && (
+                <p className="text-xs text-stone-700 dark:text-stone-300 font-sans italic max-w-xl pt-0.5">
+                  "{bio.trim()}"
+                </p>
+              )}
             </div>
+
           </div>
 
           {/* Quick Stat Chips */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-5 pt-4 border-t-2 border-stone-900/10 dark:border-stone-100/10">
-            <div className="p-2.5 rounded-lg bg-sand-100 dark:bg-sand-300 border-2 border-stone-900 text-center shadow-2xs">
-              <span className="text-[10px] font-mono uppercase font-black tracking-wider text-stone-500 block">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-5 pt-4 border-t-2 border-stone-900/10 dark:border-stone-100/10">
+            <div className="py-2.5 px-3 rounded-lg bg-sand-100 dark:bg-stone-800 border-2 border-stone-900 text-center shadow-2xs">
+              <span className="text-[10px] font-mono uppercase font-black tracking-wider text-stone-500 dark:text-stone-400 block">
                 Tracked
               </span>
-              <span className="font-display font-black text-lg sm:text-xl text-ink-900">
+              <span className="font-display font-black text-lg sm:text-xl text-stone-900 dark:text-stone-100">
                 {totalTracked}
               </span>
             </div>
 
-            <div className="p-2.5 rounded-lg bg-sand-100 dark:bg-sand-300 border-2 border-stone-900 text-center shadow-2xs">
+            <div className="py-2.5 px-3 rounded-lg bg-sand-100 dark:bg-stone-800 border-2 border-stone-900 text-center shadow-2xs">
               <span className="text-[10px] font-mono uppercase font-black tracking-wider text-emerald-600 dark:text-emerald-400 block">
                 Watching
               </span>
@@ -296,7 +299,7 @@ export default function ProfileView({
               </span>
             </div>
 
-            <div className="p-2.5 rounded-lg bg-sand-100 dark:bg-sand-300 border-2 border-stone-900 text-center shadow-2xs">
+            <div className="py-2.5 px-3 rounded-lg bg-sand-100 dark:bg-stone-800 border-2 border-stone-900 text-center shadow-2xs">
               <span className="text-[10px] font-mono uppercase font-black tracking-wider text-amber-600 dark:text-amber-400 block">
                 Completed
               </span>
