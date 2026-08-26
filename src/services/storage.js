@@ -227,12 +227,19 @@ export async function upsertWatchlistEntry(anime, status, episodesWatched = null
     }
   }
 
-  // 3. Log episode progress for activity streak and heatmap
-  const epToLog = payload.episodes_watched > 0 ? payload.episodes_watched : 1;
-  const note = status === 'completed' 
-    ? `Completed (${payload.episodes_watched} eps)` 
-    : (payload.episodes_watched > 0 ? `Episode ${payload.episodes_watched}` : `Started watching`);
-  await logEpisodeProgress(animeId, epToLog, note);
+  // 3. Log episode progress for activity streak ONLY when actively watching or completing
+  if (status === 'watching' && payload.episodes_watched > 0) {
+    await logEpisodeProgress(animeId, payload.episodes_watched, `Episode ${payload.episodes_watched}`);
+  } else if (status === 'completed' && payload.episodes_watched > 0) {
+    await logEpisodeProgress(animeId, payload.episodes_watched, `Completed (${payload.episodes_watched} eps)`);
+  } else if (status === 'plan_to_watch' || status === 'on_hold' || status === 'dropped') {
+    // Prune any phantom "Started watching" history logs for unstarted anime
+    const history = getLocalHistory();
+    const cleaned = history.filter(h => !(parseInt(h.anime_id) === animeId && (h.note === 'Started watching' || h.episode_number === 1 && payload.episodes_watched === 0)));
+    if (cleaned.length !== history.length) {
+      saveLocalHistory(cleaned);
+    }
+  }
 
   // 4. Notify app listeners immediately
   window.dispatchEvent(new CustomEvent('anitrack-watchlist-changed'));
