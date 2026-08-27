@@ -13,6 +13,7 @@ export default function QuickEpisodeModal({
   onConfirm,
   titleLanguage = 'english'
 }) {
+  const [selectedEp, setSelectedEp] = useState(1);
   const isUnreleased = anime?.status === 'NOT_YET_RELEASED' || maxAiredEp === 0;
   const effectiveMax = typeof maxAiredEp === 'number' && maxAiredEp > 0
     ? maxAiredEp
