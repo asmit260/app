@@ -257,7 +257,7 @@ export async function upsertWatchlistEntry(anime, status, episodesWatched = null
       if (cloudPayload.id && String(cloudPayload.id).startsWith('wl_')) {
         delete cloudPayload.id; // Let Postgres handle primary key UUID if new
       }
-      await supabase.from('watchlist').upsert(cloudPayload);
+      await supabase.from('watchlist').upsert(cloudPayload, { onConflict: 'user_id,anime_id' });
     } catch (cloudErr) {
       console.warn("Cloud sync error for watchlist:", cloudErr);
     }
@@ -424,16 +424,27 @@ export async function logEpisodeProgress(animeId, episodeNumber, note = '', acti
   // 2. Save to Supabase if authenticated
   if (isAuthUser) {
     try {
-      await supabase.from('episode_progress')
-        .insert({
-          user_id: userId,
-          anime_id: idNum,
-          episode_number: epNum,
-          watched_at: new Date().toISOString(),
-          note: note || `Episode ${epNum}`
+      const logPayload = {
+        user_id: userId,
+        anime_id: idNum,
+        episode_number: epNum,
+        watched_at: new Date().toISOString(),
+        note: note || (actionType === 'watching' ? `Episode ${epNum}` : note)
+      };
+
+      const { error } = await supabase
+        .from('episode_progress')
+        .upsert(logPayload, {
+          onConflict: 'user_id,anime_id,episode_number',
+          ignoreDuplicates: false
         });
+
+      if (error && error.code !== '23505') {
+        // Fallback: If composite key differs, attempt plain upsert
+        await supabase.from('episode_progress').upsert(logPayload).catch(() => {});
+      }
     } catch (err) {
-      console.warn("Cloud progress log error:", err);
+      // Quietly absorb non-critical network conflict logs
     }
   }
 }
