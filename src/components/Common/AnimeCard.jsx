@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Clock, ChevronDown, Check, Plus, Trash2, Eye, Bell, Edit3, Star } from 'lucide-react';
 import { sound } from '../../services/soundEffects';
 import { burstConfetti } from '../../utils/confetti';
+import { isAnimeOngoing, getMaxAiredEpisode } from '../../utils/animeRules';
 import QuickEpisodeModal from './QuickEpisodeModal';
 
 const STATUS_LABELS = {
@@ -50,14 +51,12 @@ const AnimeCard = React.memo(function AnimeCard({
   const currentEpWatched = Number(watchlistEntry?.episodes_watched) || 0;
   const totalEps = anime.totalEpisodes || anime.episodes || null;
 
-  // Determine if anime is currently airing & calculate maximum aired episode
-  const isAiring = !!airingInfo || anime.status === 'RELEASING';
-  const maxAiredEp = airingInfo?.episode 
-    ? (airingInfo.isAired ? airingInfo.episode : Math.max(1, airingInfo.episode - 1))
-    : (anime.nextAiringEpisode?.episode ? Math.max(1, anime.nextAiringEpisode.episode - 1) : (totalEps || (isAiring ? 12 : 24)));
+  // Determine if anime is currently ongoing & calculate maximum aired episode
+  const isOngoing = isAnimeOngoing(anime) || !!airingInfo;
+  const maxAiredEp = getMaxAiredEpisode({ ...anime, airingInfo }, currentEpWatched);
 
-  // For airing anime, remove 'completed' option; only allow 'watching', 'plan_to_watch', 'on_hold', 'dropped'
-  const availableStatuses = isAiring ? {
+  // For ongoing anime, remove 'completed' option; only allow 'watching', 'plan_to_watch', 'on_hold', 'dropped'
+  const availableStatuses = isOngoing ? {
     watching: STATUS_LABELS.watching,
     plan_to_watch: STATUS_LABELS.plan_to_watch,
     on_hold: STATUS_LABELS.on_hold,
@@ -71,6 +70,9 @@ const AnimeCard = React.memo(function AnimeCard({
     setShowDropdown(false);
     if (newStatus === 'remove') {
       onRemoveItem(anime.id);
+    } else if (newStatus === 'completed' && isOngoing) {
+      sound.playError();
+      return;
     } else if (newStatus === 'watching') {
       setShowEpModal(true);
     } else {

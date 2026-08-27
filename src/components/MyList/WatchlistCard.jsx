@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Minus, Trash2, RotateCcw, Star, Film, Check, ChevronDown } from 'lucide-react';
 import { sound } from '../../services/soundEffects';
 import { burstConfetti } from '../../utils/confetti';
+import { isAnimeOngoing, getMaxAiredEpisode } from '../../utils/animeRules';
 import ConfirmModal from '../Common/ConfirmModal';
 
 const STATUS_THEMES = {
@@ -36,6 +37,7 @@ export default function WatchlistCard({
   const rewatchCount = item.rewatch_count || 0;
   const status = item.status || 'watching';
   const displayTitle = overrideTitle || item.anime_title || 'Anime';
+  const isOngoing = isAnimeOngoing(item);
 
   const progressPercent = totalEps ? Math.min(100, Math.round((watched / totalEps) * 100)) : (watched > 0 ? 100 : 0);
   const statusTheme = STATUS_THEMES[status] || STATUS_THEMES.watching;
@@ -44,11 +46,9 @@ export default function WatchlistCard({
     e.stopPropagation();
     const nextEp = Math.max(0, watched + delta);
 
-    // Limit check: For airing anime with known schedule, cap at latest aired episode; otherwise cap at totalEps
-    const maxAired = item.nextAiringEpisode?.episode 
-      ? Math.max(1, item.nextAiringEpisode.episode - 1) 
-      : (item.airing_episode || null);
-    const effectiveLimit = maxAired || totalEps || null;
+    // Limit check: For ongoing anime, cap at latest aired episode; otherwise cap at totalEps
+    const maxAired = getMaxAiredEpisode(item, watched);
+    const effectiveLimit = isOngoing ? maxAired : (totalEps || maxAired);
 
     if (effectiveLimit && nextEp > effectiveLimit && delta > 0) return;
 
@@ -56,7 +56,7 @@ export default function WatchlistCard({
     setIsBouncing(true);
     setTimeout(() => setIsBouncing(false), 300);
 
-    const isNowFinished = totalEps && nextEp >= totalEps;
+    const isNowFinished = !isOngoing && totalEps && nextEp >= totalEps;
     if (isNowFinished && status !== 'completed') {
       sound.playCelebration();
       burstConfetti();
@@ -128,7 +128,9 @@ export default function WatchlistCard({
                   className={`text-[9px] font-black uppercase tracking-wider pl-1.5 pr-4 py-0.5 rounded border ${statusTheme.bg} cursor-pointer focus:outline-none appearance-none dark:bg-stone-900`}
                 >
                   <option value="watching" className="bg-[#FDFAF5] dark:bg-[#1C1917] text-[#18130D] dark:text-[#FAFAF9]">Watching</option>
-                  <option value="completed" className="bg-[#FDFAF5] dark:bg-[#1C1917] text-[#18130D] dark:text-[#FAFAF9]">Completed</option>
+                  {!isOngoing && (
+                    <option value="completed" className="bg-[#FDFAF5] dark:bg-[#1C1917] text-[#18130D] dark:text-[#FAFAF9]">Completed</option>
+                  )}
                   <option value="plan_to_watch" className="bg-[#FDFAF5] dark:bg-[#1C1917] text-[#18130D] dark:text-[#FAFAF9]">Plan</option>
                   <option value="on_hold" className="bg-[#FDFAF5] dark:bg-[#1C1917] text-[#18130D] dark:text-[#FAFAF9]">On Hold</option>
                   <option value="dropped" className="bg-[#FDFAF5] dark:bg-[#1C1917] text-[#18130D] dark:text-[#FAFAF9]">Dropped</option>

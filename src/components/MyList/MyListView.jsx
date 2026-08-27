@@ -6,6 +6,7 @@ import QuickEpisodeModal from '../Common/QuickEpisodeModal';
 import ConfirmModal from '../Common/ConfirmModal';
 import { startRewatch, upsertWatchlistEntry } from '../../services/storage';
 import { groupWatchlistByFranchise } from '../../utils/franchise';
+import { isAnimeOngoing, getMaxAiredEpisode } from '../../utils/animeRules';
 
 const STATUS_CONFIG = [
   { id: 'all', label: 'All', icon: Sparkles },
@@ -98,7 +99,8 @@ export default function MyListView({
   const handleConfirmPickerEpisodes = async (selectedEp) => {
     if (!pickerAnime) return;
     const animeId = pickerAnime.anime_id || pickerAnime.id;
-    const isFinished = pickerAnime.total_episodes && selectedEp >= pickerAnime.total_episodes;
+    const isOngoing = isAnimeOngoing(pickerAnime);
+    const isFinished = !isOngoing && pickerAnime.total_episodes && selectedEp >= pickerAnime.total_episodes;
     await handleStepEpisode(animeId, selectedEp, isFinished ? 'completed' : pickerAnime.status);
     setPickerAnime(null);
   };
@@ -255,11 +257,7 @@ export default function MyListView({
             status: pickerAnime.status
           }}
           currentEp={Number(pickerAnime.episodes_watched) || 1}
-          maxAiredEp={
-            pickerAnime.nextAiringEpisode?.episode 
-              ? Math.max(1, pickerAnime.nextAiringEpisode.episode - 1)
-              : (pickerAnime.airing_episode || pickerAnime.total_episodes || 24)
-          }
+          maxAiredEp={getMaxAiredEpisode(pickerAnime, pickerAnime.episodes_watched)}
           onConfirm={handleConfirmPickerEpisodes}
           titleLanguage={titleLanguage}
         />

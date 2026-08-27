@@ -13,23 +13,28 @@ export default function QuickEpisodeModal({
   onConfirm,
   titleLanguage = 'english'
 }) {
-  const [selectedEp, setSelectedEp] = useState(1);
+  const isUnreleased = anime?.status === 'NOT_YET_RELEASED' || maxAiredEp === 0;
+  const effectiveMax = typeof maxAiredEp === 'number' && maxAiredEp > 0
+    ? maxAiredEp
+    : Math.max(1, Number(anime?.totalEpisodes || anime?.total_episodes || anime?.episodes || currentEp || 1));
 
   // Lock body scroll when modal is open
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
-      const fallback = anime?.totalEpisodes || anime?.total_episodes || anime?.episodes || Math.max(Number(currentEp) || 1, 24);
-      const safeMax = Math.max(1, maxAiredEp || fallback);
-      const initial = Math.max(1, Math.min(Number(currentEp) || 1, safeMax));
-      setSelectedEp(initial);
+      if (isUnreleased) {
+        setSelectedEp(0);
+      } else {
+        const initial = Math.max(1, Math.min(Number(currentEp) || 1, effectiveMax));
+        setSelectedEp(initial);
+      }
     } else {
       document.body.style.overflow = '';
     }
     return () => {
       document.body.style.overflow = '';
     };
-  }, [isOpen, currentEp, maxAiredEp, anime]);
+  }, [isOpen, currentEp, maxAiredEp, effectiveMax, isUnreleased]);
 
   if (!isOpen || !anime) return null;
 
@@ -42,10 +47,9 @@ export default function QuickEpisodeModal({
   };
 
   const cover = anime.coverImage?.large || anime.coverImage?.medium || anime.coverImage || anime.anime_cover || anime.image || '';
-  const fallbackMax = anime?.totalEpisodes || anime?.total_episodes || anime?.episodes || Math.max(Number(currentEp) || 1, 24);
-  const effectiveMax = Math.max(1, maxAiredEp || fallbackMax);
 
   const handleStep = (delta) => {
+    if (isUnreleased) return;
     const next = Math.max(1, Math.min(effectiveMax, selectedEp + delta));
     if (next !== selectedEp) {
       sound.playEpisodeStep();
@@ -54,11 +58,13 @@ export default function QuickEpisodeModal({
   };
 
   const handleSelectPill = (epNum) => {
+    if (isUnreleased) return;
     sound.playEpisodeStep();
-    setSelectedEp(epNum);
+    setSelectedEp(Math.min(effectiveMax, Math.max(1, epNum)));
   };
 
   const handleSetLatest = () => {
+    if (isUnreleased) return;
     sound.playEpisodeStep();
     setSelectedEp(effectiveMax);
   };
@@ -75,9 +81,11 @@ export default function QuickEpisodeModal({
 
   // Generate episode numbers for quick-select grid
   const epPills = [];
-  const pillLimit = Math.min(effectiveMax, 36);
-  for (let i = 1; i <= pillLimit; i++) {
-    epPills.push(i);
+  if (!isUnreleased) {
+    const pillLimit = Math.min(effectiveMax, 36);
+    for (let i = 1; i <= pillLimit; i++) {
+      epPills.push(i);
+    }
   }
 
   const modalContent = (
@@ -130,68 +138,83 @@ export default function QuickEpisodeModal({
           <div className="text-center space-y-1">
             <h4 className="font-display font-black text-base sm:text-lg text-stone-900 dark:text-stone-100 flex items-center justify-center gap-1.5">
               <Tv className="w-4 h-4 text-amber-500" />
-              <span>Which episode are you on?</span>
+              <span>{isUnreleased ? 'Upcoming Anime' : 'Which episode are you on?'}</span>
             </h4>
             <p className="text-xs text-stone-600 dark:text-stone-400 font-sans">
-              Choose your current progress below
+              {isUnreleased 
+                ? 'This anime has not started airing yet. Add to Plan to Watch!' 
+                : 'Choose your current progress below'}
             </p>
           </div>
 
-          {/* Stepper Control */}
-          <div className="flex items-center justify-center gap-3 py-1">
-            <button
-              onClick={() => handleStep(-1)}
-              disabled={selectedEp <= 1}
-              className="w-11 h-11 rounded-lg border-2 border-stone-900 bg-sand-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-black flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5 disabled:opacity-30 disabled:pointer-events-none transition-all hover:bg-sand-200 dark:hover:bg-stone-700"
-              title="Decrease Episode (-1)"
-            >
-              <Minus className="w-5 h-5 stroke-[3]" />
-            </button>
-
-            <div className="min-w-[130px] px-4 py-2 bg-amber-400 dark:bg-amber-500 border-2 border-stone-900 rounded-lg shadow-[2.5px_2.5px_0px_0px_rgba(24,19,13,1)] text-center">
-              <span className="text-[9px] font-mono uppercase font-black tracking-wider block text-stone-950/70">
-                CURRENT EPISODE
-              </span>
-              <span className="font-display font-black text-2xl text-stone-950 leading-tight">
-                {selectedEp} <span className="text-xs font-mono font-bold opacity-75">/ {effectiveMax}</span>
-              </span>
+          {isUnreleased ? (
+            <div className="p-3 bg-amber-400/20 border-2 border-stone-900 rounded-lg text-center space-y-1">
+              <p className="text-xs font-bold text-amber-900 dark:text-amber-300">
+                0 Episodes Released
+              </p>
+              <p className="text-[10px] text-stone-600 dark:text-stone-400 font-mono">
+                Progress tracking starts once Episode 1 airs.
+              </p>
             </div>
+          ) : (
+            <>
+              {/* Stepper Control */}
+              <div className="flex items-center justify-center gap-3 py-1">
+                <button
+                  onClick={() => handleStep(-1)}
+                  disabled={selectedEp <= 1}
+                  className="w-11 h-11 rounded-lg border-2 border-stone-900 bg-sand-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-black flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5 disabled:opacity-30 disabled:pointer-events-none transition-all hover:bg-sand-200 dark:hover:bg-stone-700"
+                  title="Decrease Episode (-1)"
+                >
+                  <Minus className="w-5 h-5 stroke-[3]" />
+                </button>
 
-            <button
-              onClick={() => handleStep(1)}
-              disabled={selectedEp >= effectiveMax}
-              className="w-11 h-11 rounded-lg border-2 border-stone-900 bg-sand-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-black flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5 disabled:opacity-30 disabled:pointer-events-none transition-all hover:bg-sand-200 dark:hover:bg-stone-700"
-              title="Increase Episode (+1)"
-            >
-              <Plus className="w-5 h-5 stroke-[3]" />
-            </button>
-          </div>
+                <div className="min-w-[130px] px-4 py-2 bg-amber-400 dark:bg-amber-500 border-2 border-stone-900 rounded-lg shadow-[2.5px_2.5px_0px_0px_rgba(24,19,13,1)] text-center">
+                  <span className="text-[9px] font-mono uppercase font-black tracking-wider block text-stone-950/70">
+                    CURRENT EPISODE
+                  </span>
+                  <span className="font-display font-black text-2xl text-stone-950 leading-tight">
+                    {selectedEp} <span className="text-xs font-mono font-bold opacity-75">/ {effectiveMax}</span>
+                  </span>
+                </div>
 
-          {/* Quick Select Shortcut Buttons */}
-          <div className="flex gap-2 justify-center pt-1">
-            <button
-              onClick={() => handleSelectPill(1)}
-              className={`px-3 py-1.5 text-xs font-bold rounded-md border-2 border-stone-900 transition-all ${
-                selectedEp === 1 
-                  ? 'bg-amber-400 text-stone-950 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] font-black' 
-                  : 'bg-sand-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-sand-200'
-              }`}
-            >
-              Start at Ep 1
-            </button>
+                <button
+                  onClick={() => handleStep(1)}
+                  disabled={selectedEp >= effectiveMax}
+                  className="w-11 h-11 rounded-lg border-2 border-stone-900 bg-sand-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-black flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5 disabled:opacity-30 disabled:pointer-events-none transition-all hover:bg-sand-200 dark:hover:bg-stone-700"
+                  title="Increase Episode (+1)"
+                >
+                  <Plus className="w-5 h-5 stroke-[3]" />
+                </button>
+              </div>
 
-            <button
-              onClick={handleSetLatest}
-              className={`px-3 py-1.5 text-xs font-bold rounded-md border-2 border-stone-900 flex items-center gap-1.5 transition-all ${
-                selectedEp === effectiveMax 
-                  ? 'bg-emerald-400 text-stone-950 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] font-black' 
-                  : 'bg-sand-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-sand-200'
-              }`}
-            >
-              <Zap className="w-3.5 h-3.5 fill-stone-950 text-stone-950" />
-              <span>Latest (Ep {effectiveMax})</span>
-            </button>
-          </div>
+              {/* Quick Select Shortcut Buttons */}
+              <div className="flex gap-2 justify-center pt-1">
+                <button
+                  onClick={() => handleSelectPill(1)}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-md border-2 border-stone-900 transition-all ${
+                    selectedEp === 1 
+                      ? 'bg-amber-400 text-stone-950 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] font-black' 
+                      : 'bg-sand-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-sand-200'
+                  }`}
+                >
+                  Start at Ep 1
+                </button>
+
+                <button
+                  onClick={handleSetLatest}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-md border-2 border-stone-900 flex items-center gap-1.5 transition-all ${
+                    selectedEp === effectiveMax 
+                      ? 'bg-emerald-400 text-stone-950 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] font-black' 
+                      : 'bg-sand-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-sand-200'
+                  }`}
+                >
+                  <Zap className="w-3.5 h-3.5 fill-stone-950 text-stone-950" />
+                  <span>Latest (Ep {effectiveMax})</span>
+                </button>
+              </div>
+            </>
+          )}
 
           {/* Episode Pills Grid */}
           {epPills.length > 1 && (

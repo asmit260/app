@@ -27,6 +27,7 @@ import {
 import { anilistQuery, SEARCH_ANIME_QUERY, EXPLORE_PAGE_QUERY } from '../../services/anilist';
 import { sound } from '../../services/soundEffects';
 import { burstConfetti } from '../../utils/confetti';
+import { isAnimeOngoing, getMaxAiredEpisode, getAvailableStatusIds } from '../../utils/animeRules';
 import QuickEpisodeModal from '../Common/QuickEpisodeModal';
 
 const GENRES = [
@@ -190,6 +191,10 @@ export default function ExploreView({
     }
 
     if (statusId === 'completed') {
+      if (isAnimeOngoing(anime)) {
+        sound.playError();
+        return;
+      }
       sound.playCelebration();
       burstConfetti();
       onUpdateWatchlist(anime, 'completed', anime.episodes || null);
@@ -213,6 +218,8 @@ export default function ExploreView({
     const isWatching = tracked?.status === 'watching';
     const isCompleted = tracked?.status === 'completed';
     const isMenuOpen = activeMenuAnimeId === anime.id;
+    const allowedStatusIds = getAvailableStatusIds(anime);
+    const availableStatusOptions = STATUS_OPTIONS.filter(opt => allowedStatusIds.includes(opt.id));
 
     return (
       <div
@@ -292,7 +299,7 @@ export default function ExploreView({
                 <div className="px-2 py-0.5 text-[8px] font-mono font-black uppercase text-stone-500 border-b border-stone-900/20 mb-1">
                   Set Watch Status
                 </div>
-                {STATUS_OPTIONS.map(opt => {
+                {availableStatusOptions.map(opt => {
                   const OptIcon = opt.icon;
                   const isCurrent = tracked?.status === opt.id;
                   return (
@@ -562,11 +569,7 @@ export default function ExploreView({
           onClose={() => setPickerAnime(null)}
           anime={pickerAnime}
           currentEp={Number(watchlistMap[pickerAnime.id]?.episodes_watched) || 1}
-          maxAiredEp={
-            pickerAnime.nextAiringEpisode?.episode 
-              ? Math.max(1, pickerAnime.nextAiringEpisode.episode - 1)
-              : (pickerAnime.totalEpisodes || pickerAnime.episodes || 24)
-          }
+          maxAiredEp={getMaxAiredEpisode(pickerAnime, watchlistMap[pickerAnime.id]?.episodes_watched)}
           onConfirm={handleConfirmPickerEpisodes}
           titleLanguage={titleLanguage}
         />

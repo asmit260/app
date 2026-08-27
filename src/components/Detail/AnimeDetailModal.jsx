@@ -5,6 +5,7 @@ import { anilistQuery, ANIME_DETAIL_QUERY } from '../../services/anilist';
 import { getActiveAnimeAlerts } from '../../services/notifications';
 import { updateWatchlistRating, upsertWatchlistEntry, startRewatch } from '../../services/storage';
 import { sound } from '../../services/soundEffects';
+import { isAnimeOngoing, getMaxAiredEpisode } from '../../utils/animeRules';
 import { fireConfetti } from '../../utils/confetti';
 import AiringAlertModal from '../Schedule/AiringAlertModal';
 
@@ -112,12 +113,11 @@ export default function AnimeDetailModal({
     if (!detail) return;
     const current = effectiveEps;
     const next = Math.max(0, current + delta);
+    const isOngoing = isAnimeOngoing(detail);
 
-    // Limit check: For airing anime with known schedule, cap at latest aired episode; otherwise cap at totalEps
-    const maxAired = detail.nextAiringEpisode?.episode 
-      ? Math.max(1, detail.nextAiringEpisode.episode - 1) 
-      : (detail.airing_episode || null);
-    const effectiveLimit = maxAired || totalEps || null;
+    // Limit check: For ongoing anime, cap at latest aired episode; otherwise cap at totalEps
+    const maxAired = getMaxAiredEpisode(detail, current);
+    const effectiveLimit = isOngoing ? maxAired : (totalEps || maxAired);
 
     if (effectiveLimit && next > effectiveLimit && delta > 0) return;
 
@@ -125,7 +125,7 @@ export default function AnimeDetailModal({
     setSteppingAnim(true);
     setTimeout(() => setSteppingAnim(false), 300);
 
-    const isFinished = totalEps && next >= totalEps;
+    const isFinished = !isOngoing && totalEps && next >= totalEps;
     if (isFinished) {
       sound.playCelebration();
       fireConfetti();
@@ -139,6 +139,10 @@ export default function AnimeDetailModal({
 
   const handleStatusChange = async (stId) => {
     if (stId === 'completed') {
+      if (isAnimeOngoing(detail)) {
+        sound.playError();
+        return;
+      }
       sound.playCelebration();
       fireConfetti();
     } else {
@@ -286,7 +290,7 @@ export default function AnimeDetailModal({
 
                 {/* Status Pill Buttons Grid */}
                 <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
-                  {(detail.status === 'RELEASING' ? STATUS_LIST.filter(s => s.id !== 'completed') : STATUS_LIST).map(st => {
+                  {(isAnimeOngoing(detail) ? STATUS_LIST.filter(s => s.id !== 'completed') : STATUS_LIST).map(st => {
                     const isSelected = currentEntry?.status === st.id;
                     return (
                       <button

@@ -24,6 +24,7 @@ import {
   saveProfileSettings
 } from './services/storage';
 import { getUser, onAuthChange } from './services/auth';
+import { isAnimeOngoing, getMaxAiredEpisode } from './utils/animeRules';
 
 class ViewErrorBoundary extends React.Component {
   constructor(props) {
@@ -286,18 +287,18 @@ export default function App() {
 
     checkAuthOrPrompt(async () => {
       const current = Number(item.episodes_watched) || 0;
+      const isOngoing = isAnimeOngoing(item);
       
-      // Check max episode limit for airing vs completed
-      const maxAired = item.nextAiringEpisode?.episode ? item.nextAiringEpisode.episode - 1 : (item.airing_episode || null);
-      const maxLimit = maxAired || item.total_episodes || null;
+      // Check max episode limit for ongoing vs completed
+      const maxLimit = isOngoing ? getMaxAiredEpisode(item, current) : (item.total_episodes || getMaxAiredEpisode(item, current));
 
       if (maxLimit && current >= maxLimit) {
-        showToast(maxAired ? `Already caught up to Episode ${current}!` : `All ${item.total_episodes} episodes completed!`);
+        showToast(isOngoing ? `Already caught up to Episode ${current}!` : `All ${item.total_episodes} episodes completed!`);
         return;
       }
 
       const nextEp = current + 1;
-      const isFinished = item.total_episodes && nextEp >= item.total_episodes;
+      const isFinished = !isOngoing && item.total_episodes && nextEp >= item.total_episodes;
       const status = isFinished ? 'completed' : item.status;
 
       const fullAnime = buildAnimeFromWatchlistItem(animeId, item);

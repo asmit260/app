@@ -176,6 +176,11 @@ query SearchAnime($search: String, $page: Int, $sort: [MediaSort]) {
       popularity
       genres
       description(asHtml: false)
+      nextAiringEpisode {
+        airingAt
+        timeUntilAiring
+        episode
+      }
       studios(isMain: true) {
         nodes {
           name
@@ -211,6 +216,11 @@ query ExploreVibe($genre: String, $page: Int) {
       status
       genres
       description(asHtml: false)
+      nextAiringEpisode {
+        airingAt
+        timeUntilAiring
+        episode
+      }
       studios(isMain: true) {
         nodes {
           name
@@ -340,6 +350,11 @@ query GetExploreContent($season: MediaSeason, $seasonYear: Int) {
       averageScore
       popularity
       genres
+      nextAiringEpisode {
+        airingAt
+        timeUntilAiring
+        episode
+      }
     }
   }
   topRated: Page(page: 1, perPage: 12) {
@@ -354,6 +369,11 @@ query GetExploreContent($season: MediaSeason, $seasonYear: Int) {
       averageScore
       popularity
       genres
+      nextAiringEpisode {
+        airingAt
+        timeUntilAiring
+        episode
+      }
     }
   }
   movies: Page(page: 1, perPage: 12) {
@@ -368,6 +388,11 @@ query GetExploreContent($season: MediaSeason, $seasonYear: Int) {
       averageScore
       popularity
       genres
+      nextAiringEpisode {
+        airingAt
+        timeUntilAiring
+        episode
+      }
     }
   }
   popularThisSeason: Page(page: 1, perPage: 12) {
@@ -382,6 +407,11 @@ query GetExploreContent($season: MediaSeason, $seasonYear: Int) {
       averageScore
       popularity
       genres
+      nextAiringEpisode {
+        airingAt
+        timeUntilAiring
+        episode
+      }
     }
   }
 }`;
