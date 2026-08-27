@@ -36,6 +36,7 @@ export default function WatchlistCard({
   const score = item.score || 0;
   const rewatchCount = item.rewatch_count || 0;
   const status = item.status || 'watching';
+  const displayTitle = overrideTitle || item.anime_title || 'Anime';
   const isOngoing = isAnimeOngoing(item);
   const maxAired = getMaxAiredEpisode(item, watched);
   const effectiveLimit = isOngoing ? maxAired : (totalEps || maxAired);
