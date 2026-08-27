@@ -6,6 +6,7 @@ class SoundEffectsManager {
     this.ctx = null;
     this.enabled = true;
     this.loadPreference();
+    this.attachPrewarmListeners();
   }
 
   loadPreference() {
@@ -15,6 +16,19 @@ class SoundEffectsManager {
         this.enabled = stored === 'true';
       }
     } catch (_) {}
+  }
+
+  attachPrewarmListeners() {
+    if (typeof window === 'undefined') return;
+    const unlock = () => {
+      this.init();
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('touchstart', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+    window.addEventListener('pointerdown', unlock, { passive: true, once: true });
+    window.addEventListener('touchstart', unlock, { passive: true, once: true });
+    window.addEventListener('keydown', unlock, { passive: true, once: true });
   }
 
   setEnabled(val) {

@@ -312,33 +312,74 @@ export default function App() {
   const handleUpdateWatchlist = async (anime, status, eps = null) => {
     const titleText = anime?.title?.english || anime?.title?.romaji || anime?.anime_title || anime?.title || 'anime';
     checkAuthOrPrompt(async () => {
-      // If anime is a full object from AniList (has title object or coverImage), use it directly
-      // If anime is a bare {id} (from MyListView), look up the existing watchlist entry to preserve metadata
       let fullAnime = anime;
-      const animeId = anime.id || anime.anime_id;
+      const animeId = parseInt(anime.id || anime.anime_id);
 
       if (!anime.title && !anime.anime_title && !anime.coverImage) {
-        // Bare ID — look up existing entry in current watchlist state
         const existingItem = watchlist.find(i => 
-          (i.anime_id == animeId || i.id == animeId)
+          (parseInt(i.anime_id || i.id) === animeId)
         );
         fullAnime = buildAnimeFromWatchlistItem(animeId, existingItem);
       }
 
-      const updated = await upsertWatchlistEntry(fullAnime, status, eps);
-      if (updated) {
-        await loadAllData();
-        if (eps !== null) {
-          showToast(`Caught up on "${updated.anime_title}" (Ep ${eps})`);
-        } else {
-          showToast(`Saved "${updated.anime_title}" to ${status.replace('_', ' ')}`);
+      // Extract cover safely
+      let coverUrl = '';
+      if (fullAnime.coverImage) {
+        if (typeof fullAnime.coverImage === 'string') coverUrl = fullAnime.coverImage;
+        else coverUrl = fullAnime.coverImage.large || fullAnime.coverImage.medium || fullAnime.coverImage.extraLarge || '';
+      }
+      if (!coverUrl) coverUrl = fullAnime.anime_cover || '';
+
+      const targetTitle = typeof fullAnime.title === 'string' ? fullAnime.title : (fullAnime.title?.english || fullAnime.title?.romaji || fullAnime.anime_title || titleText);
+      const totalEps = fullAnime.totalEpisodes || fullAnime.total_episodes || fullAnime.episodes || null;
+
+      // OPTIMISTIC SYNC UPDATE: Update React state immediately (<1ms)
+      setWatchlist(prev => {
+        const idx = prev.findIndex(i => parseInt(i.anime_id || i.id) === animeId);
+        const existing = idx >= 0 ? prev[idx] : null;
+        const newWatched = eps !== null 
+          ? eps 
+          : (existing ? existing.episodes_watched : (status === 'completed' && totalEps ? totalEps : (status === 'watching' ? 1 : 0)));
+
+        const optimisticItem = {
+          ...(existing || {}),
+          id: existing?.id || `wl_${animeId}`,
+          anime_id: animeId,
+          status,
+          anime_title: targetTitle,
+          anime_cover: coverUrl,
+          total_episodes: totalEps,
+          episodes_watched: newWatched,
+          updated_at: new Date().toISOString()
+        };
+
+        if (idx >= 0) {
+          const copy = [...prev];
+          copy[idx] = optimisticItem;
+          return copy;
         }
+        return [optimisticItem, ...prev];
+      });
+
+      // Show toast feedback immediately
+      if (eps !== null) {
+        showToast(`Caught up on "${targetTitle}" (Ep ${eps})`);
+      } else {
+        showToast(`Saved "${targetTitle}" to ${status.replace('_', ' ')}`);
+      }
+
+      // Persist to storage & cloud asynchronously in background
+      try {
+        await upsertWatchlistEntry(fullAnime, status, eps);
+      } catch (err) {
+        console.warn("Background upsert error:", err);
       }
     }, `track "${titleText}" in your watchlist`);
   };
 
   const handleIncrementEpisode = async (animeId) => {
-    const item = watchlist.find(i => (i.anime_id == animeId || i.id == animeId));
+    const numId = parseInt(animeId);
+    const item = watchlist.find(i => (parseInt(i.anime_id || i.id) === numId));
     if (!item) return;
 
     checkAuthOrPrompt(async () => {
@@ -357,17 +398,44 @@ export default function App() {
       const isFinished = !isOngoing && item.total_episodes && nextEp >= item.total_episodes;
       const status = isFinished ? 'completed' : item.status;
 
-      const fullAnime = buildAnimeFromWatchlistItem(animeId, item);
-      await upsertWatchlistEntry(fullAnime, status, nextEp);
-      await loadAllData();
+      // OPTIMISTIC SYNC UPDATE: Update React state immediately (<1ms)
+      setWatchlist(prev => {
+        return prev.map(i => {
+          if (parseInt(i.anime_id || i.id) === numId) {
+            return {
+              ...i,
+              episodes_watched: nextEp,
+              status,
+              updated_at: new Date().toISOString()
+            };
+          }
+          return i;
+        });
+      });
+
       showToast(`+1 Episode logged for "${item.anime_title}" (${nextEp})`);
+
+      // Persist to storage & cloud asynchronously in background
+      try {
+        const fullAnime = buildAnimeFromWatchlistItem(numId, item);
+        await upsertWatchlistEntry(fullAnime, status, nextEp);
+      } catch (err) {
+        console.warn("Background increment error:", err);
+      }
     }, `log episode progress for "${item.anime_title}"`);
   };
 
   const handleRemoveWatchlistItem = async (animeId) => {
-    await removeWatchlistEntry(animeId);
-    await loadAllData();
+    const numId = parseInt(animeId);
+    // OPTIMISTIC SYNC UPDATE: Remove from React state immediately (<1ms)
+    setWatchlist(prev => prev.filter(i => parseInt(i.anime_id || i.id) !== numId));
     showToast("Removed anime from watchlist");
+
+    try {
+      await removeWatchlistEntry(numId);
+    } catch (err) {
+      console.warn("Background remove error:", err);
+    }
   };
 
   const watchingCount = watchlist.filter(i => i.status === 'watching').length;
