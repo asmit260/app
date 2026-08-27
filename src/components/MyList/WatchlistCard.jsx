@@ -36,8 +36,10 @@ export default function WatchlistCard({
   const score = item.score || 0;
   const rewatchCount = item.rewatch_count || 0;
   const status = item.status || 'watching';
-  const displayTitle = overrideTitle || item.anime_title || 'Anime';
   const isOngoing = isAnimeOngoing(item);
+  const maxAired = getMaxAiredEpisode(item, watched);
+  const effectiveLimit = isOngoing ? maxAired : (totalEps || maxAired);
+  const isAtMax = effectiveLimit ? watched >= effectiveLimit : false;
 
   const progressPercent = totalEps ? Math.min(100, Math.round((watched / totalEps) * 100)) : (watched > 0 ? 100 : 0);
   const statusTheme = STATUS_THEMES[status] || STATUS_THEMES.watching;
@@ -47,9 +49,6 @@ export default function WatchlistCard({
     const nextEp = Math.max(0, watched + delta);
 
     // Limit check: For ongoing anime, cap at latest aired episode; otherwise cap at totalEps
-    const maxAired = getMaxAiredEpisode(item, watched);
-    const effectiveLimit = isOngoing ? maxAired : (totalEps || maxAired);
-
     if (effectiveLimit && nextEp > effectiveLimit && delta > 0) return;
 
     sound.playEpisodeStep();
@@ -199,7 +198,7 @@ export default function WatchlistCard({
 
               <button
                 onClick={(e) => handleStep(e, 1)}
-                disabled={totalEps && watched >= totalEps}
+                disabled={isAtMax}
                 className="px-2.5 py-0.5 bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-[11px] flex items-center gap-0.5 transition-colors disabled:opacity-40"
                 title="Log +1 Episode Watched"
               >
@@ -288,8 +287,8 @@ export default function WatchlistCard({
         <div className="flex items-center gap-1.5 shrink-0">
           <button
             onClick={(e) => handleStep(e, 1)}
-            disabled={totalEps && watched >= totalEps}
-            className="btn-manga bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs px-2 py-1 rounded font-mono font-black flex items-center gap-0.5 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5"
+            disabled={isAtMax}
+            className="btn-manga bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs px-2 py-1 rounded font-mono font-black flex items-center gap-0.5 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5 disabled:opacity-40"
             title="Log +1 Episode"
           >
             <Plus className="w-3 h-3 stroke-[3]" />
@@ -355,8 +354,8 @@ export default function WatchlistCard({
         {/* Quick Stepper Overlay on Cover */}
         <button
           onClick={(e) => handleStep(e, 1)}
-          disabled={totalEps && watched >= totalEps}
-          className="absolute bottom-1.5 right-1.5 btn-manga bg-amber-400 hover:bg-amber-300 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] flex items-center gap-0.5"
+          disabled={isAtMax}
+          className="absolute bottom-1.5 right-1.5 btn-manga bg-amber-400 hover:bg-amber-300 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] flex items-center gap-0.5 disabled:opacity-40"
           title="Quick +1"
         >
           <Plus className="w-3 h-3 stroke-[3]" />

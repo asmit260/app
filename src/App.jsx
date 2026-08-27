@@ -24,6 +24,7 @@ import {
   saveProfileSettings
 } from './services/storage';
 import { getUser, onAuthChange } from './services/auth';
+import { fetchWatchlistAiringMap } from './services/anilist';
 import { isAnimeOngoing, getMaxAiredEpisode } from './utils/animeRules';
 
 class ViewErrorBoundary extends React.Component {
@@ -117,9 +118,64 @@ export default function App() {
         getProfileSettings()
       ]);
       
-      setWatchlist(list || []);
+      const rawList = list || [];
+      setWatchlist(rawList);
       setHistory(hist || []);
       if (userProfile) setProfile(userProfile);
+
+      // Enrich watchlist with live AniList airing metadata and clamp ongoing episodes
+      const animeIds = rawList.map(i => parseInt(i.anime_id || i.id)).filter(Boolean);
+      if (animeIds.length > 0) {
+        fetchWatchlistAiringMap(animeIds).then(airingMap => {
+          if (airingMap && Object.keys(airingMap).length > 0) {
+            setWatchlist(prev => {
+              let changed = false;
+              const enriched = prev.map(item => {
+                const id = parseInt(item.anime_id || item.id);
+                const info = airingMap[id];
+                if (!info) return item;
+
+                const mediaStatus = info.status || item.media_status;
+                const nextAiring = info.nextAiringEpisode || item.nextAiringEpisode;
+                const total = info.episodes || item.total_episodes;
+                const maxAired = nextAiring?.episode 
+                  ? Math.max(1, nextAiring.episode - 1) 
+                  : (mediaStatus === 'NOT_YET_RELEASED' ? 0 : null);
+
+                let curWatched = Number(item.episodes_watched) || 0;
+                let curStatus = item.status;
+
+                // Strict clamp for ongoing anime
+                const isOngoing = mediaStatus === 'RELEASING' || mediaStatus === 'NOT_YET_RELEASED' || mediaStatus === 'HIATUS' || !!nextAiring;
+                if (isOngoing) {
+                  if (curStatus === 'completed') curStatus = 'watching';
+                  if (maxAired !== null && curWatched > maxAired) curWatched = maxAired;
+                }
+
+                if (
+                  item.media_status !== mediaStatus ||
+                  item.total_episodes !== total ||
+                  item.episodes_watched !== curWatched ||
+                  item.status !== curStatus ||
+                  JSON.stringify(item.nextAiringEpisode) !== JSON.stringify(nextAiring)
+                ) {
+                  changed = true;
+                  return {
+                    ...item,
+                    media_status: mediaStatus,
+                    nextAiringEpisode: nextAiring,
+                    total_episodes: total,
+                    episodes_watched: curWatched,
+                    status: curStatus
+                  };
+                }
+                return item;
+              });
+              return changed ? enriched : prev;
+            });
+          }
+        }).catch(() => {});
+      }
       
       // Determine theme strictly from user preference (default: light)
       // Never force dark based on OS matchMedia

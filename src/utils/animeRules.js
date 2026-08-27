@@ -10,22 +10,27 @@
  */
 export function isAnimeOngoing(anime) {
   if (!anime) return false;
-  const status = String(anime.status || '').toUpperCase();
+  const mediaStatus = String(anime.media_status || anime.mediaStatus || '').toUpperCase();
+  const rawStatus = String(anime.status || '').toUpperCase();
   
-  if (status === 'RELEASING' || status === 'NOT_YET_RELEASED' || status === 'HIATUS') {
+  if (['RELEASING', 'NOT_YET_RELEASED', 'HIATUS'].includes(mediaStatus)) {
     return true;
   }
-  if (anime.nextAiringEpisode && anime.nextAiringEpisode.episode) {
+  if (['RELEASING', 'NOT_YET_RELEASED', 'HIATUS'].includes(rawStatus)) {
+    return true;
+  }
+  if (anime.nextAiringEpisode && typeof anime.nextAiringEpisode.episode === 'number') {
+    return true;
+  }
+  if (anime.airing_episode && Number(anime.airing_episode) > 0 && (anime.total_episodes || anime.episodes) && Number(anime.airing_episode) < Number(anime.total_episodes || anime.episodes)) {
     return true;
   }
   if (anime.airingInfo && !anime.airingInfo.isFinished) {
     return true;
   }
-  // If explicitly FINISHED, it's not ongoing
-  if (status === 'FINISHED') {
+  if (mediaStatus === 'FINISHED' || rawStatus === 'FINISHED') {
     return false;
   }
-  // Fallback: If no total episodes or status is undefined but next airing exists
   return false;
 }
 
@@ -37,10 +42,11 @@ export function isAnimeOngoing(anime) {
  */
 export function getMaxAiredEpisode(anime, currentWatched = null) {
   if (!anime) return 1;
-  const status = String(anime.status || '').toUpperCase();
+  const mediaStatus = String(anime.media_status || anime.mediaStatus || '').toUpperCase();
+  const rawStatus = String(anime.status || '').toUpperCase();
 
   // 1. Not yet released -> 0 episodes aired
-  if (status === 'NOT_YET_RELEASED') {
+  if (mediaStatus === 'NOT_YET_RELEASED' || rawStatus === 'NOT_YET_RELEASED') {
     return 0;
   }
 
@@ -63,11 +69,15 @@ export function getMaxAiredEpisode(anime, currentWatched = null) {
 
   // 5. Finished series -> total episodes
   const total = Number(anime.totalEpisodes || anime.total_episodes || anime.episodes);
-  if (status === 'FINISHED' && total > 0) {
+  if ((mediaStatus === 'FINISHED' || rawStatus === 'FINISHED') && total > 0) {
     return total;
   }
 
-  // 6. If ongoing but no airing schedule available, cap to total episodes if known or current watched
+  // 6. If ongoing but no airing schedule available, cap to watched or total
+  if (isAnimeOngoing(anime)) {
+    return Math.max(1, Number(currentWatched) || 1);
+  }
+
   if (total > 0) {
     return total;
   }

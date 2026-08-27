@@ -416,6 +416,42 @@ query GetExploreContent($season: MediaSeason, $seasonYear: Int) {
   }
 }`;
 
+export async function fetchWatchlistAiringMap(ids) {
+  if (!Array.isArray(ids) || ids.length === 0) return {};
+  const cleanIds = ids.map(id => Number(id)).filter(id => id > 0);
+  if (cleanIds.length === 0) return {};
+
+  const query = `
+    query ($ids: [Int]) {
+      Page(page: 1, perPage: 50) {
+        media(id_in: $ids, type: ANIME) {
+          id
+          status
+          episodes
+          nextAiringEpisode {
+            airingAt
+            timeUntilAiring
+            episode
+          }
+        }
+      }
+    }
+  `;
+
+  try {
+    const res = await anilistQuery(query, { ids: cleanIds.slice(0, 50) });
+    const mediaList = res?.Page?.media || [];
+    const map = {};
+    mediaList.forEach(m => {
+      map[m.id] = m;
+    });
+    return map;
+  } catch (err) {
+    console.warn("Failed to fetch watchlist airing map:", err);
+    return {};
+  }
+}
+
 export async function prefetchInitialData() {
   const now = new Date();
   const targetStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
