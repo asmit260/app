@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Film, LayoutGrid, List, Columns2, Sparkles, Flame, Trophy, Bookmark, PauseCircle, XCircle, Layers } from 'lucide-react';
+import { Film, LayoutGrid, List, Columns2, Sparkles, Flame, Trophy, Bookmark, PauseCircle, XCircle, Layers, ArrowUpDown } from 'lucide-react';
 import WatchlistCard from './WatchlistCard';
 import FranchiseCard from './FranchiseCard';
 import QuickEpisodeModal from '../Common/QuickEpisodeModal';
@@ -27,6 +27,13 @@ export default function MyListView({
 }) {
   const [activeStatus, setActiveStatus] = useState('all');
   const [viewMode, setViewMode] = useState('compact'); // 'compact' | 'dense' | 'grid'
+  const [sortBy, setSortBy] = useState(() => {
+    try {
+      return localStorage.getItem('anitrack_watchlist_sort') || 'added_desc';
+    } catch (_) {
+      return 'added_desc';
+    }
+  });
   const [groupBySeries, setGroupBySeries] = useState(() => {
     try {
       const stored = localStorage.getItem('anitrack_group_series');
@@ -37,6 +44,13 @@ export default function MyListView({
   });
   const [pickerAnime, setPickerAnime] = useState(null);
   const [rewatchTarget, setRewatchTarget] = useState(null);
+
+  const handleSortChange = (newSort) => {
+    setSortBy(newSort);
+    try {
+      localStorage.setItem('anitrack_watchlist_sort', newSort);
+    } catch (_) {}
+  };
 
   const handleToggleGroupSeries = () => {
     setGroupBySeries(prev => {
@@ -59,12 +73,32 @@ export default function MyListView({
     return counts;
   }, [watchlist]);
 
-  // Filtered Watchlist Items (Naturally ordered by recently updated/active)
+  // Filtered & Stably Sorted Watchlist Items (Does not jump around when logging progress!)
   const filteredList = useMemo(() => {
-    return watchlist
-      .filter(item => activeStatus === 'all' || item.status === activeStatus)
-      .sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0));
-  }, [watchlist, activeStatus]);
+    const list = watchlist.filter(item => activeStatus === 'all' || item.status === activeStatus);
+
+    return [...list].sort((a, b) => {
+      if (sortBy === 'title_asc') {
+        return (a.anime_title || '').localeCompare(b.anime_title || '');
+      }
+      if (sortBy === 'score_desc') {
+        return (b.score || 0) - (a.score || 0);
+      }
+      if (sortBy === 'progress_desc') {
+        const pA = a.total_episodes ? (Number(a.episodes_watched) || 0) / a.total_episodes : 0;
+        const pB = b.total_episodes ? (Number(b.episodes_watched) || 0) / b.total_episodes : 0;
+        return pB - pA;
+      }
+      if (sortBy === 'activity_desc') {
+        return new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0);
+      }
+      // Default: 'added_desc' - Stable Added Date / Insertion Order (Does NOT jump when updating progress)
+      const timeA = new Date(a.created_at || 0).getTime() || 0;
+      const timeB = new Date(b.created_at || 0).getTime() || 0;
+      if (timeA && timeB && timeA !== timeB) return timeB - timeA;
+      return 0;
+    });
+  }, [watchlist, activeStatus, sortBy]);
 
   // Grouped Watchlist by Franchise / Series
   const franchiseGroups = useMemo(() => {
@@ -160,6 +194,23 @@ export default function MyListView({
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
               </button>
+            </div>
+
+            {/* Sort Dropdown */}
+            <div className="relative flex items-center bg-sand-100 dark:bg-sand-300 rounded-md border-2 border-stone-900 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] px-1.5 py-1">
+              <ArrowUpDown className="w-3 h-3 text-stone-600 dark:text-stone-300 mr-1 pointer-events-none shrink-0" />
+              <select
+                value={sortBy}
+                onChange={(e) => handleSortChange(e.target.value)}
+                className="bg-transparent text-[11px] font-black text-ink-900 cursor-pointer focus:outline-none appearance-none pr-1"
+                title="Sort Watchlist Order"
+              >
+                <option value="added_desc" className="bg-sand-50 dark:bg-stone-900 text-stone-900 dark:text-stone-100">Added</option>
+                <option value="title_asc" className="bg-sand-50 dark:bg-stone-900 text-stone-900 dark:text-stone-100">Title A-Z</option>
+                <option value="score_desc" className="bg-sand-50 dark:bg-stone-900 text-stone-900 dark:text-stone-100">Top Rated</option>
+                <option value="progress_desc" className="bg-sand-50 dark:bg-stone-900 text-stone-900 dark:text-stone-100">Progress</option>
+                <option value="activity_desc" className="bg-sand-50 dark:bg-stone-900 text-stone-900 dark:text-stone-100">Activity</option>
+              </select>
             </div>
           </div>
         </div>
