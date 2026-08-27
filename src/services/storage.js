@@ -1,8 +1,6 @@
-// Supabase & Offline-First Storage Manager
-// Provides instant zero-latency local storage for guest/offline use and seamless Supabase Cloud sync when authenticated
-
 import { supabase } from './supabase.js';
 import { getUser } from './auth.js';
+import { isAnimeOngoing, getMaxAiredEpisode } from '../utils/animeRules.js';
 
 const LOCAL_WATCHLIST_KEY = 'anitrack_local_watchlist';
 const LOCAL_HISTORY_KEY = 'anitrack_local_history';
@@ -15,10 +13,37 @@ function isValidUUID(id) {
 
 // ─── Local Storage Accessors ────────────────────────────────────────────────
 
+function sanitizeWatchlistItems(items) {
+  if (!Array.isArray(items)) return [];
+  let modified = false;
+  const sanitized = items.map(item => {
+    if (isAnimeOngoing(item)) {
+      const maxAired = getMaxAiredEpisode(item);
+      let updated = { ...item };
+      if (updated.status === 'completed') {
+        updated.status = 'watching';
+        modified = true;
+      }
+      if (maxAired && Number(updated.episodes_watched) > maxAired) {
+        updated.episodes_watched = maxAired;
+        modified = true;
+      }
+      return updated;
+    }
+    return item;
+  });
+  if (modified) {
+    try {
+      localStorage.setItem(LOCAL_WATCHLIST_KEY, JSON.stringify(sanitized));
+    } catch (_) {}
+  }
+  return sanitized;
+}
+
 function getLocalWatchlist() {
   try {
     const raw = localStorage.getItem(LOCAL_WATCHLIST_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) return sanitizeWatchlistItems(JSON.parse(raw));
 
     // Auto-migrate from previous mock database if it exists
     const mockRaw = localStorage.getItem('anitrack_mock_db');
@@ -136,16 +161,22 @@ export async function upsertWatchlistEntry(anime, status, episodesWatched = null
   if (!animeId) return null;
 
   const existing = await getWatchlistItem(animeId);
+  const isOngoing = isAnimeOngoing(anime);
+
+  let targetStatus = status;
+  if (targetStatus === 'completed' && isOngoing) {
+    targetStatus = 'watching';
+  }
 
   let finalEpisodesWatched = episodesWatched !== null 
     ? episodesWatched 
-    : (existing ? existing.episodes_watched : (status === 'completed' && (anime.episodes || anime.totalEpisodes) ? (anime.episodes || anime.totalEpisodes) : (status === 'watching' ? 1 : 0)));
+    : (existing ? existing.episodes_watched : (targetStatus === 'completed' && (anime.episodes || anime.totalEpisodes) ? (anime.episodes || anime.totalEpisodes) : (targetStatus === 'watching' ? 1 : 0)));
 
   // Strict Episode Limit Enforcement:
-  const maxAired = anime.nextAiringEpisode?.episode 
-    ? Math.max(1, anime.nextAiringEpisode.episode - 1)
-    : (anime.airing_episode || null);
-  const effectiveMaxEp = maxAired || anime.totalEpisodes || anime.episodes || (existing ? existing.total_episodes : null);
+  const maxAired = getMaxAiredEpisode(anime, episodesWatched);
+  const effectiveMaxEp = isOngoing 
+    ? maxAired 
+    : (anime.totalEpisodes || anime.episodes || (existing ? existing.total_episodes : maxAired));
 
   if (effectiveMaxEp && Number(finalEpisodesWatched) > effectiveMaxEp) {
     finalEpisodesWatched = effectiveMaxEp;
@@ -187,7 +218,7 @@ export async function upsertWatchlistEntry(anime, status, episodesWatched = null
     id: existing?.id || `wl_${animeId}`,
     user_id: userId,
     anime_id: animeId,
-    status,
+    status: targetStatus,
     anime_title: titleStr,
     anime_cover: coverUrl,
     genres: genresArr,
@@ -199,10 +230,10 @@ export async function upsertWatchlistEntry(anime, status, episodesWatched = null
     updated_at: new Date().toISOString()
   };
 
-  if (status === 'completed' && payload.total_episodes) {
+  if (targetStatus === 'completed' && payload.total_episodes) {
     payload.episodes_watched = payload.total_episodes;
     payload.finish_date = new Date().toISOString().split('T')[0];
-  } else if (status === 'watching' && (!existing || !existing.start_date)) {
+  } else if (targetStatus === 'watching' && (!existing || !existing.start_date)) {
     payload.start_date = new Date().toISOString().split('T')[0];
   }
 
