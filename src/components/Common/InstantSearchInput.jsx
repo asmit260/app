@@ -96,7 +96,7 @@ export default function InstantSearchInput({
     sound.playTap();
   };
 
-  // Real-time predictive autocomplete fetcher
+  // Real-time predictive autocomplete fetcher (0ms for 1-2 chars, 200ms for 3+ chars)
   useEffect(() => {
     const trimmed = query.trim();
     if (!trimmed) {
@@ -106,12 +106,14 @@ export default function InstantSearchInput({
     }
 
     let active = true;
-    setLoading(true);
+    
+    // For 1-2 characters, resolve instantly in 0ms from local memory trie
+    const debounceDelay = trimmed.length <= 2 ? 0 : 200;
+    if (debounceDelay > 0) setLoading(true);
 
-    // Fast 100ms debounce
     const timer = setTimeout(async () => {
       try {
-        const results = await getRealtimeSearchSuggestions(trimmed, 7);
+        const results = await getRealtimeSearchSuggestions(trimmed, 5);
         if (active) {
           setSuggestions(results);
           setSelectedIndex(-1);
@@ -121,7 +123,7 @@ export default function InstantSearchInput({
       } finally {
         if (active) setLoading(false);
       }
-    }, 100);
+    }, debounceDelay);
 
     return () => {
       active = false;
