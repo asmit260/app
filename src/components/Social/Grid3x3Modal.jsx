@@ -39,58 +39,57 @@ const TIER_CONFIG = [
 ];
 
 /**
- * Robust CORS-Safe Canvas Image Loader
- * Fetches images as blob/objectURL or proxies via wsrv.nl to prevent canvas tainting.
+ * Multi-Tier Robust CORS-Safe Canvas Image Loader
+ * 1. Tries local Vite proxy endpoint (/api/proxy-image)
+ * 2. Tries corsproxy.org
+ * 3. Tries allorigins.win
+ * 4. Tries direct blob fetch & object URL
+ * 5. Tries direct Image with crossOrigin
  */
 async function loadCanvasImage(url) {
   if (!url) return null;
 
-  // Try 1: Fetch as blob with CORS & convert to Object URL
-  try {
-    const res = await fetch(url, { mode: 'cors' });
-    if (res.ok) {
-      const blob = await res.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const img = new Image();
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
-        img.src = objectUrl;
-      });
-      return img;
-    }
-  } catch (_) {}
+  const candidateUrls = [
+    `/api/proxy-image?url=${encodeURIComponent(url)}`,
+    `https://corsproxy.org/?${encodeURIComponent(url)}`,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    url
+  ];
 
-  // Try 2: Safe public image proxy (wsrv.nl) with automatic CORS headers
-  try {
-    const proxyUrl = `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=600&fit=cover&output=jpg`;
-    const res = await fetch(proxyUrl, { mode: 'cors' });
-    if (res.ok) {
-      const blob = await res.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const img = new Image();
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
-        img.src = objectUrl;
-      });
-      return img;
+  for (const target of candidateUrls) {
+    try {
+      const res = await fetch(target, { mode: target.startsWith('/') ? 'same-origin' : 'cors' });
+      if (res.ok) {
+        const blob = await res.blob();
+        if (blob && blob.size > 100) {
+          const objectUrl = URL.createObjectURL(blob);
+          const img = new Image();
+          await new Promise((resolve, reject) => {
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+            img.src = objectUrl;
+          });
+          return img;
+        }
+      }
+    } catch (_) {
+      // Continue to next candidate fallback
     }
-  } catch (_) {}
+  }
 
-  // Try 3: Direct anonymous image load
+  // Final fallback: Direct anonymous Image loader
   try {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     await new Promise((resolve, reject) => {
-      img.onload = resolve;
+      img.onload = () => resolve(img);
       img.onerror = reject;
       img.src = url;
     });
     return img;
-  } catch (_) {}
-
-  return null;
+  } catch (_) {
+    return null;
+  }
 }
 
 export default function Grid3x3Modal({
