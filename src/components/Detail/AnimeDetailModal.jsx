@@ -18,7 +18,8 @@ import {
   RotateCcw,
   Layers,
   MessageSquare,
-  ShieldAlert
+  ShieldAlert,
+  Sliders
 } from 'lucide-react';
 import { anilistQuery, ANIME_DETAIL_QUERY } from '../../services/anilist';
 import { getActiveAnimeAlerts } from '../../services/notifications';
@@ -30,6 +31,7 @@ import { getRedditEpisodeDiscussionUrl, getMalDiscussionUrl } from '../../utils/
 import { fetchAnimeFillerData } from '../../services/fillerData';
 import AiringAlertModal from '../Schedule/AiringAlertModal';
 import FranchiseTimelineModal from './FranchiseTimelineModal';
+import QuickEpisodeModal from '../Common/QuickEpisodeModal';
 
 const STATUS_LIST = [
   { id: 'watching', label: 'Watching', color: 'bg-status-watching text-white' },
@@ -52,6 +54,7 @@ export default function AnimeDetailModal({
   const [showTrailer, setShowTrailer] = useState(false);
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [showTimelineModal, setShowTimelineModal] = useState(false);
+  const [showQuickEpModal, setShowQuickEpModal] = useState(false);
   const [fillerData, setFillerData] = useState({ episodes: [], hasFiller: false });
   const [activeAlerts, setActiveAlerts] = useState({});
   const [localScore, setLocalScore] = useState(null);
@@ -166,6 +169,23 @@ export default function AnimeDetailModal({
     const newStatus = isFinished ? 'completed' : (currentEntry?.status || 'watching');
     // Delegate to App.jsx optimistic path via onUpdateStatus
     await onUpdateStatus(detail, newStatus, next);
+  };
+
+  const handleQuickEpConfirm = async (newEp) => {
+    if (!detail) return;
+    setLocalEps(newEp);
+    const isOngoing = isAnimeOngoing(detail);
+    const isFinished = !isOngoing && totalEps && newEp >= totalEps;
+
+    if (isFinished) {
+      sound.playCelebration();
+      fireConfetti();
+    } else {
+      sound.playSaveSuccess();
+    }
+
+    const newStatus = isFinished ? 'completed' : (currentEntry?.status || 'watching');
+    await onUpdateStatus(detail, newStatus, newEp);
   };
 
   const handleStatusChange = async (stId) => {
@@ -292,8 +312,18 @@ export default function AnimeDetailModal({
                     Tracking Status
                   </span>
                   
-                  {/* Airing Alert Button, Franchise Order, & Trailer Button */}
+                  {/* Airing Alert Button, Franchise Order, Episode Picker & Trailer Button */}
                   <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* Quick Episode Jump Picker Button */}
+                    <button
+                      onClick={() => setShowQuickEpModal(true)}
+                      className="btn-manga bg-sand-50 dark:bg-sand-300 hover:bg-amber-400 hover:text-stone-950 text-ink-900 text-xs px-2.5 py-1 flex items-center gap-1.5 font-bold shadow-2xs"
+                      title="Select or jump to any episode number with fast slider"
+                    >
+                      <Sliders className="w-3.5 h-3.5 text-amber-500" />
+                      <span>{effectiveEps > 0 ? `Ep ${effectiveEps} (Change)` : 'Set Episode'}</span>
+                    </button>
+
                     {detail.relations?.edges?.length > 0 && (
                       <button
                         onClick={() => setShowTimelineModal(true)}
@@ -390,7 +420,7 @@ export default function AnimeDetailModal({
                       </p>
                     </div>
 
-                    {/* Stepper Buttons */}
+                    {/* Stepper Buttons & Quick Modal Trigger */}
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => handleStepEpisode(-1)}
@@ -400,9 +430,18 @@ export default function AnimeDetailModal({
                       >
                         <Minus className="w-3.5 h-3.5" />
                       </button>
-                      <span className={`w-10 text-center font-mono font-black text-sm text-ink-900 ${steppingAnim ? 'animate-bounce-subtle text-amber-600 dark:text-amber-400' : ''}`}>
-                        {effectiveEps}
-                      </span>
+
+                      <button
+                        onClick={() => setShowQuickEpModal(true)}
+                        className={`px-2.5 py-1 rounded-md bg-amber-400 hover:bg-amber-300 border-2 border-stone-900 text-stone-950 font-mono font-black text-xs sm:text-sm flex items-center gap-1 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5 transition-all ${
+                          steppingAnim ? 'animate-bounce-subtle' : ''
+                        }`}
+                        title="Click to open episode jump modal & slider"
+                      >
+                        <span>Ep {effectiveEps}</span>
+                        <Sliders className="w-3 h-3 text-stone-950/70" />
+                      </button>
+
                       <button
                         onClick={() => handleStepEpisode(1)}
                         disabled={(() => {
@@ -709,6 +748,19 @@ export default function AnimeDetailModal({
           onUpdateWatchlist={(anime, status) => {
             onUpdateStatus(anime, status);
           }}
+          titleLanguage={titleLanguage}
+        />
+      )}
+
+      {/* Quick Episode Picker Modal */}
+      {detail && (
+        <QuickEpisodeModal
+          isOpen={showQuickEpModal}
+          onClose={() => setShowQuickEpModal(false)}
+          anime={detail}
+          currentEp={effectiveEps}
+          maxAiredEp={getMaxAiredEpisode(detail, effectiveEps)}
+          onConfirm={handleQuickEpConfirm}
           titleLanguage={titleLanguage}
         />
       )}
