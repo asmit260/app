@@ -25,6 +25,7 @@ import {
 } from './services/storage';
 import { getUser, onAuthChange } from './services/auth';
 import { fetchWatchlistAiringMap } from './services/anilist';
+import { enrichMalEntriesWithAniList } from './services/importers';
 import { isAnimeOngoing, getMaxAiredEpisode } from './utils/animeRules';
 
 class ViewErrorBoundary extends React.Component {
@@ -172,6 +173,34 @@ export default function App() {
                 return item;
               });
               return changed ? enriched : prev;
+            });
+          }
+        }).catch(() => {});
+      }
+
+      // Auto-heal missing anime covers & map MAL IDs to AniList IDs
+      const needsHeal = rawList.filter(item => !item.anime_cover || item.anime_cover.length < 5 || item.idMal);
+      if (needsHeal.length > 0) {
+        enrichMalEntriesWithAniList(needsHeal).then(healedItems => {
+          if (healedItems && healedItems.length > 0) {
+            const healedMap = new Map();
+            healedItems.forEach(h => {
+              if (h.idMal) healedMap.set(h.idMal, h);
+              if (h.id) healedMap.set(h.id, h);
+            });
+
+            setWatchlist(prev => {
+              let updatedAny = false;
+              const nextList = prev.map(item => {
+                const match = healedMap.get(item.idMal) || healedMap.get(item.id) || healedMap.get(item.anime_id);
+                if (match && match.anime_cover && match.anime_cover !== item.anime_cover) {
+                  updatedAny = true;
+                  upsertWatchlistEntry(match, match.status || item.status, match.episodes_watched || item.episodes_watched);
+                  return { ...item, ...match };
+                }
+                return item;
+              });
+              return updatedAny ? nextList : prev;
             });
           }
         }).catch(() => {});
