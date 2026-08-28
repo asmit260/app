@@ -1,6 +1,20 @@
 import React, { useState } from 'react';
-import { Sun, Moon, LogIn, User, RotateCw, Calendar, Compass, Newspaper, Bookmark, BarChart3 } from 'lucide-react';
+import { 
+  Sun, 
+  Moon, 
+  LogIn, 
+  User, 
+  RotateCw, 
+  Calendar, 
+  Compass, 
+  Newspaper, 
+  Bookmark, 
+  BarChart3,
+  Search,
+  X
+} from 'lucide-react';
 import { sound } from '../../services/soundEffects';
+import InstantSearchInput from '../Common/InstantSearchInput';
 
 export default function TopBar({ 
   activeTab, 
@@ -11,9 +25,13 @@ export default function TopBar({
   currentUser,
   profile = {},
   onOpenLogin,
-  onRefresh
+  onRefresh,
+  onSelectAnime,
+  titleLanguage = 'english'
 }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showGlobalSearch, setShowGlobalSearch] = useState(false);
+  const [globalSearchVal, setGlobalSearchVal] = useState('');
 
   const desktopTabs = [
     { id: 'schedule', label: 'Schedule', icon: Calendar },
@@ -44,12 +62,24 @@ export default function TopBar({
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
+  const handleGlobalAnimeSelect = (animeId) => {
+    setShowGlobalSearch(false);
+    setGlobalSearchVal('');
+    if (onSelectAnime) onSelectAnime(animeId);
+  };
+
+  const handleGlobalSearchSubmit = (term) => {
+    setShowGlobalSearch(false);
+    setGlobalSearchVal('');
+    if (onSelectTab) onSelectTab('explore');
+  };
+
   return (
     <header className="sticky top-0 z-30 bg-sand-100/90 dark:bg-sand-100/90 backdrop-blur-md border-b-2 border-stone-900 px-4 pt-[max(env(safe-area-inset-top,0px),12px)] pb-3 transition-colors duration-200">
-      <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
+      <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
         
         {/* Brand Sticker */}
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2.5 shrink-0">
           <div 
             onClick={() => handleTabClick('schedule')}
             className="btn-manga bg-amber-400 text-stone-950 px-3.5 py-1 text-sm font-black uppercase tracking-tight -rotate-1 shadow-manga cursor-pointer select-none hover:scale-105 active:scale-95 transition-transform"
@@ -58,7 +88,20 @@ export default function TopBar({
           </div>
         </div>
 
-        {/* Desktop Navigation Links (Visible on Tablet & Desktop) */}
+        {/* Global Instant Predictive Search Bar (Desktop / Tablet) */}
+        <div className="hidden lg:block flex-1 max-w-xs xl:max-w-sm">
+          <InstantSearchInput
+            value={globalSearchVal}
+            onChange={setGlobalSearchVal}
+            onSelectAnime={handleGlobalAnimeSelect}
+            onSubmit={handleGlobalSearchSubmit}
+            placeholder="Quick search any anime..."
+            inputClassName="!py-1.5 !text-xs !bg-sand-50 dark:!bg-sand-200"
+            titleLanguage={titleLanguage}
+          />
+        </div>
+
+        {/* Desktop Navigation Links */}
         <nav className="hidden md:flex items-center gap-1 bg-sand-50 dark:bg-sand-200 p-1 rounded-xl border-2 border-stone-900 shadow-2xs">
           {desktopTabs.map(t => {
             const Icon = t.icon;
@@ -86,7 +129,17 @@ export default function TopBar({
         </nav>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          
+          {/* Mobile / Tablet Quick Search Trigger */}
+          <button
+            onClick={() => { setShowGlobalSearch(!showGlobalSearch); sound.playTap(); }}
+            className="lg:hidden p-2 rounded-md border-2 border-stone-900 bg-sand-50 dark:bg-sand-300 text-ink-900 hover:bg-amber-400 hover:text-stone-950 active:translate-y-0.5 transition-all shadow-[2px_2px_0px_0px_rgba(24,19,13,1)]"
+            title="Search Anime"
+          >
+            <Search className="w-4 h-4" />
+          </button>
+
           {/* Quick Reload / Sync Button */}
           <button
             onClick={handleManualRefresh}
@@ -145,7 +198,21 @@ export default function TopBar({
         </div>
 
       </div>
+
+      {/* Expandable Mobile Search Drawer */}
+      {showGlobalSearch && (
+        <div className="lg:hidden mt-2.5 pt-2.5 border-t border-stone-900/20 animate-slide-down">
+          <InstantSearchInput
+            value={globalSearchVal}
+            onChange={setGlobalSearchVal}
+            onSelectAnime={handleGlobalAnimeSelect}
+            onSubmit={handleGlobalSearchSubmit}
+            placeholder="Search any anime in real-time..."
+            autoFocus={true}
+            titleLanguage={titleLanguage}
+          />
+        </div>
+      )}
     </header>
   );
 }
-

@@ -476,6 +476,8 @@ export default function App() {
         profile={profile}
         onOpenLogin={() => setShowLogin(true)}
         onRefresh={loadAllData}
+        onSelectAnime={(id) => setSelectedAnimeId(id)}
+        titleLanguage={profile?.titleLanguage || 'english'}
       />
 
       {/* Main Screen Content View */}

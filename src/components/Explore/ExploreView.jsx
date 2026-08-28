@@ -29,6 +29,7 @@ import { sound } from '../../services/soundEffects';
 import { burstConfetti } from '../../utils/confetti';
 import { isAnimeOngoing, getMaxAiredEpisode, getAvailableStatusIds } from '../../utils/animeRules';
 import QuickEpisodeModal from '../Common/QuickEpisodeModal';
+import InstantSearchInput from '../Common/InstantSearchInput';
 
 const GENRES = [
   { id: 'all', label: 'All Vibes', icon: Sparkles },
@@ -396,25 +397,15 @@ export default function ExploreView({
           </div>
         </div>
 
-        {/* Global Live Search Input */}
-        <div className="relative">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-500 pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search any anime (e.g. Attack on Titan, Death Note, Frieren)..."
-            className="w-full pl-10 pr-9 py-2 bg-sand-100 dark:bg-sand-300 border-2 border-stone-900 rounded-lg font-sans text-xs text-ink-900 focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder:text-stone-500 shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)]"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-stone-500 hover:text-ink-900"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
+        {/* Global Live Predictive Search Input (YouTube-Style Instant Suggest) */}
+        <InstantSearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          onSelectAnime={(animeId) => onSelectAnime(animeId)}
+          onSubmit={(term) => setSearchQuery(term)}
+          placeholder="Search any anime (e.g. One Piece, Frieren, Jujutsu Kaisen)..."
+          titleLanguage={titleLanguage}
+        />
 
         {/* Horizontal Scrollable Genre Filter Pills */}
         <div className="pt-2 border-t border-stone-900/10 dark:border-stone-100/10">

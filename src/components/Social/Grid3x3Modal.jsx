@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { sound } from '../../services/soundEffects';
 import { burstConfetti } from '../../utils/confetti';
-import { anilistQuery, SEARCH_ANIME_QUERY } from '../../services/anilist';
+import { getRealtimeSearchSuggestions } from '../../services/searchAutocomplete';
 
 const THEMES = [
   { id: 'classic', label: 'Classic Manga', bg: '#F4EFE6', border: '#18130D', text: '#18130D', accent: '#F59E0B' },
@@ -165,58 +165,78 @@ export default function Grid3x3Modal({
     };
   }
 
-  // Live search for 3x3 slot picker
+  // Real-time predictive search for 3x3 slot picker (instant single-letter support)
   useEffect(() => {
     if (activeSlotIndex === null) return;
+    const trimmed = searchQuery.trim();
+    if (!trimmed) {
+      setSearchResults([]);
+      setSearching(false);
+      return;
+    }
+
+    let active = true;
+    setSearching(true);
+
     const timer = setTimeout(async () => {
-      if (!searchQuery.trim()) {
-        setSearchResults([]);
-        return;
-      }
-      setSearching(true);
       try {
-        const res = await anilistQuery(SEARCH_ANIME_QUERY, { search: searchQuery.trim(), page: 1 });
-        const media = res?.Page?.media || [];
-        setSearchResults(media.map(m => ({
-          id: m.id,
-          title: m.title?.english || m.title?.romaji || 'Anime',
-          cover: m.coverImage?.large || m.coverImage?.medium || '',
-          score: m.averageScore ? Math.round(m.averageScore / 10) : 0
-        })));
+        const results = await getRealtimeSearchSuggestions(trimmed, 12);
+        if (active) {
+          setSearchResults(results.map(m => ({
+            id: m.id,
+            title: m.title?.english || m.title?.romaji || 'Anime',
+            cover: m.coverImage?.large || m.coverImage?.medium || '',
+            score: m.averageScore ? Math.round(m.averageScore / 10) : 0
+          })));
+        }
       } catch (err) {
         console.error("Search slot anime error:", err);
       } finally {
-        setSearching(false);
+        if (active) setSearching(false);
       }
-    }, 300);
-    return () => clearTimeout(timer);
+    }, 100);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
   }, [searchQuery, activeSlotIndex]);
 
-  // Live search for Tier List additions
+  // Real-time predictive search for Tier List additions (instant single-letter support)
   useEffect(() => {
     if (activeMode !== 'tierlist') return;
+    const trimmed = tierSearchQuery.trim();
+    if (!trimmed) {
+      setTierSearchResults([]);
+      setTierSearching(false);
+      return;
+    }
+
+    let active = true;
+    setTierSearching(true);
+
     const timer = setTimeout(async () => {
-      if (!tierSearchQuery.trim()) {
-        setTierSearchResults([]);
-        return;
-      }
-      setTierSearching(true);
       try {
-        const res = await anilistQuery(SEARCH_ANIME_QUERY, { search: tierSearchQuery.trim(), page: 1 });
-        const media = res?.Page?.media || [];
-        setTierSearchResults(media.map(m => ({
-          id: m.id,
-          title: m.title?.english || m.title?.romaji || 'Anime',
-          cover: m.coverImage?.large || m.coverImage?.medium || '',
-          score: m.averageScore ? Math.round(m.averageScore / 10) : 0
-        })));
+        const results = await getRealtimeSearchSuggestions(trimmed, 12);
+        if (active) {
+          setTierSearchResults(results.map(m => ({
+            id: m.id,
+            title: m.title?.english || m.title?.romaji || 'Anime',
+            cover: m.coverImage?.large || m.coverImage?.medium || '',
+            score: m.averageScore ? Math.round(m.averageScore / 10) : 0
+          })));
+        }
       } catch (err) {
         console.error("Tier list search error:", err);
       } finally {
-        setTierSearching(false);
+        if (active) setTierSearching(false);
       }
-    }, 300);
-    return () => clearTimeout(timer);
+    }, 100);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
   }, [tierSearchQuery, activeMode]);
 
   if (!isOpen) return null;
