@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Flame, Clock, Film, CheckCircle2, BarChart2, TrendingUp, Activity } from 'lucide-react';
+import { Flame, Clock, Film, CheckCircle2, BarChart2, TrendingUp, Activity, Calendar, Sparkles } from 'lucide-react';
 import { groupWatchlistByFranchise } from '../../utils/franchise';
 
 const STATUS_COLORS = { watching: '#06b6d4', completed: '#10b981', plan_to_watch: '#7c3aed', on_hold: '#eab308', dropped: '#ef4444' };
@@ -19,6 +19,7 @@ export default function StatsView({ watchlist = [], history = [] }) {
   const [historyPage, setHistoryPage] = useState(1);
   const [activeTooltip, setActiveTooltip] = useState(null);
   const [pinnedTooltip, setPinnedTooltip] = useState(false);
+  const [heatmapYear, setHeatmapYear] = useState('rolling'); // 'rolling' | 2026 | 2025 ...
   const HISTORY_PAGE_SIZE = 15;
 
   // ── HERO STATS ──────────────────────────────────────────────
@@ -72,25 +73,55 @@ export default function StatsView({ watchlist = [], history = [] }) {
       const d = getLocalDateKey(l.watched_at);
       if (d) {
         counts[d] = (counts[d] || 0) + 1;
-        dates.push(d);
+        if (!dates.includes(d)) dates.push(d);
       }
     });
 
-    // 2. Incorporate actual watchlist update/completion timestamps
+    // 2. Incorporate actual watchlist finish_date, start_date & updated_at timestamps
     (watchlist || []).forEach(item => {
-      const dSource = item.finish_date || item.start_date || item.updated_at || item.created_at;
-      if (dSource) {
-        const d = getLocalDateKey(dSource);
-        if (d && !counts[d]) {
-          const eps = Number(item.episodes_watched) || (item.status === 'completed' ? Number(item.total_episodes || 1) : 1);
-          counts[d] = eps;
-          dates.push(d);
+      if (item.finish_date) {
+        const d = getLocalDateKey(item.finish_date);
+        if (d) {
+          const eps = Number(item.episodes_watched) || Number(item.total_episodes) || 1;
+          counts[d] = (counts[d] || 0) + eps;
+          if (!dates.includes(d)) dates.push(d);
+        }
+      }
+      if (item.start_date && item.start_date !== item.finish_date) {
+        const d = getLocalDateKey(item.start_date);
+        if (d) {
+          counts[d] = (counts[d] || 0) + 1;
+          if (!dates.includes(d)) dates.push(d);
+        }
+      }
+      if (!item.finish_date && !item.start_date && (item.updated_at || item.created_at)) {
+        const d = getLocalDateKey(item.updated_at || item.created_at);
+        if (d) {
+          const eps = Number(item.episodes_watched) || 1;
+          counts[d] = (counts[d] || 0) + eps;
+          if (!dates.includes(d)) dates.push(d);
         }
       }
     });
 
     return { allActivityDates: dates, dayCounts: counts };
   }, [history, watchlist]);
+
+  // Discover all active years present in the user's data
+  const availableYears = useMemo(() => {
+    const yearsSet = new Set();
+    const currentYear = new Date().getFullYear();
+    yearsSet.add(currentYear);
+
+    Object.keys(dayCounts).forEach(d => {
+      const yr = parseInt(d.split('-')[0], 10);
+      if (yr && yr >= 2000 && yr <= currentYear + 1) {
+        yearsSet.add(yr);
+      }
+    });
+
+    return Array.from(yearsSet).sort((a, b) => b - a);
+  }, [dayCounts]);
 
   // ── STREAK ──────────────────────────────────────────────────
   const streak = useMemo(() => {
@@ -178,20 +209,19 @@ export default function StatsView({ watchlist = [], history = [] }) {
     let droppedAt3 = 0;
     droppedShows.forEach(s => { 
       const eps = Number(s.episodes_watched) || 0;
-      if (eps >= 1 && eps <= 4) droppedAt3++; 
+      if (eps > 0 && eps <= 3) droppedAt3++; 
     });
-    const dropRate = droppedShows.length > 0 ? Math.round((droppedAt3 / droppedShows.length) * 100) : 0;
     return {
-      longestBinge: maxCount || 0,
-      longestBingeDate: maxDay ? new Date(maxDay + 'T00:00:00').toLocaleDateString(undefined, {month:'short', day:'numeric'}) : 'No activity',
-      droppedAt3Rate: dropRate,
+      maxDay,
+      maxCount,
+      droppedAt3Count: droppedAt3
     };
   }, [dayCounts, watchlist]);
 
   // ── TIMELINE LOGS (History with fallback) ───────────────────
   const timelineLogs = useMemo(() => {
     if (history && history.length > 0) return history;
-    return []; // Don't synthesize fake entries — show empty state instead
+    return [];
   }, [history]);
 
   const paginatedHistory = timelineLogs.slice(0, historyPage * HISTORY_PAGE_SIZE);
@@ -303,7 +333,7 @@ export default function StatsView({ watchlist = [], history = [] }) {
     );
   };
 
-  // ── SVG: DAILY TREND (30 DAYS) ──────────────────────────────
+  // ── SVG: DAILY TREND (30 Days) ──────────────────────────────
   const renderDailyTrend = () => {
     const data = dailyActivity;
     const maxVal = Math.max(...data.map(d => d.count), 1);
@@ -351,22 +381,35 @@ export default function StatsView({ watchlist = [], history = [] }) {
     );
   };
 
-  // ── SVG: ACTIVITY HEATMAP (Full 6 Months: 1 Month Prior Through Future) ─────
+  // ── SVG: ACTIVITY HEATMAP (Full 52 Weeks with Multi-Year Support) ─────
   const renderHeatmap = () => {
-    const numWeeks = 24; // Full 6-month GitHub-style view (24 weeks)
-    const cellSize = 11, cellGap = 3;
-    const W = (numWeeks * (cellSize + cellGap)) + 30;
+    const numWeeks = 52; // Full year 52-week GitHub/AniList view
+    const cellSize = 10, cellGap = 2.5;
+    const W = (numWeeks * (cellSize + cellGap)) + 35;
     const H = (7 * (cellSize + cellGap)) + 25;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Start date is exactly the 1st of the previous month (e.g. July if present is August)
-    const startOfPrevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    const startDate = new Date(startOfPrevMonth);
-    startDate.setDate(startOfPrevMonth.getDate() - startOfPrevMonth.getDay()); // align to Sunday
+    let startDate;
+    if (heatmapYear === 'rolling') {
+      // 52 weeks leading up to today
+      const past = new Date(today);
+      past.setDate(today.getDate() - (52 * 7));
+      startDate = new Date(past);
+      startDate.setDate(past.getDate() - past.getDay()); // align to Sunday
+    } else {
+      // Specific calendar year (e.g. 2024)
+      const yr = parseInt(heatmapYear, 10);
+      const jan1 = new Date(yr, 0, 1);
+      startDate = new Date(jan1);
+      startDate.setDate(jan1.getDate() - jan1.getDay());
+    }
 
     const dailyData = [];
+    let totalYearEpisodes = 0;
+    let activeDaysCount = 0;
+
     for (let w = 0; w < numWeeks; w++) {
       for (let d = 0; d < 7; d++) {
         const cellDate = new Date(startDate);
@@ -374,21 +417,27 @@ export default function StatsView({ watchlist = [], history = [] }) {
         const dateStr = getLocalDateKey(cellDate);
         const count = dayCounts[dateStr] || 0;
         const isFuture = cellDate > today;
+
+        if (count > 0 && !isFuture) {
+          totalYearEpisodes += count;
+          activeDaysCount++;
+        }
+
         dailyData.push({ w, d, dateStr, count, cellDate, isFuture });
       }
     }
 
-    // Month headers calculation (Jul, Aug, Sep, Oct, Nov, Dec)
+    // Month headers calculation (Jan, Feb, Mar...)
     const monthHeaders = [];
     let lastMonth = -1;
     let lastMonthX = -100;
 
     for (let w = 0; w < numWeeks; w++) {
       const weekDate = new Date(startDate);
-      weekDate.setDate(startDate.getDate() + (w * 7 + 3)); // check mid-week
+      weekDate.setDate(startDate.getDate() + (w * 7 + 3));
       const m = weekDate.getMonth();
-      const x = 30 + w * (cellSize + cellGap);
-      if (m !== lastMonth && (x - lastMonthX > 22)) {
+      const x = 32 + w * (cellSize + cellGap);
+      if (m !== lastMonth && (x - lastMonthX > 24)) {
         monthHeaders.push(
           <text 
             key={`m_${w}`} 
@@ -406,57 +455,119 @@ export default function StatsView({ watchlist = [], history = [] }) {
     }
 
     return (
-      <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="block mx-auto overflow-visible">
-        {monthHeaders}
+      <div className="space-y-3 w-full">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-stone-700 dark:text-stone-300 font-sans">
+              <strong className="text-ink-900 font-mono text-sm">{totalYearEpisodes}</strong> episodes watched across <strong className="text-ink-900 font-mono text-sm">{activeDaysCount}</strong> active days
+            </span>
+          </div>
 
-        {/* Day of week labels */}
-        <text x="22" y={20 + 1 * (cellSize + cellGap) + 8} textAnchor="end" fill="var(--stone-600)" style={{font: "700 8.5px 'DM Sans',sans-serif"}}>M</text>
-        <text x="22" y={20 + 3 * (cellSize + cellGap) + 8} textAnchor="end" fill="var(--stone-600)" style={{font: "700 8.5px 'DM Sans',sans-serif"}}>W</text>
-        <text x="22" y={20 + 5 * (cellSize + cellGap) + 8} textAnchor="end" fill="var(--stone-600)" style={{font: "700 8.5px 'DM Sans',sans-serif"}}>F</text>
+          {/* Year selector pills */}
+          <div className="flex items-center gap-1 bg-sand-200 dark:bg-stone-800 p-1 rounded-lg border border-stone-900/20 text-xs overflow-x-auto max-w-full">
+            <button
+              onClick={() => setHeatmapYear('rolling')}
+              className={`px-2.5 py-1 rounded-md font-bold text-[11px] transition-all cursor-pointer ${
+                heatmapYear === 'rolling'
+                  ? 'bg-amber-500 text-stone-900 font-black shadow-xs'
+                  : 'text-stone-600 hover:text-ink-900'
+              }`}
+            >
+              Last 12M
+            </button>
+            {availableYears.map(yr => (
+              <button
+                key={yr}
+                onClick={() => setHeatmapYear(yr)}
+                className={`px-2 py-1 rounded-md font-mono font-bold text-[11px] transition-all cursor-pointer ${
+                  heatmapYear === yr
+                    ? 'bg-amber-500 text-stone-900 font-black shadow-xs'
+                    : 'text-stone-600 hover:text-ink-900'
+                }`}
+              >
+                {yr}
+              </button>
+            ))}
+          </div>
+        </div>
 
-        {/* Heatmap Rectangles */}
-        {dailyData.map(({ w, d, dateStr, count, isFuture, cellDate }) => {
-          let fill = 'var(--sand-300)';
-          if (!isFuture && count > 0) {
-            if (count <= 2) fill = '#fde68a';
-            else if (count <= 5) fill = '#f59e0b';
-            else if (count <= 9) fill = '#d97706';
-            else fill = '#ea580c';
-          }
-          const formattedDate = cellDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-          const isToday = getLocalDateKey(today) === dateStr;
-          const tooltipText = isFuture 
-            ? `Upcoming • ${formattedDate}` 
-            : `${count} episode${count === 1 ? '' : 's'} on ${formattedDate}`;
+        <div className="overflow-x-auto pb-2 -mx-2 px-2 hide-scrollbar">
+          <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="block mx-auto overflow-visible min-w-[660px]">
+            {monthHeaders}
 
-          return (
-            <rect 
-              key={dateStr + w + d} 
-              x={30 + w * (cellSize + cellGap)} 
-              y={20 + d * (cellSize + cellGap)} 
-              width={cellSize} 
-              height={cellSize} 
-              rx="2.5" 
-              fill={fill}
-              opacity={isFuture ? 0.35 : 1}
-              stroke={isToday ? 'var(--ink-900)' : 'none'}
-              strokeWidth={isToday ? 1.5 : 0}
-              className="cursor-pointer hover:stroke-ink-900 hover:stroke-[2] transition-all"
-              onMouseEnter={() => { if (!pinnedTooltip) setActiveTooltip(tooltipText); }}
-              onMouseLeave={() => { if (!pinnedTooltip) setActiveTooltip(null); }}
-              onClick={() => {
-                if (pinnedTooltip && activeTooltip === tooltipText) {
-                  setPinnedTooltip(false);
-                  setActiveTooltip(null);
-                } else {
-                  setPinnedTooltip(true);
-                  setActiveTooltip(tooltipText);
-                }
-              }}
-            />
-          );
-        })}
-      </svg>
+            {/* Day of week labels */}
+            <text x="24" y={20 + 1 * (cellSize + cellGap) + 8} textAnchor="end" fill="var(--stone-600)" style={{font: "700 8px 'DM Sans',sans-serif"}}>M</text>
+            <text x="24" y={20 + 3 * (cellSize + cellGap) + 8} textAnchor="end" fill="var(--stone-600)" style={{font: "700 8px 'DM Sans',sans-serif"}}>W</text>
+            <text x="24" y={20 + 5 * (cellSize + cellGap) + 8} textAnchor="end" fill="var(--stone-600)" style={{font: "700 8px 'DM Sans',sans-serif"}}>F</text>
+
+            {/* Heatmap Rectangles */}
+            {dailyData.map(({ w, d, dateStr, count, isFuture, cellDate }) => {
+              let fill = 'var(--sand-300)';
+              if (!isFuture && count > 0) {
+                if (count <= 2) fill = '#86efac';
+                else if (count <= 5) fill = '#22c55e';
+                else if (count <= 9) fill = '#15803d';
+                else fill = '#f59e0b';
+              }
+              const formattedDate = cellDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+              const isToday = getLocalDateKey(today) === dateStr;
+              const tooltipText = isFuture 
+                ? `Upcoming • ${formattedDate}` 
+                : `${count} episode${count === 1 ? '' : 's'} on ${formattedDate}`;
+
+              return (
+                <rect 
+                  key={dateStr + w + d} 
+                  x={32 + w * (cellSize + cellGap)} 
+                  y={20 + d * (cellSize + cellGap)} 
+                  width={cellSize} 
+                  height={cellSize} 
+                  rx="2" 
+                  fill={fill}
+                  opacity={isFuture ? 0.35 : 1}
+                  stroke={isToday ? 'var(--ink-900)' : 'none'}
+                  strokeWidth={isToday ? 1.5 : 0}
+                  className="cursor-pointer hover:stroke-ink-900 hover:stroke-[2] transition-all"
+                  onMouseEnter={() => { if (!pinnedTooltip) setActiveTooltip(tooltipText); }}
+                  onMouseLeave={() => { if (!pinnedTooltip) setActiveTooltip(null); }}
+                  onClick={() => {
+                    if (pinnedTooltip && activeTooltip === tooltipText) {
+                      setPinnedTooltip(false);
+                      setActiveTooltip(null);
+                    } else {
+                      setPinnedTooltip(true);
+                      setActiveTooltip(tooltipText);
+                    }
+                  }}
+                />
+              );
+            })}
+          </svg>
+        </div>
+
+        {/* Legend */}
+        <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-stone-500 pt-2 border-t border-stone-900/10">
+          <div className="flex items-center gap-1.5 font-mono">
+            {activeTooltip ? (
+              <span className="font-black text-amber-600 dark:text-amber-400 animate-fade-in flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5" />
+                {activeTooltip}
+              </span>
+            ) : (
+              <span>Hover or tap squares to see watch history details</span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 font-sans font-bold text-[10px]">
+            <span>Less</span>
+            <span className="w-2.5 h-2.5 rounded-xs bg-sand-300 border border-stone-900/20" />
+            <span className="w-2.5 h-2.5 rounded-xs bg-[#86efac] border border-stone-900/20" />
+            <span className="w-2.5 h-2.5 rounded-xs bg-[#22c55e] border border-stone-900/20" />
+            <span className="w-2.5 h-2.5 rounded-xs bg-[#15803d] border border-stone-900/20" />
+            <span className="w-2.5 h-2.5 rounded-xs bg-[#f59e0b] border border-stone-900/20" />
+            <span>More</span>
+          </div>
+        </div>
+      </div>
     );
   };
 
@@ -529,53 +640,15 @@ export default function StatsView({ watchlist = [], history = [] }) {
         </div>
       </div>
 
-      {/* ═══ BINGE STATS + HEATMAP ═══ */}
+      {/* ═══ BINGE STATS + 52-WEEK HEATMAP ═══ */}
       <div className="card-manga-panel p-4 bg-sand-50 dark:bg-sand-200 relative">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-stone-900 pb-2 mb-3">
           <h3 className="font-display font-black text-sm uppercase text-ink-900 flex items-center gap-1.5">
-            <Activity className="w-4 h-4" /> Activity Heatmap
+            <Calendar className="w-4 h-4 text-amber-500" /> Activity Heatmap
           </h3>
-          <div className="flex gap-2 text-[10px] font-bold">
-            <span className="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded border border-amber-300 flex items-center gap-1">
-              <Flame className="w-3 h-3 text-amber-600 fill-amber-500" />
-              <span>Best: {bingeStats.longestBinge} eps ({bingeStats.longestBingeDate})</span>
-            </span>
-          </div>
         </div>
 
-        {/* Scrollable Heatmap View */}
-        <div className="w-full overflow-x-auto pb-2 hide-scrollbar">
-          <div className="min-w-fit flex items-center justify-center pt-1 px-1">
-            {renderHeatmap()}
-          </div>
-        </div>
-
-        {/* Tooltip feedback bar */}
-        {activeTooltip ? (
-          <div className="text-center text-xs font-mono font-black text-amber-800 dark:text-amber-300 mt-1 py-1 bg-amber-100/80 dark:bg-amber-950/40 rounded border border-amber-300 dark:border-amber-800 animate-fade-in">
-            {activeTooltip}
-          </div>
-        ) : (
-          <div className="text-center text-[10px] font-sans text-stone-400 mt-1">
-            Tap or hover any square to see episode activity
-          </div>
-        )}
-
-        {/* Enhanced Heatmap Legend */}
-        <div className="flex flex-wrap items-center justify-between gap-2 text-[9px] font-bold text-stone-500 mt-2.5 pt-2 border-t border-stone-900/10">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-xs bg-[#E6E0D4] opacity-40 border border-stone-400" />
-            <span className="font-mono text-stone-500">Upcoming Season (Jul–Dec)</span>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <span>Less</span>
-            {['#E6E0D4','#fde68a','#f59e0b','#d97706','#ea580c'].map(c => (
-              <span key={c} className="w-2.5 h-2.5 rounded-xs border border-stone-300" style={{background: c}} />
-            ))}
-            <span>More Activity</span>
-          </div>
-        </div>
+        {renderHeatmap()}
       </div>
 
       {/* ═══ STATUS DONUT + GENRE RADAR (side by side) ═══ */}

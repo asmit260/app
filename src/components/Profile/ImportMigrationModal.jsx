@@ -15,7 +15,7 @@ import {
   Bookmark, 
   Layers 
 } from 'lucide-react';
-import { parseMalXml, fetchAniListUserList, batchImportWatchlist } from '../../services/importers';
+import { parseMalXml, fetchAniListUserList, batchImportWatchlist, enrichMalEntriesWithAniList } from '../../services/importers';
 import { sound } from '../../services/soundEffects';
 import { burstConfetti } from '../../utils/confetti';
 
@@ -62,7 +62,10 @@ export default function ImportMigrationModal({
 
     try {
       const text = await file.text();
-      const items = parseMalXml(text);
+      const rawItems = parseMalXml(text);
+
+      // Auto-enrich with AniList metadata & covers immediately for beautiful preview
+      const items = await enrichMalEntriesWithAniList(rawItems);
 
       const stats = {
         watching: items.filter(i => i.status === 'watching').length,

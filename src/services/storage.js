@@ -227,17 +227,15 @@ export async function upsertWatchlistEntry(anime, status, episodesWatched = null
     genres: genresArr,
     duration: anime.duration || (existing ? existing.duration : 24),
     total_episodes: anime.totalEpisodes || anime.episodes || (existing ? existing.total_episodes : null),
-    episodes_watched: finalEpisodesWatched,
-    score: (anime.score !== undefined && anime.score !== null) ? anime.score : (existing ? existing.score || 0 : 0),
-    rewatch_count: anime.rewatch_count !== undefined ? anime.rewatch_count : (existing ? existing.rewatch_count || 0 : 0),
-    updated_at: new Date().toISOString()
+    updated_at: anime.updated_at || (existing ? existing.updated_at : new Date().toISOString())
   };
 
-  if (targetStatus === 'completed' && payload.total_episodes) {
+  // Preserve historical start_date and finish_date from AniList / MAL imports
+  payload.start_date = anime.start_date || (existing ? existing.start_date : (targetStatus === 'watching' ? new Date().toISOString().split('T')[0] : null));
+  payload.finish_date = anime.finish_date || (existing ? existing.finish_date : (targetStatus === 'completed' ? new Date().toISOString().split('T')[0] : null));
+
+  if (targetStatus === 'completed' && payload.total_episodes && (!payload.episodes_watched || payload.episodes_watched < payload.total_episodes)) {
     payload.episodes_watched = payload.total_episodes;
-    payload.finish_date = new Date().toISOString().split('T')[0];
-  } else if (targetStatus === 'watching' && (!existing || !existing.start_date)) {
-    payload.start_date = new Date().toISOString().split('T')[0];
   }
 
   // 1. ALWAYS update local storage cache immediately
@@ -309,7 +307,8 @@ export async function upsertWatchlistEntry(anime, status, episodesWatched = null
     actionNote = payload.episodes_watched > 0 ? `Dropped (at Ep ${payload.episodes_watched})` : 'Dropped anime';
   }
 
-  await logEpisodeProgress(animeId, epToLog, actionNote, actionType, titleStr);
+  const logDate = anime.finish_date ? `${anime.finish_date}T12:00:00.000Z` : (anime.updated_at || (anime.start_date ? `${anime.start_date}T12:00:00.000Z` : new Date().toISOString()));
+  await logEpisodeProgress(animeId, epToLog, actionNote, actionType, titleStr, logDate);
 
   // 4. Notify app listeners immediately
   window.dispatchEvent(new CustomEvent('anitrack-watchlist-changed'));
@@ -420,13 +419,14 @@ export async function updateWatchlistRating(animeId, score) {
 
 // ─── Anime Progress Stream (History) ────────────────────────────────────────
 
-export async function logEpisodeProgress(animeId, episodeNumber, note = '', actionType = 'watching', animeTitle = '') {
+export async function logEpisodeProgress(animeId, episodeNumber, note = '', actionType = 'watching', animeTitle = '', customDate = null) {
   if (!animeId) return;
   const idNum = parseInt(animeId);
   const epNum = Number.isInteger(parseInt(episodeNumber)) ? parseInt(episodeNumber) : 0;
   const user = await getUser();
   const isAuthUser = user && isValidUUID(user.id);
   const userId = isAuthUser ? user.id : 'local_user';
+  const effectiveDate = customDate ? (typeof customDate === 'string' && customDate.includes('T') ? customDate : `${customDate}T12:00:00.000Z`) : new Date().toISOString();
 
   // 1. Always save to local history
   const history = getLocalHistory();
@@ -437,11 +437,12 @@ export async function logEpisodeProgress(animeId, episodeNumber, note = '', acti
     anime_title: animeTitle || '',
     action_type: actionType,
     episode_number: epNum,
-    watched_at: new Date().toISOString(),
+    watched_at: effectiveDate,
     note: note || `Episode ${epNum}`
   };
   history.unshift(newRecord);
-  saveLocalHistory(history.slice(0, 1000));
+  history.sort((a, b) => new Date(b.watched_at || 0) - new Date(a.watched_at || 0));
+  saveLocalHistory(history.slice(0, 2000));
 
   // 2. Save to Supabase if authenticated
   if (isAuthUser) {
