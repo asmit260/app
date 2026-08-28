@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { Film, LayoutGrid, List, Columns2, Sparkles, Flame, Trophy, Bookmark, PauseCircle, XCircle, Layers, ArrowUpDown } from 'lucide-react';
+import { Film, LayoutGrid, List, Columns2, Sparkles, Flame, Trophy, Bookmark, PauseCircle, XCircle, Layers, ArrowUpDown, Grid3X3 } from 'lucide-react';
 import WatchlistCard from './WatchlistCard';
 import FranchiseCard from './FranchiseCard';
 import QuickEpisodeModal from '../Common/QuickEpisodeModal';
 import ConfirmModal from '../Common/ConfirmModal';
-import { startRewatch, upsertWatchlistEntry } from '../../services/storage';
+import Grid3x3Modal from '../Social/Grid3x3Modal';
+import { startRewatch } from '../../services/storage';
 import { groupWatchlistByFranchise } from '../../utils/franchise';
 import { isAnimeOngoing, getMaxAiredEpisode } from '../../utils/animeRules';
 
@@ -44,6 +45,7 @@ export default function MyListView({
   });
   const [pickerAnime, setPickerAnime] = useState(null);
   const [rewatchTarget, setRewatchTarget] = useState(null);
+  const [show3x3Modal, setShow3x3Modal] = useState(false);
 
   const handleSortChange = (newSort) => {
     setSortBy(newSort);
@@ -105,24 +107,11 @@ export default function MyListView({
     return groupWatchlistByFranchise(filteredList);
   }, [filteredList]);
 
-  // Direct episode stepper handler
-  const handleStepEpisode = async (animeId, nextEp, nextStatus = null) => {
-    const item = watchlist.find(i => (i.anime_id == animeId || i.id == animeId));
+  // Direct episode stepper handler — delegates through App.jsx optimistic UI path
+  const handleStepEpisode = (animeId, nextEp, nextStatus = null) => {
+    const item = watchlist.find(i => parseInt(i.anime_id || i.id) === parseInt(animeId));
     if (!item) return;
-
-    const fullAnime = {
-      id: animeId,
-      title: { userPreferred: item.anime_title, english: item.anime_title, romaji: item.anime_title },
-      coverImage: { extraLarge: item.anime_cover, large: item.anime_cover, medium: item.anime_cover },
-      genres: item.genres,
-      duration: item.duration,
-      totalEpisodes: item.total_episodes,
-      episodes: item.total_episodes,
-      score: item.score,
-      rewatch_count: item.rewatch_count || 0
-    };
-
-    await upsertWatchlistEntry(fullAnime, nextStatus || item.status, nextEp);
+    onUpdateStatus(animeId, nextStatus || item.status, item, nextEp);
   };
 
   // Direct start rewatch
@@ -130,12 +119,12 @@ export default function MyListView({
     setRewatchTarget(item);
   };
 
-  const handleConfirmPickerEpisodes = async (selectedEp) => {
+  const handleConfirmPickerEpisodes = (selectedEp) => {
     if (!pickerAnime) return;
     const animeId = pickerAnime.anime_id || pickerAnime.id;
     const isOngoing = isAnimeOngoing(pickerAnime);
     const isFinished = !isOngoing && pickerAnime.total_episodes && selectedEp >= pickerAnime.total_episodes;
-    await handleStepEpisode(animeId, selectedEp, isFinished ? 'completed' : pickerAnime.status);
+    onUpdateStatus(animeId, isFinished ? 'completed' : pickerAnime.status, pickerAnime, selectedEp);
     setPickerAnime(null);
   };
 
@@ -169,6 +158,16 @@ export default function MyListView({
             >
               <Layers className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">{groupBySeries ? 'Grouped by Series' : 'Flat List'}</span>
+            </button>
+
+            {/* 3x3 Grid & Tier Studio Launcher */}
+            <button
+              onClick={() => { setShow3x3Modal(true); sound.playTab(); }}
+              className="px-2.5 py-1.5 rounded-md border-2 border-stone-900 bg-sand-100 dark:bg-sand-300 hover:bg-amber-400 hover:text-stone-950 text-ink-900 text-xs font-black flex items-center gap-1.5 transition-all shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] select-none active:translate-y-0.5"
+              title="Open 3x3 Favorite Grid & Seasonal Tier Maker"
+            >
+              <Grid3X3 className="w-3.5 h-3.5 text-amber-500" />
+              <span className="hidden md:inline">3x3 Grid</span>
             </button>
 
             {/* Layout switchers */}
@@ -327,6 +326,13 @@ export default function MyListView({
         type="info"
       />
 
+      {/* 3x3 Grid & Tier List Studio Modal */}
+      <Grid3x3Modal
+        isOpen={show3x3Modal}
+        onClose={() => setShow3x3Modal(false)}
+        watchlist={watchlist}
+        titleLanguage={titleLanguage}
+      />
     </div>
   );
 }

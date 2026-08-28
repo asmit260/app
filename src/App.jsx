@@ -511,11 +511,11 @@ export default function App() {
           {activeTab === 'mylist' && (
             <MyListView
               watchlist={watchlist}
-              onUpdateStatus={(id, status, existingItem) => {
+              onUpdateStatus={(id, status, existingItem, eps) => {
                 // Build full anime from the watchlist item to preserve metadata
-                const item = existingItem || watchlist.find(i => (i.anime_id == id || i.id == id));
+                const item = existingItem || watchlist.find(i => parseInt(i.anime_id || i.id) === parseInt(id));
                 const fullAnime = buildAnimeFromWatchlistItem(id, item);
-                handleUpdateWatchlist(fullAnime, status);
+                handleUpdateWatchlist(fullAnime, status, eps !== undefined ? eps : null);
               }}
               onIncrementEpisode={handleIncrementEpisode}
               onRemoveItem={handleRemoveWatchlistItem}
@@ -562,7 +562,7 @@ export default function App() {
           animeId={selectedAnimeId}
           onClose={() => setSelectedAnimeId(null)}
           watchlist={watchlist}
-          onUpdateStatus={(anime, status) => handleUpdateWatchlist(anime, status)}
+          onUpdateStatus={(anime, status, eps) => handleUpdateWatchlist(anime, status, eps !== undefined ? eps : null)}
           onRemoveItem={(id) => handleRemoveWatchlistItem(id)}
           titleLanguage={profile.titleLanguage}
         />

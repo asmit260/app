@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Plus, Minus, Trash2, RotateCcw, Star, Film, Check, ChevronDown } from 'lucide-react';
+import { Plus, Minus, Trash2, RotateCcw, Star, Film, Check, ChevronDown, MessageSquare } from 'lucide-react';
 import { sound } from '../../services/soundEffects';
 import { burstConfetti } from '../../utils/confetti';
 import { isAnimeOngoing, getMaxAiredEpisode } from '../../utils/animeRules';
+import { getRedditEpisodeDiscussionUrl } from '../../utils/communityLinks';
 import ConfirmModal from '../Common/ConfirmModal';
 
 const STATUS_THEMES = {
@@ -208,8 +209,19 @@ export default function WatchlistCard({
               </button>
             </div>
 
-            {/* Quick Actions (Rewatch & Delete) */}
+            {/* Quick Actions (Discussion, Rewatch & Delete) */}
             <div className="flex items-center gap-1.5">
+              <a
+                href={getRedditEpisodeDiscussionUrl(item.anime_title, watched > 0 ? watched : null)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="p-1 rounded text-stone-400 hover:text-orange-500 hover:bg-orange-500/10 transition-colors"
+                title={`View Reddit r/anime ${watched > 0 ? `Episode ${watched}` : ''} Discussion Thread`}
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+              </a>
+
               {status === 'completed' && onStartRewatch && (
                 <button
                   onClick={(e) => {

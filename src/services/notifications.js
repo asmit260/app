@@ -156,10 +156,18 @@ export async function getActiveAnimeAlerts() {
     
     if (error) return local;
 
-    const alertsMap = {};
+    const alertsMap = { ...local };
     (data || []).forEach(item => {
       if (item.anime_id) {
-        alertsMap[item.anime_id] = item;
+        alertsMap[item.anime_id] = {
+          user_id: item.user_id,
+          anime_id: item.anime_id,
+          title: item.anime_title,
+          episode: item.episode_number,
+          airing_at: Math.floor(new Date(item.air_at).getTime() / 1000),
+          created_at: item.created_at,
+          ...(local[item.anime_id] || {})
+        };
       }
     });
     saveLocalAlerts(alertsMap);
@@ -195,7 +203,24 @@ export async function saveAnimeAlert({ animeId, title, cover, airingAt, episode,
   // 2. Save to Supabase if authenticated
   if (isAuth) {
     try {
-      await supabase.from('calendar_events').upsert(payload);
+      const airDate = typeof airingAt === 'number' 
+        ? new Date(airingAt * 1000).toISOString() 
+        : (airingAt ? new Date(airingAt).toISOString() : new Date().toISOString());
+
+      await supabase
+        .from('calendar_events')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('anime_id', animeIdNum);
+
+      const cloudEvent = {
+        user_id: user.id,
+        anime_id: animeIdNum,
+        anime_title: title || 'Anime',
+        episode_number: parseInt(episode) || 1,
+        air_at: airDate
+      };
+      await supabase.from('calendar_events').insert(cloudEvent);
     } catch (err) {
       console.warn("Cloud save alert error:", err);
     }

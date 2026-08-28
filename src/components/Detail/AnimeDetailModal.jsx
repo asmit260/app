@@ -1,13 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Play, Plus, Minus, Check, Star, Calendar, Clock, Film, ExternalLink, Bookmark, Bell, Eye, Sparkles, RotateCcw } from 'lucide-react';
+import { 
+  X, 
+  Play, 
+  Plus, 
+  Minus, 
+  Check, 
+  Star, 
+  Calendar, 
+  Clock, 
+  Film, 
+  ExternalLink, 
+  Bookmark, 
+  Bell, 
+  Eye, 
+  Sparkles, 
+  RotateCcw,
+  Layers,
+  MessageSquare,
+  ShieldAlert
+} from 'lucide-react';
 import { anilistQuery, ANIME_DETAIL_QUERY } from '../../services/anilist';
 import { getActiveAnimeAlerts } from '../../services/notifications';
-import { updateWatchlistRating, upsertWatchlistEntry, startRewatch } from '../../services/storage';
+import { updateWatchlistRating, startRewatch } from '../../services/storage';
 import { sound } from '../../services/soundEffects';
 import { isAnimeOngoing, getMaxAiredEpisode } from '../../utils/animeRules';
 import { fireConfetti } from '../../utils/confetti';
+import { getRedditEpisodeDiscussionUrl, getMalDiscussionUrl } from '../../utils/communityLinks';
+import { fetchAnimeFillerData } from '../../services/fillerData';
 import AiringAlertModal from '../Schedule/AiringAlertModal';
+import FranchiseTimelineModal from './FranchiseTimelineModal';
 
 const STATUS_LIST = [
   { id: 'watching', label: 'Watching', color: 'bg-status-watching text-white' },
@@ -29,6 +51,8 @@ export default function AnimeDetailModal({
   const [loading, setLoading] = useState(true);
   const [showTrailer, setShowTrailer] = useState(false);
   const [showAlertModal, setShowAlertModal] = useState(false);
+  const [showTimelineModal, setShowTimelineModal] = useState(false);
+  const [fillerData, setFillerData] = useState({ episodes: [], hasFiller: false });
   const [activeAlerts, setActiveAlerts] = useState({});
   const [localScore, setLocalScore] = useState(null);
   const [localEps, setLocalEps] = useState(null);
@@ -76,6 +100,12 @@ export default function AnimeDetailModal({
       if (isCurrentCheck ? isCurrentCheck() : true) {
         if (res?.Media) {
           setDetail(res.Media);
+          const titleStr = res.Media.title?.english || res.Media.title?.romaji || '';
+          fetchAnimeFillerData(res.Media.idMal, titleStr).then(f => {
+            if (isCurrentCheck ? isCurrentCheck() : true) {
+              setFillerData(f || { episodes: [], hasFiller: false });
+            }
+          });
         }
       }
     } catch (e) {
@@ -87,7 +117,7 @@ export default function AnimeDetailModal({
     }
   };
 
-  const currentEntry = (watchlist || []).find(item => (item.anime_id == animeId || item.id == animeId));
+  const currentEntry = (watchlist || []).find(item => parseInt(item.anime_id || item.id) === parseInt(animeId));
   const isAlertActive = !!activeAlerts[animeId];
   const effectiveScore = localScore !== null ? localScore : (currentEntry?.score || 0);
   const totalEps = detail?.episodes || currentEntry?.total_episodes || null;
@@ -134,7 +164,8 @@ export default function AnimeDetailModal({
     }
 
     const newStatus = isFinished ? 'completed' : (currentEntry?.status || 'watching');
-    await upsertWatchlistEntry(detail, newStatus, next);
+    // Delegate to App.jsx optimistic path via onUpdateStatus
+    await onUpdateStatus(detail, newStatus, next);
   };
 
   const handleStatusChange = async (stId) => {
@@ -261,8 +292,19 @@ export default function AnimeDetailModal({
                     Tracking Status
                   </span>
                   
-                  {/* Airing Alert Button & Trailer Button */}
-                  <div className="flex items-center gap-2">
+                  {/* Airing Alert Button, Franchise Order, & Trailer Button */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {detail.relations?.edges?.length > 0 && (
+                      <button
+                        onClick={() => setShowTimelineModal(true)}
+                        className="btn-manga bg-sand-50 dark:bg-sand-300 hover:bg-amber-400 hover:text-stone-950 text-ink-900 text-xs px-2.5 py-1 flex items-center gap-1.5 font-bold"
+                        title="View Franchise Watch Order & Timeline"
+                      >
+                        <Layers className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                        <span>Watch Order ({detail.relations.edges.length})</span>
+                      </button>
+                    )}
+
                     <button
                       onClick={() => setShowAlertModal(true)}
                       className={`btn-manga text-xs px-2.5 py-1 flex items-center gap-1.5 font-bold ${
@@ -363,11 +405,12 @@ export default function AnimeDetailModal({
                       </span>
                       <button
                         onClick={() => handleStepEpisode(1)}
-                        disabled={
-                          detail.status === 'RELEASING'
-                            ? effectiveEps >= (detail.nextAiringEpisode?.episode ? Math.max(1, detail.nextAiringEpisode.episode - 1) : 1)
-                            : Boolean(totalEps && effectiveEps >= totalEps)
-                        }
+                        disabled={(() => {
+                          const isOn = isAnimeOngoing(detail);
+                          const max = getMaxAiredEpisode(detail, effectiveEps);
+                          const limit = isOn ? max : (totalEps || max);
+                          return limit ? effectiveEps >= limit : false;
+                        })()}
                         className="btn-manga bg-amber-400 hover:bg-amber-300 text-ink-900 w-8 h-8 rounded-md font-bold text-sm shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] active:translate-y-0.5 disabled:opacity-40"
                         title="Step Forward (+1 Ep)"
                       >
@@ -574,6 +617,56 @@ export default function AnimeDetailModal({
                 </div>
               </div>
 
+              {/* ═══ COMMUNITY EPISODE DISCUSSIONS & LORE ═══ */}
+              <div className="space-y-2 pt-2.5 border-t border-sand-300 dark:border-sand-400">
+                <div className="flex items-center justify-between">
+                  <span className="font-display font-black text-xs uppercase tracking-tight text-ink-900 flex items-center gap-1.5">
+                    <MessageSquare className="w-3.5 h-3.5 text-blue-500" />
+                    <span>Community Episode Discussions</span>
+                  </span>
+                  <span className="text-[10px] font-mono text-stone-500">Live Threads</span>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <a
+                    href={getRedditEpisodeDiscussionUrl(getTitle(), effectiveEps > 0 ? effectiveEps : null)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border-2 border-stone-900 bg-[#FF4500]/15 text-[#FF4500] dark:text-[#FFA07A] font-bold text-xs shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] hover:bg-[#FF4500] hover:text-white active:translate-y-0.5 transition-all"
+                    title="View Reddit r/anime official episode discussions and theories"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-[#FF4500]" />
+                    <span>Reddit (r/anime) {effectiveEps > 0 ? `Ep ${effectiveEps}` : ''} Discussion</span>
+                    <ExternalLink className="w-3 h-3 opacity-60" />
+                  </a>
+
+                  <a
+                    href={getMalDiscussionUrl(detail.idMal, getTitle(), effectiveEps > 0 ? effectiveEps : null)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border-2 border-stone-900 bg-[#2E51A2]/15 text-[#2E51A2] dark:text-[#7EA2FF] font-bold text-xs shadow-[1.5px_1.5px_0px_0px_rgba(24,19,13,1)] hover:bg-[#2E51A2] hover:text-white active:translate-y-0.5 transition-all"
+                    title="View MyAnimeList episode forum topics"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-[#2E51A2]" />
+                    <span>MyAnimeList Forum</span>
+                    <ExternalLink className="w-3 h-3 opacity-60" />
+                  </a>
+                </div>
+
+                {/* Filler Breakdown Pill if applicable */}
+                {fillerData.hasFiller && (
+                  <div className="mt-2 p-2 bg-sand-100 dark:bg-stone-800 rounded-lg border border-stone-900/20 flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-1.5 font-bold text-stone-700 dark:text-stone-300">
+                      <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Filler Guide Active:</span>
+                    </span>
+                    <span className="font-mono text-[11px] text-stone-500">
+                      {fillerData.episodes.filter(e => e.type === 'canon').length} Canon • {fillerData.episodes.filter(e => e.type === 'filler').length} Filler
+                    </span>
+                  </div>
+                )}
+              </div>
+
             </div>
           </div>
         ) : (
@@ -599,6 +692,23 @@ export default function AnimeDetailModal({
           }}
           existingAlert={activeAlerts[detail.id]}
           onAlertUpdated={loadAlerts}
+          titleLanguage={titleLanguage}
+        />
+      )}
+
+      {/* Franchise Watch Order & Timeline Modal */}
+      {detail && (
+        <FranchiseTimelineModal
+          isOpen={showTimelineModal}
+          onClose={() => setShowTimelineModal(false)}
+          currentAnime={detail}
+          watchlist={watchlist}
+          onSelectAnime={(newId) => {
+            loadDetail(newId);
+          }}
+          onUpdateWatchlist={(anime, status) => {
+            onUpdateStatus(anime, status);
+          }}
           titleLanguage={titleLanguage}
         />
       )}

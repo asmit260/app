@@ -627,7 +627,7 @@ export default function StatsView({ watchlist = [], history = [] }) {
         {paginatedHistory.length > 0 ? (
           <div className="relative pl-5 border-l-[3px] border-stone-900/40 dark:border-stone-700/40 space-y-3.5 ml-1.5">
             {paginatedHistory.map((log, idx) => {
-              const matchedItem = watchlist.find(i => (i.anime_id == log.anime_id || i.id == log.anime_id));
+              const matchedItem = watchlist.find(i => parseInt(i.anime_id || i.id) === parseInt(log.anime_id));
               const title = log.anime_title || matchedItem?.anime_title || 'Anime';
               const rawNote = log.note || '';
 

@@ -253,11 +253,32 @@ export async function upsertWatchlistEntry(anime, status, episodesWatched = null
   // 2. If authenticated with Supabase, sync to cloud in background
   if (isAuthUser) {
     try {
-      const cloudPayload = { ...payload };
-      if (cloudPayload.id && String(cloudPayload.id).startsWith('wl_')) {
-        delete cloudPayload.id; // Let Postgres handle primary key UUID if new
+      const cloudPayload = {
+        user_id: userId,
+        anime_id: animeId,
+        status: targetStatus,
+        anime_title: titleStr || 'Anime',
+        anime_cover: coverUrl || null,
+        total_episodes: payload.total_episodes !== null && payload.total_episodes !== undefined ? parseInt(payload.total_episodes) : null,
+        episodes_watched: parseInt(payload.episodes_watched) || 0,
+        score: (payload.score !== null && payload.score !== undefined && payload.score > 0) ? parseInt(payload.score) : null,
+        notes: payload.notes || null,
+        start_date: payload.start_date || null,
+        finish_date: payload.finish_date || null,
+        updated_at: payload.updated_at || new Date().toISOString(),
+        genres: Array.isArray(genresArr) ? genresArr : [],
+        duration: parseInt(payload.duration) || 0,
+        notify: Boolean(payload.notify || false),
+        calendar_sync: payload.calendar_sync !== undefined ? Boolean(payload.calendar_sync) : true
+      };
+
+      const { error } = await supabase
+        .from('watchlist')
+        .upsert(cloudPayload, { onConflict: 'user_id,anime_id' });
+
+      if (error) {
+        console.warn("Supabase watchlist upsert warning:", error.message || error);
       }
-      await supabase.from('watchlist').upsert(cloudPayload, { onConflict: 'user_id,anime_id' });
     } catch (cloudErr) {
       console.warn("Cloud sync error for watchlist:", cloudErr);
     }
@@ -301,12 +322,13 @@ export async function startRewatch(anime) {
   const existing = await getWatchlistItem(animeId);
   const currentRewatches = (existing?.rewatch_count || 0) + 1;
 
+  // upsertWatchlistEntry already calls logEpisodeProgress internally —
+  // no need for a second call here (was creating duplicate history entries)
   const res = await upsertWatchlistEntry({
     ...anime,
     rewatch_count: currentRewatches
   }, 'watching', 1);
 
-  await logEpisodeProgress(animeId, 1, `Started Rewatch #${currentRewatches}`, 'rewatch', anime.title || anime.anime_title || '');
   return res;
 }
 
@@ -416,7 +438,7 @@ export async function logEpisodeProgress(animeId, episodeNumber, note = '', acti
     action_type: actionType,
     episode_number: epNum,
     watched_at: new Date().toISOString(),
-    note: note || (actionType === 'watching' ? `Episode ${epNum}` : note)
+    note: note || `Episode ${epNum}`
   };
   history.unshift(newRecord);
   saveLocalHistory(history.slice(0, 1000));
@@ -429,22 +451,18 @@ export async function logEpisodeProgress(animeId, episodeNumber, note = '', acti
         anime_id: idNum,
         episode_number: epNum,
         watched_at: new Date().toISOString(),
-        note: note || (actionType === 'watching' ? `Episode ${epNum}` : note)
+        note: note || `Episode ${epNum}`
       };
 
       const { error } = await supabase
         .from('episode_progress')
-        .upsert(logPayload, {
-          onConflict: 'user_id,anime_id,episode_number',
-          ignoreDuplicates: false
-        });
+        .insert(logPayload);
 
-      if (error && error.code !== '23505') {
-        // Fallback: If composite key differs, attempt plain upsert
-        await supabase.from('episode_progress').upsert(logPayload).catch(() => {});
+      if (error) {
+        console.warn("Supabase episode_progress insert warning:", error.message || error);
       }
     } catch (err) {
-      // Quietly absorb non-critical network conflict logs
+      // Quietly absorb non-critical network logs
     }
   }
 }

@@ -11,6 +11,8 @@ import { CURRENT_APP_VERSION } from '../../services/updater';
 import { sound } from '../../services/soundEffects';
 import AvatarCropModal from './AvatarCropModal';
 import ConfirmModal from '../Common/ConfirmModal';
+import ImportMigrationModal from './ImportMigrationModal';
+import Grid3x3Modal from '../Social/Grid3x3Modal';
 
 export default function ProfileView({ 
   profile = {}, 
@@ -36,6 +38,8 @@ export default function ProfileView({
   const [confirmModalConfig, setConfirmModalConfig] = useState({ isOpen: false });
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateCheckMsg, setUpdateCheckMsg] = useState('');
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [show3x3Modal, setShow3x3Modal] = useState(false);
 
   useEffect(() => {
     if (profile.username) setUsername(profile.username);
@@ -536,14 +540,32 @@ export default function ProfileView({
 
         <div className="flex flex-col sm:flex-row gap-2.5">
           <button
+            onClick={() => { setShowImportModal(true); sound.playTab(); }}
+            className="flex-1 btn-manga bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs py-2.5 px-3 flex items-center justify-center gap-2 shadow-xs"
+          >
+            <Upload className="w-4 h-4 text-stone-950" />
+            <span>Import from MAL / AniList</span>
+          </button>
+
+          <button
+            onClick={() => { setShow3x3Modal(true); sound.playTab(); }}
+            className="flex-1 btn-manga bg-sand-100 dark:bg-stone-800 hover:bg-amber-400 hover:text-stone-950 text-ink-900 text-xs py-2.5 px-3 flex items-center justify-center gap-2 font-bold"
+          >
+            <Sparkles className="w-4 h-4 text-purple-500" />
+            <span>3x3 Grid & Tier Maker</span>
+          </button>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
+          <button
             onClick={handleExport}
-            className="flex-1 btn-manga bg-sand-100 dark:bg-stone-800 hover:bg-amber-400 hover:text-stone-950 text-ink-900 text-xs py-2.5 px-3 flex items-center justify-center gap-2"
+            className="flex-1 btn-manga bg-sand-100 dark:bg-stone-800 hover:bg-amber-400 hover:text-stone-950 text-ink-900 text-xs py-2 px-3 flex items-center justify-center gap-2"
           >
             <Download className="w-4 h-4 text-amber-500" />
             <span>Export JSON Backup</span>
           </button>
 
-          <label className="flex-1 btn-manga bg-sand-100 dark:bg-stone-800 hover:bg-amber-400 hover:text-stone-950 text-ink-900 text-xs py-2.5 px-3 flex items-center justify-center gap-2 cursor-pointer">
+          <label className="flex-1 btn-manga bg-sand-100 dark:bg-stone-800 hover:bg-amber-400 hover:text-stone-950 text-ink-900 text-xs py-2 px-3 flex items-center justify-center gap-2 cursor-pointer">
             <Upload className="w-4 h-4 text-emerald-500" />
             <span>Restore JSON Backup</span>
             <input type="file" accept=".json" onChange={handleImportJson} className="hidden" />
@@ -632,6 +654,23 @@ export default function ProfileView({
         onCancel={confirmModalConfig.onCancel}
       />
 
+      {/* MAL & AniList Library Migration Modal */}
+      <ImportMigrationModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImportComplete={() => {
+          if (onReloadWatchlist) onReloadWatchlist();
+        }}
+      />
+
+      {/* 3x3 Anime Grid & Tier List Maker Modal */}
+      <Grid3x3Modal
+        isOpen={show3x3Modal}
+        onClose={() => setShow3x3Modal(false)}
+        watchlist={watchlist}
+        username={username}
+        titleLanguage={titleLang}
+      />
     </div>
   );
 }

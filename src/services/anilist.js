@@ -333,6 +333,68 @@ query GetAnimeDetail($id: Int) {
         }
       }
     }
+    startDate {
+      year
+      month
+      day
+    }
+    relations {
+      edges {
+        relationType(version: 2)
+        node {
+          id
+          idMal
+          title {
+            romaji
+            english
+            native
+          }
+          format
+          status
+          episodes
+          averageScore
+          seasonYear
+          coverImage {
+            large
+            medium
+            color
+          }
+          startDate {
+            year
+            month
+            day
+          }
+          relations {
+            edges {
+              relationType(version: 2)
+              node {
+                id
+                idMal
+                title {
+                  romaji
+                  english
+                  native
+                }
+                format
+                status
+                episodes
+                averageScore
+                seasonYear
+                coverImage {
+                  large
+                  medium
+                }
+                startDate {
+                  year
+                  month
+                  day
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }`;
 
@@ -438,17 +500,33 @@ export async function fetchWatchlistAiringMap(ids) {
     }
   `;
 
+  // Batch in chunks of 50 to support large watchlists
+  const BATCH_SIZE = 50;
+  const map = {};
+
   try {
-    const res = await anilistQuery(query, { ids: cleanIds.slice(0, 50) });
-    const mediaList = res?.Page?.media || [];
-    const map = {};
-    mediaList.forEach(m => {
-      map[m.id] = m;
+    const batches = [];
+    for (let i = 0; i < cleanIds.length; i += BATCH_SIZE) {
+      batches.push(cleanIds.slice(i, i + BATCH_SIZE));
+    }
+
+    const results = await Promise.allSettled(
+      batches.map(batch => anilistQuery(query, { ids: batch }))
+    );
+
+    results.forEach(result => {
+      if (result.status === 'fulfilled') {
+        const mediaList = result.value?.Page?.media || [];
+        mediaList.forEach(m => {
+          map[m.id] = m;
+        });
+      }
     });
+
     return map;
   } catch (err) {
     console.warn("Failed to fetch watchlist airing map:", err);
-    return {};
+    return map;
   }
 }
 
