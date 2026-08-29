@@ -104,11 +104,17 @@ export default function AnimeDetailModal({
         if (res?.Media) {
           setDetail(res.Media);
           const titleStr = res.Media.title?.english || res.Media.title?.romaji || '';
-          fetchAnimeFillerData(res.Media.idMal, titleStr).then(f => {
-            if (isCurrentCheck ? isCurrentCheck() : true) {
-              setFillerData(f || { episodes: [], hasFiller: false });
-            }
-          });
+          fetchAnimeFillerData(res.Media.idMal, titleStr)
+            .then(f => {
+              if (isCurrentCheck ? isCurrentCheck() : true) {
+                setFillerData(f || { episodes: [], hasFiller: false });
+              }
+            })
+            .catch(() => {
+              if (isCurrentCheck ? isCurrentCheck() : true) {
+                setFillerData({ episodes: [], hasFiller: false });
+              }
+            });
         }
       }
     } catch (e) {

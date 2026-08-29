@@ -28,10 +28,17 @@ export async function fetchAnimeFillerData(idMal, animeTitle = '') {
     }
   } catch (_) {}
 
-  // 3. Fetch from Jikan API if MAL ID is available
+  // 3. Fetch from Jikan API if MAL ID is available (with 3.5s timeout protection)
   if (idMal && Number(idMal) > 0) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+
     try {
-      const res = await fetch(`${JIKAN_BASE}/anime/${idMal}/episodes`);
+      const res = await fetch(`${JIKAN_BASE}/anime/${idMal}/episodes`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
       if (res.ok) {
         const json = await res.json();
         const eps = json.data || [];
@@ -51,15 +58,21 @@ export async function fetchAnimeFillerData(idMal, animeTitle = '') {
           try { sessionStorage.setItem(cacheKey, JSON.stringify(result)); } catch (_) {}
           return result;
         }
+      } else {
+        // Log subtle debug without throwing loud errors for 504 / 404 / 429
+        console.debug(`Jikan filler data unavailable (${res.status}) for MAL ID ${idMal}`);
       }
     } catch (err) {
-      console.warn("Jikan filler fetch error:", err);
+      clearTimeout(timeoutId);
+      // Quietly absorb timeout or offline network issues
+      console.debug("Jikan filler fetch skipped/timed out:", err.message || err);
     }
   }
 
-  // 4. Default return if not a known filler anime
+  // 4. Default return if not a known filler anime or upstream is slow
   const defaultResult = { episodes: [], hasFiller: false };
   fillerCache.set(cacheKey, defaultResult);
+  try { sessionStorage.setItem(cacheKey, JSON.stringify(defaultResult)); } catch (_) {}
   return defaultResult;
 }
 
