@@ -451,16 +451,18 @@ export async function logEpisodeProgress(animeId, episodeNumber, note = '', acti
         user_id: userId,
         anime_id: idNum,
         episode_number: epNum,
-        watched_at: new Date().toISOString(),
+        watched_at: effectiveDate || new Date().toISOString(),
         note: note || `Episode ${epNum}`
       };
 
       const { error } = await supabase
         .from('episode_progress')
-        .insert(logPayload);
+        .upsert(logPayload, { onConflict: 'user_id,anime_id,episode_number' });
 
       if (error) {
-        console.warn("Supabase episode_progress insert warning:", error.message || error);
+        if (!error.message?.includes('duplicate key') && error.code !== '23505') {
+          console.warn("Supabase episode_progress upsert warning:", error.message || error);
+        }
       }
     } catch (err) {
       // Quietly absorb non-critical network logs
