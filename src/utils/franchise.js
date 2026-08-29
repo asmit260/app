@@ -300,9 +300,9 @@ export function groupWatchlistByFranchise(watchlist = []) {
       totalEps: finalTotalEps,
       progressPercent,
       overallStatus,
-      latestUpdatedAt: latestUpdate
     };
   });
 
-  return franchiseList.sort((a, b) => b.latestUpdatedAt - a.latestUpdatedAt);
+  // Return franchiseList preserving the stable order of incoming items (does not jump on update)
+  return franchiseList;
 }

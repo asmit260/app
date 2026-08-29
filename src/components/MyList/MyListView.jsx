@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Film, LayoutGrid, List, Columns2, Sparkles, Flame, Trophy, Bookmark, PauseCircle, XCircle, Layers, ArrowUpDown, Grid3X3 } from 'lucide-react';
 import WatchlistCard from './WatchlistCard';
 import FranchiseCard from './FranchiseCard';
 import QuickEpisodeModal from '../Common/QuickEpisodeModal';
 import ConfirmModal from '../Common/ConfirmModal';
 import Grid3x3Modal from '../Social/Grid3x3Modal';
+import { sound } from '../../services/soundEffects';
 import { startRewatch } from '../../services/storage';
 import { groupWatchlistByFranchise } from '../../utils/franchise';
 import { isAnimeOngoing, getMaxAiredEpisode } from '../../utils/animeRules';
@@ -17,6 +18,31 @@ const STATUS_CONFIG = [
   { id: 'on_hold', label: 'On Hold', icon: PauseCircle },
   { id: 'dropped', label: 'Dropped', icon: XCircle }
 ];
+
+// Helper for sorting watchlist items according to selected criteria
+function sortWatchlistItems(items, sortKey) {
+  return [...items].sort((a, b) => {
+    if (sortKey === 'title_asc') {
+      return (a.anime_title || '').localeCompare(b.anime_title || '');
+    }
+    if (sortKey === 'score_desc') {
+      return (b.score || 0) - (a.score || 0);
+    }
+    if (sortKey === 'progress_desc') {
+      const pA = a.total_episodes ? (Number(a.episodes_watched) || 0) / a.total_episodes : 0;
+      const pB = b.total_episodes ? (Number(b.episodes_watched) || 0) / b.total_episodes : 0;
+      return pB - pA;
+    }
+    if (sortKey === 'activity_desc') {
+      return new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0);
+    }
+    // Default: 'added_desc'
+    const timeA = new Date(a.created_at || 0).getTime() || 0;
+    const timeB = new Date(b.created_at || 0).getTime() || 0;
+    if (timeA && timeB && timeA !== timeB) return timeB - timeA;
+    return 0;
+  });
+}
 
 export default function MyListView({ 
   watchlist = [], 
@@ -47,11 +73,47 @@ export default function MyListView({
   const [rewatchTarget, setRewatchTarget] = useState(null);
   const [show3x3Modal, setShow3x3Modal] = useState(false);
 
+  // 1. Session-stable frozen order of anime IDs
+  // When user enters this page, capture the visual order so editing episode count NEVER jumps the card!
+  const [stableOrderIds, setStableOrderIds] = useState(() => {
+    const initialSorted = sortWatchlistItems(watchlist, sortBy);
+    return initialSorted.map(i => parseInt(i.anime_id || i.id));
+  });
+
+  // Track the set of IDs to detect only genuine additions / deletions
+  const watchlistIdsKey = useMemo(() => {
+    return watchlist.map(i => parseInt(i.anime_id || i.id)).sort().join(',');
+  }, [watchlist]);
+
+  useEffect(() => {
+    setStableOrderIds(prevOrder => {
+      const currentIds = watchlist.map(i => parseInt(i.anime_id || i.id));
+      const prevSet = new Set(prevOrder);
+      
+      // If the exact same items exist (just episode progress/status modified), keep existing visual positions frozen!
+      const isExactSameSet = currentIds.length === prevOrder.length && currentIds.every(id => prevSet.has(id));
+      if (isExactSameSet) {
+        return prevOrder;
+      }
+
+      // If new anime were added or items removed, compute fresh sort
+      const newlySorted = sortWatchlistItems(watchlist, sortBy);
+      return newlySorted.map(i => parseInt(i.anime_id || i.id));
+    });
+  }, [watchlistIdsKey, sortBy]);
+
   const handleSortChange = (newSort) => {
     setSortBy(newSort);
     try {
       localStorage.setItem('anitrack_watchlist_sort', newSort);
     } catch (_) {}
+    const reSorted = sortWatchlistItems(watchlist, newSort);
+    setStableOrderIds(reSorted.map(i => parseInt(i.anime_id || i.id)));
+  };
+
+  const handleStatusChange = (statusId) => {
+    setActiveStatus(statusId);
+    sound.playTab();
   };
 
   const handleToggleGroupSeries = () => {
@@ -75,32 +137,40 @@ export default function MyListView({
     return counts;
   }, [watchlist]);
 
-  // Filtered & Stably Sorted Watchlist Items (Does not jump around when logging progress!)
+  // Filtered & Stably Ordered Watchlist Items (Cards stay strictly in their place while editing episodes!)
   const filteredList = useMemo(() => {
-    const list = watchlist.filter(item => activeStatus === 'all' || item.status === activeStatus);
-
-    return [...list].sort((a, b) => {
-      if (sortBy === 'title_asc') {
-        return (a.anime_title || '').localeCompare(b.anime_title || '');
-      }
-      if (sortBy === 'score_desc') {
-        return (b.score || 0) - (a.score || 0);
-      }
-      if (sortBy === 'progress_desc') {
-        const pA = a.total_episodes ? (Number(a.episodes_watched) || 0) / a.total_episodes : 0;
-        const pB = b.total_episodes ? (Number(b.episodes_watched) || 0) / b.total_episodes : 0;
-        return pB - pA;
-      }
-      if (sortBy === 'activity_desc') {
-        return new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0);
-      }
-      // Default: 'added_desc' - Stable Added Date / Insertion Order (Does NOT jump when updating progress)
-      const timeA = new Date(a.created_at || 0).getTime() || 0;
-      const timeB = new Date(b.created_at || 0).getTime() || 0;
-      if (timeA && timeB && timeA !== timeB) return timeB - timeA;
-      return 0;
+    const itemMap = new Map();
+    watchlist.forEach(item => {
+      const id = parseInt(item.anime_id || item.id);
+      itemMap.set(id, item);
     });
-  }, [watchlist, activeStatus, sortBy]);
+
+    const list = [];
+    const seen = new Set();
+
+    // 1. Follow the stable visual order established on page entry
+    stableOrderIds.forEach(id => {
+      const item = itemMap.get(id);
+      if (item) {
+        if (activeStatus === 'all' || item.status === activeStatus) {
+          list.push(item);
+        }
+        seen.add(id);
+      }
+    });
+
+    // 2. Append any newly added items not yet in stableOrderIds
+    watchlist.forEach(item => {
+      const id = parseInt(item.anime_id || item.id);
+      if (!seen.has(id)) {
+        if (activeStatus === 'all' || item.status === activeStatus) {
+          list.push(item);
+        }
+      }
+    });
+
+    return list;
+  }, [watchlist, stableOrderIds, activeStatus]);
 
   // Grouped Watchlist by Franchise / Series
   const franchiseGroups = useMemo(() => {
@@ -224,7 +294,7 @@ export default function MyListView({
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveStatus(tab.id)}
+                  onClick={() => handleStatusChange(tab.id)}
                   className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-black transition-all border-2 border-stone-900 flex items-center gap-1.5 select-none active:translate-y-0.5 ${
                     isSelected 
                       ? 'bg-amber-400 text-stone-950 font-black shadow-[2px_2px_0px_0px_rgba(24,19,13,1)] scale-[1.02]' 
